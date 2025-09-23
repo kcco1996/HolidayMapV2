@@ -71,14 +71,186 @@
     .leaflet-popup-content {
   width: 560px !important;  /* Adjust to match maxWidth - padding */
 }
+
+#top-bar {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  background: rgba(255,255,255,0.95);
+  border: 1px solid #ccc;
+  padding: 8px 12px;
+  border-radius: 8px;
+  z-index: 1000;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+}
+#top-bar .btn {
+  padding: 4px 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
   </style>
 </head>
 <body>
   <div id="map"></div>
 
+<div id="top-bar">
+  <div id="migration-status" style="position:fixed; top:60px; right:10px; background:#fff; border:1px solid #ccc; padding:6px 10px; border-radius:6px; font-size:13px; z-index:1000; max-height:200px; overflow-y:auto; display:none;"></div>
+ <button id="sign-in-btn" class="btn" onclick="firebaseSignIn()">Sign in with Google</button>
+  <button id="sign-out-btn" class="btn" onclick="firebaseSignOut()" style="display:none;">Sign out</button>
+  <span id="user-info"></span>
+  <button id="migrate-btn" class="btn ghost" style="display:none;">Migrate Data to Firebase</button>
+</div>
+
+<div id="migration-status" style="
+  display:none;
+  position:fixed;
+  bottom:10px;
+  right:10px;
+  background:#fff;
+  border:1px solid #ccc;
+  padding:10px;
+  max-width:300px;
+  font-size:13px;
+  line-height:1.4;
+  z-index:1001;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  border-radius:8px;
+  overflow-y:auto;
+  max-height:50vh;
+"></div>
+
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+     
+    <!-- Firebase SDKs -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+  import {
+    getAuth,
+    GoogleAuthProvider,
+    signInWithPopup,
+    signOut,
+    onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+  import {
+    getFirestore,
+    doc,
+    setDoc
+  } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+  // Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyCAY-izVSAjouJjL960zS8xs84jaOZQBIo",
+    authDomain: "kieranholidaymap.firebaseapp.com",
+    projectId: "kieranholidaymap",
+    storageBucket: "kieranholidaymap.firebasestorage.app",
+    messagingSenderId: "733529027142",
+    appId: "1:733529027142:web:f1af423b12491a937dd047"
+  };
+
+  // Init
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const provider = new GoogleAuthProvider();
+
+  window.firebaseAuth = auth;
+  window.firebaseProvider = provider;
+  window.firebaseDB = db;
+
+  // === Sign-in / Sign-out logic ===
+  window.firebaseSignIn = () => signInWithPopup(auth, provider);
+  window.firebaseSignOut = () => signOut(auth);
+
+  onAuthStateChanged(auth, (user) => {
+    const signInBtn = document.getElementById("sign-in-btn");
+    const signOutBtn = document.getElementById("sign-out-btn");
+    const userInfo = document.getElementById("user-info");
+    const migrateBtn = document.getElementById("migrate-btn");
+
+    if (user) {
+      signInBtn.style.display = "none";
+      signOutBtn.style.display = "inline-block";
+      userInfo.textContent = `Signed in as: ${user.displayName}`;
+
+      // Show migrate button only for Kieran
+      if (user.email === "kcco1996@gmail.com") {
+        migrateBtn.style.display = "inline-block";
+
+       migrateBtn.onclick = async () => {
+  try {
+    const statusBox = document.getElementById("migration-status");
+    if (!statusBox) return;
+
+    statusBox.innerHTML = "";
+    statusBox.style.display = "block";
+
+    let successCount = 0;
+    let failCount = 0;
+
+    for (const d of destinations) {
+      const key = `tripPlan:${d.name}`;
+      const localData = localStorage.getItem(key);
+      if (!localData) continue;
+
+      let parsedData;
+      try {
+        parsedData = JSON.parse(localData);
+      } catch (err) {
+        statusBox.innerHTML += `<div style="color:red;">❌ Failed to parse <b>${d.name}</b></div>`;
+        console.error(`❌ JSON parse failed for ${d.name}`, err);
+        failCount++;
+        continue;
+      }
+
+      try {
+        await setDoc(doc(db, "users", user.uid, "plans", d.name), {
+          name: d.name,
+          data: parsedData,
+          migratedAt: new Date().toISOString()
+        });
+        statusBox.innerHTML += `<div>✅ Migrated <b>${d.name}</b></div>`;
+        successCount++;
+      } catch (err) {
+        statusBox.innerHTML += `<div style="color:red;">❌ Failed to migrate <b>${d.name}</b></div>`;
+        console.error(`❌ Firebase setDoc failed for ${d.name}`, err);
+        failCount++;
+      }
+    }
+
+    statusBox.innerHTML += `<hr><div><b>✅ ${successCount} migrated</b></div>`;
+    if (failCount > 0) {
+      statusBox.innerHTML += `<div style="color:red;"><b>❌ ${failCount} failed</b></div>`;
+    }
+
+    setTimeout(() => {
+      statusBox.style.display = "none";
+    }, 10000);
+
+  } catch (err) {
+    alert("Migration failed unexpectedly. Check the console for details.");
+    console.error("Unexpected migration error:", err);
+  }
+};
+
+      } else {
+        migrateBtn.style.display = "none";
+      }
+
+    } else {
+      // Signed out
+      signInBtn.style.display = "inline-block";
+      signOutBtn.style.display = "none";
+      userInfo.textContent = "";
+      migrateBtn.style.display = "none";
+    }
+  });
+</script>
 
   <script>
     // ---------- Storage helpers ----------
@@ -181,6 +353,7 @@
       const currencyOptions = currencies.map(c => `<option value="${c}" ${plan.hotel.currency===c?"selected":""}>${c}</option>`).join("");
 
       return `
+        
         <div class="popup" data-dest="${encodeURIComponent(d.name)}">
           <div class="header">
             ${d.destination ? `<img src="${d.destination}" alt="${d.name} icon" />` : ""}
@@ -2145,7 +2318,7 @@ subButtons.forEach(btn=>{
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    const layer = L.layerGroup().addTo(map);
+   const layer = L.featureGroup().addTo(map);
     const markers = [];
 
     for (const d of destinations) {
@@ -2153,7 +2326,7 @@ subButtons.forEach(btn=>{
       const marker = L.marker([d.lat, d.lng], icon ? { icon } : undefined);
       marker.bindPopup(buildPopup(d), { maxWidth: 600 });
       
-
+      
       // Wire up the planner logic each time the popup opens
       marker.on('popupopen', (e)=>{
         const el = e.popup.getElement();
@@ -2167,8 +2340,10 @@ subButtons.forEach(btn=>{
       markers.push(marker);
     }
 
-    const bounds = layer.getBounds();
-    if (bounds.isValid()) map.fitBounds(bounds.pad(0.2));
+  if (layer.getLayers().length > 0) {
+  const bounds = layer.getBounds();
+  if (bounds.isValid()) map.fitBounds(bounds.pad(0.2));
+}
   </script>
 </body>
 </html>

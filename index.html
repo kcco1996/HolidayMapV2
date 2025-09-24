@@ -140,7 +140,10 @@
   import {
     getFirestore,
     doc,
-    setDoc
+    setDoc,
+    getDoc,
+    collection,
+    getDocs
   } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
   // Firebase config
@@ -153,7 +156,7 @@
     appId: "1:733529027142:web:f1af423b12491a937dd047"
   };
 
-  // Init
+  // Init Firebase
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
@@ -162,11 +165,16 @@
   window.firebaseAuth = auth;
   window.firebaseProvider = provider;
   window.firebaseDB = db;
+  window.setDoc = setDoc;
+window.doc = doc;
+window.collection = collection;
+window.getDocs = getDocs;
 
-  // === Sign-in / Sign-out logic ===
+  // Expose sign-in/out functions
   window.firebaseSignIn = () => signInWithPopup(auth, provider);
   window.firebaseSignOut = () => signOut(auth);
 
+  // === SIGN-IN STATE HANDLER ===
   onAuthStateChanged(auth, (user) => {
     const signInBtn = document.getElementById("sign-in-btn");
     const signOutBtn = document.getElementById("sign-out-btn");
@@ -178,76 +186,37 @@
       signOutBtn.style.display = "inline-block";
       userInfo.textContent = `Signed in as: ${user.displayName}`;
 
-      // Show migrate button only for Kieran
       if (user.email === "kcco1996@gmail.com") {
         migrateBtn.style.display = "inline-block";
-
-       migrateBtn.onclick = async () => {
-  try {
-    const statusBox = document.getElementById("migration-status");
-    if (!statusBox) return;
-
-    statusBox.innerHTML = "";
-    statusBox.style.display = "block";
-
-    let successCount = 0;
-    let failCount = 0;
-
-    for (const d of destinations) {
-      const key = `tripPlan:${d.name}`;
-      const localData = localStorage.getItem(key);
-      if (!localData) continue;
-
-      let parsedData;
-      try {
-        parsedData = JSON.parse(localData);
-      } catch (err) {
-        statusBox.innerHTML += `<div style="color:red;">❌ Failed to parse <b>${d.name}</b></div>`;
-        console.error(`❌ JSON parse failed for ${d.name}`, err);
-        failCount++;
-        continue;
-      }
-
-      try {
-        await setDoc(doc(db, "users", user.uid, "plans", d.name), {
-          name: d.name,
-          data: parsedData,
-          migratedAt: new Date().toISOString()
-        });
-        statusBox.innerHTML += `<div>✅ Migrated <b>${d.name}</b></div>`;
-        successCount++;
-      } catch (err) {
-        statusBox.innerHTML += `<div style="color:red;">❌ Failed to migrate <b>${d.name}</b></div>`;
-        console.error(`❌ Firebase setDoc failed for ${d.name}`, err);
-        failCount++;
-      }
-    }
-
-    statusBox.innerHTML += `<hr><div><b>✅ ${successCount} migrated</b></div>`;
-    if (failCount > 0) {
-      statusBox.innerHTML += `<div style="color:red;"><b>❌ ${failCount} failed</b></div>`;
-    }
-
-    setTimeout(() => {
-      statusBox.style.display = "none";
-    }, 10000);
-
-  } catch (err) {
-    alert("Migration failed unexpectedly. Check the console for details.");
-    console.error("Unexpected migration error:", err);
-  }
-};
-
       } else {
         migrateBtn.style.display = "none";
       }
 
+      // ✅ Load Firebase trip plans
+      (async () => {
+        const plansSnapshot = await getDocs(collection(db, "users", user.uid, "plans"));
+        plansSnapshot.forEach(docSnap => {
+          const plan = docSnap.data()?.data;
+          const name = docSnap.data()?.name;
+          if (plan && name) {
+            localStorage.setItem(`tripPlan:${name}`, JSON.stringify(plan));
+            console.log(`✅ Loaded ${name} from Firebase`);
+          }
+        });
+
+        // ✅ Now render the map
+        renderMap();
+      })();
+
     } else {
-      // Signed out
+      // Not signed in
       signInBtn.style.display = "inline-block";
       signOutBtn.style.display = "none";
       userInfo.textContent = "";
       migrateBtn.style.display = "none";
+
+      // Render map anyway (fallback to localStorage)
+      renderMap();
     }
   });
 </script>
@@ -547,6 +516,34 @@ mainTabBtns.forEach(btn=>{
     if (panel) panel.classList.add('active');
   });
 });
+
+function renderMap() {
+  const layer = L.featureGroup().addTo(map);
+  const markers = [];
+
+  for (const d of destinations) {
+    const icon = d.destination ? destinationIcon(d.destination) : undefined;
+    const marker = L.marker([d.lat, d.lng], icon ? { icon } : undefined);
+    marker.bindPopup(buildPopup(d), { maxWidth: 600 });
+
+    marker.on('popupopen', (e) => {
+      const el = e.popup.getElement();
+      requestAnimationFrame(() => {
+        const container = el.querySelector('.popup');
+        if (container) initPopupHandlers(container, d);
+      });
+    });
+
+    layer.addLayer(marker);
+    markers.push(marker);
+  }
+
+  if (layer.getLayers().length > 0) {
+    const bounds = layer.getBounds();
+    if (bounds.isValid()) map.fitBounds(bounds.pad(0.2));
+  }
+}
+
 
       // DAYS TAB
       const daysInput = container.querySelector('#days-input');
@@ -2318,32 +2315,73 @@ subButtons.forEach(btn=>{
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-   const layer = L.featureGroup().addTo(map);
-    const markers = [];
+    function renderMap() {
+  const layer = L.featureGroup().addTo(map);
+  const markers = [];
 
-    for (const d of destinations) {
-      const icon = d.destination ? destinationIcon(d.destination) : undefined;
-      const marker = L.marker([d.lat, d.lng], icon ? { icon } : undefined);
-      marker.bindPopup(buildPopup(d), { maxWidth: 600 });
-      
-      
-      // Wire up the planner logic each time the popup opens
-      marker.on('popupopen', (e)=>{
-        const el = e.popup.getElement();
-        requestAnimationFrame(()=>{
-          const container = el.querySelector('.popup');
-          if (container) initPopupHandlers(container, d);
-        });
+  for (const d of destinations) {
+    const icon = d.destination ? destinationIcon(d.destination) : undefined;
+    const marker = L.marker([d.lat, d.lng], icon ? { icon } : undefined);
+    marker.bindPopup(buildPopup(d), { maxWidth: 600 });
+
+    marker.on('popupopen', (e) => {
+      const el = e.popup.getElement();
+      requestAnimationFrame(() => {
+        const container = el.querySelector('.popup');
+        if (container) initPopupHandlers(container, d);
       });
+    });
 
-      layer.addLayer(marker);
-      markers.push(marker);
-    }
+    layer.addLayer(marker);
+    markers.push(marker);
+  }
 
   if (layer.getLayers().length > 0) {
-  const bounds = layer.getBounds();
-  if (bounds.isValid()) map.fitBounds(bounds.pad(0.2));
+    const bounds = layer.getBounds();
+    if (bounds.isValid()) map.fitBounds(bounds.pad(0.2));
+  }
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+  const migrateBtn = document.getElementById("migrate-btn");
+
+  if (migrateBtn) {
+    migrateBtn.addEventListener("click", async () => {
+      const user = firebaseAuth.currentUser;
+      const db = firebaseDB;
+
+      if (!user || !db) return;
+
+      const statusBox = document.getElementById("migration-status");
+      statusBox.innerHTML = "";
+      statusBox.style.display = "block";
+
+      const keys = Object.keys(localStorage).filter(k => k.startsWith("tripPlan:"));
+      if (keys.length === 0) {
+        statusBox.innerHTML = "❌ No local plans found.";
+        return;
+      }
+
+      for (const key of keys) {
+        const name = key.replace("tripPlan:", "");
+        const data = JSON.parse(localStorage.getItem(key));
+
+        try {
+          await setDoc(doc(db, "users", user.uid, "plans", name), { name, data });
+          const msg = `✅ Migrated "${name}" to Firebase.`;
+          const line = document.createElement("div");
+          line.textContent = msg;
+          statusBox.appendChild(line);
+        } catch (err) {
+          const msg = `❌ Failed to migrate "${name}": ${err.message}`;
+          const line = document.createElement("div");
+          line.textContent = msg;
+          statusBox.appendChild(line);
+        }
+      }
+    });
+  }
+});
   </script>
 </body>
 </html>

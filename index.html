@@ -62,6 +62,32 @@
     }
     .saved-toast.show { display:block; }
 
+
+     /* Search Bar*/
+
+    #controls-bar {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  background: rgba(255,255,255,0.95);
+  border: 1px solid #ccc;
+  padding: 8px 12px;
+  border-radius: 8px;
+  z-index: 1000;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+}
+
+#controls-bar input, 
+#controls-bar select {
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 13px;
+}
+
     /* Food list */
     .food-row { display:flex; align-items:center; gap:8px; margin:6px 0; }
     .food-row input[type="checkbox"] { transform: translateY(1px); }
@@ -95,6 +121,20 @@
 </head>
 <body>
   <div id="map"></div>
+
+  <div id="controls-bar">
+  <input type="text" id="search-input" placeholder="Search destination..." />
+  <select id="region-filter">
+    <option value="all">🌍 All Regions</option>
+    <option value="north-america">North America</option>
+    <option value="south-america">South America</option>
+    <option value="europe">Europe</option>
+    <option value="africa">Africa</option>
+    <option value="asia">Asia</option>
+    <option value="oceania">Oceania</option>
+  </select>
+  <button id="reset-view" class="btn ghost">Show All</button>
+</div>
 
 <div id="top-bar">
   <div id="migration-status" style="position:fixed; top:60px; right:10px; background:#fff; border:1px solid #ccc; padding:6px 10px; border-radius:6px; font-size:13px; z-index:1000; max-height:200px; overflow-y:auto; display:none;"></div>
@@ -219,6 +259,75 @@ window.getDocs = getDocs;
       renderMap();
     }
   });
+
+  // === FILTER + SEARCH CONTROLS ===
+let allMarkers = [];
+let allLayerGroup;
+
+function renderMap() {
+  if (allLayerGroup) {
+    map.removeLayer(allLayerGroup);
+  }
+  allLayerGroup = L.featureGroup().addTo(map);
+  allMarkers = [];
+
+  for (const d of destinations) {
+    const icon = d.destination ? destinationIcon(d.destination) : undefined;
+    const marker = L.marker([d.lat, d.lng], icon ? { icon } : undefined);
+    marker.bindPopup(buildPopup(d), { maxWidth: 600 });
+    marker.on('popupopen', (e) => {
+      const el = e.popup.getElement();
+      requestAnimationFrame(() => {
+        const container = el.querySelector('.popup');
+        if (container) initPopupHandlers(container, d);
+      });
+    });
+    marker.destinationData = d;
+    allLayerGroup.addLayer(marker);
+    allMarkers.push(marker);
+  }
+
+  if (allLayerGroup.getLayers().length > 0) {
+    const bounds = allLayerGroup.getBounds();
+    if (bounds.isValid()) map.fitBounds(bounds.pad(0.2));
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const searchInput = document.getElementById("search-input");
+  const regionFilter = document.getElementById("region-filter");
+  const resetBtn = document.getElementById("reset-view");
+
+  function filterMap() {
+    const query = searchInput.value.trim().toLowerCase();
+    const region = regionFilter.value;
+
+    allMarkers.forEach(marker => {
+      const d = marker.destinationData;
+      const nameMatch = d.name.toLowerCase().includes(query);
+      const regionMatch = (region === "all") || d.region === region;
+      if (nameMatch && regionMatch) {
+        marker.addTo(allLayerGroup);
+      } else {
+        allLayerGroup.removeLayer(marker);
+      }
+    });
+
+    // Adjust map view to visible markers
+    if (allLayerGroup.getLayers().length > 0) {
+      map.fitBounds(allLayerGroup.getBounds().pad(0.2));
+    }
+  }
+
+  searchInput.addEventListener("input", filterMap);
+  regionFilter.addEventListener("change", filterMap);
+  resetBtn.addEventListener("click", () => {
+    searchInput.value = "";
+    regionFilter.value = "all";
+    renderMap();
+  });
+
+});
 </script>
 
   <script>
@@ -242,6 +351,7 @@ window.getDocs = getDocs;
   if (!plan.activities) plan.activities = {1:""};
   if (typeof plan.days !== "number" || plan.days < 1) plan.days = 1;
   if (typeof plan.notes !== "string") plan.notes = "";
+  if (typeof plan.tips !== "string") plan.tips = "";
   if (!plan.hotel) {
     plan.hotel = { name:"", currency:"GBP", nightly:"", nights: Math.max(1,(plan.days|0)-1||1) };
   } else {
@@ -341,6 +451,7 @@ window.getDocs = getDocs;
             <button class="tab-btn" data-tab="tab-stay">Stay & Budget</button>
             <button class="tab-btn" data-tab="tab-food">Food</button>
             <button class="tab-btn" data-tab="tab-notes">Notes</button>
+            <button class="tab-btn" data-tab="tab-tips">Tips</button>
             <span class="saved-toast" aria-live="polite">Saved</span>
           </div>
 
@@ -485,15 +596,26 @@ window.getDocs = getDocs;
   <p class="hint">Food diary is saved per destination and includes breakfast, lunch, and dinner entries per day.</p>
 </div>;
 
- <!-- Notes tab -->
-        <div id="tab-notes" class="tab-panel">
-          <textarea id="notes-text" class="textarea" placeholder="Anything else to remember (tickets, packing, misc)"></textarea>
-          <div class="save-bar">
-            <button class="btn primary" id="save-notes">Save Notes</button>
-            <button class="btn" id="clear-notes">Clear</button>
-          </div>
-        </div>
-      </div>`;
+<!-- Notes tab -->
+<div id="tab-notes" class="tab-panel">
+  <textarea id="notes-text" class="textarea" placeholder="Anything else to remember (tickets, packing, misc)"></textarea>
+  <div class="save-bar">
+    <button class="btn primary" id="save-notes">Save Notes</button>
+    <button class="btn" id="clear-notes">Clear</button>
+  </div>
+</div>
+
+<!-- Tips tab -->
+<div id="tab-tips" class="tab-panel">
+  <textarea id="tips-text" class="textarea" placeholder="Write any travel tips, local secrets, or reminders here..."></textarea>
+  <div class="save-bar">
+    <button class="btn primary" id="save-tips">Save Tips</button>
+    <button class="btn" id="clear-tips">Clear</button>
+  </div>
+</div>
+</div>`;
+
+ 
 
     }
 
@@ -792,6 +914,23 @@ subButtons.forEach(btn=>{
         showSaved(toast);
       });
 
+      // TIPS TAB
+const tipsArea = container.querySelector('#tips-text');
+tipsArea.value = plan.tips || "";
+const saveTipsBtn = container.querySelector('#save-tips');
+const clearTipsBtn = container.querySelector('#clear-tips');
+saveTipsBtn.addEventListener('click', ()=>{
+  plan.tips = tipsArea.value;
+  savePlan(name, plan);
+  showSaved(toast);
+});
+clearTipsBtn.addEventListener('click', ()=>{
+  tipsArea.value = "";
+  plan.tips = "";
+  savePlan(name, plan);
+  showSaved(toast);
+});
+
       // Initialise daily plan UI
       daysInput.value = Math.max(1, Number(plan.days||1));
       // Build selector & load current day content
@@ -840,25 +979,29 @@ subButtons.forEach(btn=>{
         name: "Seattle",
         lat: 47.60772453397215,  lng: -122.33571831316796,  
         destination: "assets/black-dot.png",  
-        note: "-"
+        note: "-",
+        region: "north-america"
       },
            {
         name: "Vancouver",
         lat: 49.28239845936347, lng: -123.1201280732361,    
         destination: "assets/black-dot.png",  
-        note: "-"
+         note: "-",
+        region: "north-america"
       },
            {
         name: "Banff",
         lat: 51.17832458370294, lng: -115.5707963532298,    
         destination: "assets/black-dot.png",  
-        note: "-"
+         note: "-",
+        region: "north-america"
       },
            {
         name: "Detroit",
         lat: 42.329879544353226, lng: -83.0409047870654,    
         destination: "assets/black-dot.png",  
-        note: "-"
+         note: "-",
+        region: "north-america"
       },
          {
         name: "Toronto",

@@ -419,20 +419,32 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
 
-    function buildPopup(d) {
+      function buildPopup(d) {
       const plan = loadPlan(d.name);
       const days = Math.max(1, Number(plan.days || 1));
-      const nightsDefault = Math.max(1, Number(plan.hotel?.nights ?? Math.max(1, days - 1)));
+      const nightsDefault = Math.max(
+        1,
+        Number(plan.hotel?.nights ?? Math.max(1, days - 1))
+      );
 
-      // Build options for day selector
-      const dayOptions = Array.from({length: days}, (_,i)=>`<option value="${i+1}">Day ${i+1}</option>`).join("");
+      // Day dropdown options
+      const dayOptions = Array.from(
+        { length: days },
+        (_, i) => `<option value="${i + 1}">Day ${i + 1}</option>`
+      ).join("");
 
-      // Currencies
+      // Currency options (keep your existing list)
       const currencies = ["GBP","EUR","USD","CAD","AUD","NZD","JPY","CNY"];
-      const currencyOptions = currencies.map(c => `<option value="${c}" ${plan.hotel.currency===c?"selected":""}>${c}</option>`).join("");
+      const currencyOptions = currencies
+        .map(
+          c =>
+            `<option value="${c}" ${
+              plan.hotel.currency === c ? "selected" : ""
+            }>${c}</option>`
+        )
+        .join("");
 
       return `
-        
         <div class="popup" data-dest="${encodeURIComponent(d.name)}">
           <div class="header">
             ${d.destination ? `<img src="${d.destination}" alt="${d.name} icon" />` : ""}
@@ -440,7 +452,8 @@ document.addEventListener("DOMContentLoaded", () => {
               <h3 style="margin:0 0 4px;">${d.name}</h3>
               ${d.note ? `<p style="margin:0 0 4px;">${d.note}</p>` : ""}
               <p style="margin:6px 0 0;">
-                <a href="https://maps.google.com/?q=${d.lat},${d.lng}" target="_blank" rel="noopener">Open in Google Maps</a>
+                <a href="https://maps.google.com/?q=${d.lat},${d.lng}"
+                   target="_blank" rel="noopener">Open in Google Maps</a>
               </p>
             </div>
           </div>
@@ -462,7 +475,10 @@ document.addEventListener("DOMContentLoaded", () => {
               <input id="days-input" type="number" min="1" step="1" value="${days}">
               <button class="btn primary" id="apply-days">Apply</button>
             </div>
-            <p class="hint">Set how long you’ll stay. This also influences default nights for hotel total (editable).</p>
+            <p class="hint">
+              Set how long you’ll stay. This also influences default nights
+              for hotel total (editable).
+            </p>
           </div>
 
           <!-- Daily Plan tab -->
@@ -473,7 +489,8 @@ document.addEventListener("DOMContentLoaded", () => {
               <select id="day-select">${dayOptions}</select>
               <button class="btn ghost" id="next-day" title="Next day">&#9654;</button>
             </div>
-            <textarea id="day-activities" class="textarea" placeholder="Activities for this day (times, places, tickets, restaurants, notes)..."></textarea>
+            <textarea id="day-activities" class="textarea"
+              placeholder="Activities for this day (times, places, tickets, restaurants, notes)..."></textarea>
             <div class="save-bar">
               <button class="btn primary" id="save-day">Save Day</button>
               <button class="btn" id="clear-day">Clear Day</button>
@@ -481,142 +498,212 @@ document.addEventListener("DOMContentLoaded", () => {
           </div>
 
           <!-- Stay & Budget tab -->
+                    <!-- Stay & Budget tab -->
           <div id="tab-stay" class="tab-panel">
-            <div class="row">
-              <label for="hotel-name">Hotel name (optional):</label>
-              <input id="hotel-name" type="text" value="${(plan.hotel.name||"").replace(/"/g,'&quot;')}" placeholder="e.g., Hotel Central">
+
+            <!-- Sub-tabs: Cheap / Medium / Luxury -->
+            <div class="tabs budget-subtabs">
+              <button class="tab-btn" data-btab="tab-cheap">Cheap option</button>
+              <button class="tab-btn active" data-btab="tab-medium">Medium option (main hotel)</button>
+              <button class="tab-btn" data-btab="tab-luxury">Luxury option</button>
             </div>
-            <div class="row">
-              <label for="currency">Currency:</label>
-              <select id="currency">${currencyOptions}</select>
+
+            <!-- MEDIUM = MAIN HOTEL -->
+            <div id="tab-medium" class="tab-panel active">
+              <h4>Main Hotel</h4>
+
+              <div class="row">
+                <label for="hotel-name">Hotel name (optional):</label>
+                <input id="hotel-name" type="text"
+                       value="${(plan.hotel.name||"").replace(/"/g,'&quot;')}"
+                       placeholder="e.g., Hotel Central">
+              </div>
+              <div class="row">
+                <label for="currency">Currency:</label>
+                <select id="currency">${currencyOptions}</select>
+              </div>
+              <div class="row">
+                <label for="nightly">Avg price per night:</label>
+                <input id="nightly" type="number" min="0" step="1" value="${plan.hotel.nightly||""}">
+              </div>
+              <div class="row">
+                <label for="nights">Nights:</label>
+                <input id="nights" type="number" min="1" step="1" value="${nightsDefault}">
+              </div>
+              <div class="row">
+                <label>Total (auto):</label>
+                <div id="hotel-total" aria-live="polite" style="font-weight:600;">—</div>
+              </div>
+              <div class="save-bar">
+                <button class="btn primary" id="save-hotel">Save Stay</button>
+                <button class="btn" id="clear-hotel">Clear</button>
+              </div>
             </div>
-            <div class="row">
-              <label for="nightly">Avg price per night:</label>
-              <input id="nightly" type="number" min="0" step="1" value="${plan.hotel.nightly||""}">
+
+            <!-- CHEAP OPTION -->
+            <div id="tab-cheap" class="tab-panel">
+              <h4>Cheap option</h4>
+
+              <div class="row">
+                <label>Name:</label>
+                <input id="cheap-name" type="text">
+              </div>
+              <div class="row">
+                <label>Currency:</label>
+                <select id="cheap-currency">${currencyOptions}</select>
+              </div>
+              <div class="row">
+                <label>Price per night:</label>
+                <input id="cheap-price" type="number" min="0" step="1">
+              </div>
+              <div class="row">
+                <label>Nights:</label>
+                <input id="cheap-nights" type="number" min="1" step="1">
+              </div>
+              <div class="row">
+                <label>Total:</label>
+                <div id="cheap-total" style="font-weight:600;">—</div>
+              </div>
+              <textarea id="cheap-notes" class="textarea" placeholder="Notes (optional)"></textarea>
             </div>
-            <div class="row">
-              <label for="nights">Nights:</label>
-              <input id="nights" type="number" min="1" step="1" value="${nightsDefault}">
+
+            <!-- LUXURY OPTION -->
+            <div id="tab-luxury" class="tab-panel">
+              <h4>Luxury option</h4>
+
+              <div class="row">
+                <label>Name:</label>
+                <input id="luxury-name" type="text">
+              </div>
+              <div class="row">
+                <label>Currency:</label>
+                <select id="luxury-currency">${currencyOptions}</select>
+              </div>
+              <div class="row">
+                <label>Price per night:</label>
+                <input id="luxury-price" type="number" min="0" step="1">
+              </div>
+              <div class="row">
+                <label>Nights:</label>
+                <input id="luxury-nights" type="number" min="1" step="1">
+              </div>
+              <div class="row">
+                <label>Total:</label>
+                <div id="luxury-total" style="font-weight:600;">—</div>
+              </div>
+              <textarea id="luxury-notes" class="textarea" placeholder="Notes (optional)"></textarea>
             </div>
-            <div class="row">
-              <label>Total (auto):</label>
-              <div id="hotel-total" aria-live="polite" style="font-weight:600;">—</div>
-            </div>
+
             <div class="save-bar">
-              <button class="btn primary" id="save-hotel">Save Stay</button>
-              <button class="btn" id="clear-hotel">Clear</button>
+              <button class="btn primary" id="save-budget">Save Hotel Options</button>
             </div>
-            <p class="hint">Tip: Nights default to days − 1. Adjust if your arrival/departure times differ.</p>
           </div>
 
-        <!-- Food tab -->
-<!-- Food tab -->
-<div id="tab-food" class="tab-panel">
-  <div class="day-nav">
-    <label for="food-day-select">Day:</label>
-    <select id="food-day-select"></select>
-  </div>
+          <!-- Food tab (unchanged structure) -->
+          <div id="tab-food" class="tab-panel">
+            <div class="day-nav">
+              <label for="food-day-select">Day:</label>
+              <select id="food-day-select"></select>
+            </div>
 
-  <div class="tabs food-subtabs">
-    <button class="tab-btn active" data-subtab="tab-breakfast">Breakfast</button>
-    <button class="tab-btn" data-subtab="tab-lunch">Lunch</button>
-    <button class="tab-btn" data-subtab="tab-dinner">Dinner</button>
-  </div>
+            <div class="tabs food-subtabs">
+              <button class="tab-btn active" data-subtab="tab-breakfast">Breakfast</button>
+              <button class="tab-btn" data-subtab="tab-lunch">Lunch</button>
+              <button class="tab-btn" data-subtab="tab-dinner">Dinner</button>
+            </div>
 
-<div id="tab-breakfast" class="tab-panel active">
-  <div class="row">
-    <label>Dish:</label>
-    <input id="breakfast-dish" type="text">
-    <input id="breakfast-dish-desc" type="text" placeholder="Description">
-  </div>
-  <div class="row">
-    <label>Hot drink:</label>
-    <input id="breakfast-hot" type="text">
-    <input id="breakfast-hot-desc" type="text" placeholder="Description">
-  </div>
-  <div class="row">
-    <label>Cold drink:</label>
-    <input id="breakfast-cold" type="text">
-    <input id="breakfast-cold-desc" type="text" placeholder="Description">
-  </div>
+            <div id="tab-breakfast" class="tab-panel active">
+              <div class="row">
+                <label>Dish:</label>
+                <input id="breakfast-dish" type="text">
+                <input id="breakfast-dish-desc" type="text" placeholder="Description">
+              </div>
+              <div class="row">
+                <label>Hot drink:</label>
+                <input id="breakfast-hot" type="text">
+                <input id="breakfast-hot-desc" type="text" placeholder="Description">
+              </div>
+              <div class="row">
+                <label>Cold drink:</label>
+                <input id="breakfast-cold" type="text">
+                <input id="breakfast-cold-desc" type="text" placeholder="Description">
+              </div>
+            </div>
+
+            <div id="tab-lunch" class="tab-panel">
+              <div class="row">
+                <label>Dish:</label>
+                <input id="lunch-dish" type="text">
+                <input id="lunch-dish-desc" type="text" placeholder="Description">
+              </div>
+              <div class="row">
+                <label>Hot drink:</label>
+                <input id="lunch-hot" type="text">
+                <input id="lunch-hot-desc" type="text" placeholder="Description">
+              </div>
+              <div class="row">
+                <label>Cold drink:</label>
+                <input id="lunch-cold" type="text">
+                <input id="lunch-cold-desc" type="text" placeholder="Description">
+              </div>
+            </div>
+
+            <div id="tab-dinner" class="tab-panel">
+              <div class="row">
+                <label>Starter:</label>
+                <input id="dinner-starter" type="text">
+                <input id="dinner-starter-desc" type="text" placeholder="Description">
+              </div>
+              <div class="row">
+                <label>Main course:</label>
+                <input id="dinner-main" type="text">
+                <input id="dinner-main-desc" type="text" placeholder="Description">
+              </div>
+              <div class="row">
+                <label>Dessert:</label>
+                <input id="dinner-dessert" type="text">
+                <input id="dinner-dessert-desc" type="text" placeholder="Description">
+              </div>
+              <div class="row">
+                <label>Alcoholic drink:</label>
+                <input id="dinner-alcohol" type="text">
+                <input id="dinner-alcohol-desc" type="text" placeholder="Description">
+              </div>
+              <div class="row">
+                <label>Cold drink:</label>
+                <input id="dinner-cold" type="text">
+                <input id="dinner-cold-desc" type="text" placeholder="Description">
+              </div>
+            </div>
+
+            <div class="save-bar">
+              <button class="btn primary" id="save-food">Save Food Diary</button>
+              <button class="btn" id="clear-food">Clear</button>
+            </div>
+
+           <p class="hint">Food diary is saved per destination and includes breakfast, lunch, and dinner entries per day.</p>
 </div>
 
+          <!-- Notes tab -->
+          <div id="tab-notes" class="tab-panel">
+            <textarea id="notes-text" class="textarea"
+              placeholder="Anything else to remember (tickets, packing, misc)"></textarea>
+            <div class="save-bar">
+              <button class="btn primary" id="save-notes">Save Notes</button>
+              <button class="btn" id="clear-notes">Clear</button>
+            </div>
+          </div>
 
- <div id="tab-lunch" class="tab-panel">
-  <div class="row">
-    <label>Dish:</label>
-    <input id="lunch-dish" type="text">
-    <input id="lunch-dish-desc" type="text" placeholder="Description">
-  </div>
-  <div class="row">
-    <label>Hot drink:</label>
-    <input id="lunch-hot" type="text">
-    <input id="lunch-hot-desc" type="text" placeholder="Description">
-  </div>
-  <div class="row">
-    <label>Cold drink:</label>
-    <input id="lunch-cold" type="text">
-    <input id="lunch-cold-desc" type="text" placeholder="Description">
-  </div>
-</div>
-
- <div id="tab-dinner" class="tab-panel">
-  <div class="row">
-    <label>Starter:</label>
-    <input id="dinner-starter" type="text">
-    <input id="dinner-starter-desc" type="text" placeholder="Description">
-  </div>
-  <div class="row">
-    <label>Main course:</label>
-    <input id="dinner-main" type="text">
-    <input id="dinner-main-desc" type="text" placeholder="Description">
-  </div>
-  <div class="row">
-    <label>Dessert:</label>
-    <input id="dinner-dessert" type="text">
-    <input id="dinner-dessert-desc" type="text" placeholder="Description">
-  </div>
-  <div class="row">
-    <label>Alcoholic drink:</label>
-    <input id="dinner-alcohol" type="text">
-    <input id="dinner-alcohol-desc" type="text" placeholder="Description">
-  </div>
-  <div class="row">
-    <label>Cold drink:</label>
-    <input id="dinner-cold" type="text">
-    <input id="dinner-cold-desc" type="text" placeholder="Description">
-  </div>
-</div>
-
-  <div class="save-bar">
-    <button class="btn primary" id="save-food">Save Food Diary</button>
-    <button class="btn" id="clear-food">Clear</button>
-  </div>
-
-  <p class="hint">Food diary is saved per destination and includes breakfast, lunch, and dinner entries per day.</p>
-</div>;
-
-<!-- Notes tab -->
-<div id="tab-notes" class="tab-panel">
-  <textarea id="notes-text" class="textarea" placeholder="Anything else to remember (tickets, packing, misc)"></textarea>
-  <div class="save-bar">
-    <button class="btn primary" id="save-notes">Save Notes</button>
-    <button class="btn" id="clear-notes">Clear</button>
-  </div>
-</div>
-
-<!-- Tips tab -->
-<div id="tab-tips" class="tab-panel">
-  <textarea id="tips-text" class="textarea" placeholder="Write any travel tips, local secrets, or reminders here..."></textarea>
-  <div class="save-bar">
-    <button class="btn primary" id="save-tips">Save Tips</button>
-    <button class="btn" id="clear-tips">Clear</button>
-  </div>
-</div>
-</div>`;
-
- 
-
+          <!-- Tips tab -->
+          <div id="tab-tips" class="tab-panel">
+            <textarea id="tips-text" class="textarea"
+              placeholder="Write any travel tips, local secrets, or reminders here..."></textarea>
+            <div class="save-bar">
+              <button class="btn primary" id="save-tips">Save Tips</button>
+              <button class="btn" id="clear-tips">Clear</button>
+            </div>
+          </div>
+        </div>`;
     }
 
     // After the popup’s HTML is placed in the DOM, wire up its logic
@@ -713,6 +800,7 @@ window.renderMap = renderMap;
       const total = container.querySelector('#hotel-total');
       const saveHotelBtn = container.querySelector('#save-hotel');
       const clearHotelBtn = container.querySelector('#clear-hotel');
+      
 
       // Seed values
       if (hotelName) hotelName.value = plan.hotel.name || "";
@@ -753,6 +841,111 @@ window.renderMap = renderMap;
         renderTotal();
       });
 
+// BUDGET SUB-TABS
+      // BUDGET SUB-TABS (Cheap / Medium / Luxury)
+      const bButtons = container.querySelectorAll('.budget-subtabs .tab-btn');
+      const bPanels = {
+        'tab-cheap': container.querySelector('#tab-cheap'),
+        'tab-medium': container.querySelector('#tab-medium'),
+        'tab-luxury': container.querySelector('#tab-luxury')
+      };
+
+      bButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          bButtons.forEach(b => b.classList.remove('active'));
+          Object.values(bPanels).forEach(p => p && p.classList.remove('active'));
+          btn.classList.add('active');
+          const panel = bPanels[btn.dataset.btab];
+          if (panel) panel.classList.add('active');
+        });
+      });
+
+      // Ensure budget structure exists (cheap + luxury; medium stays in plan.hotel)
+      if (!plan.budget) {
+        plan.budget = {
+          cheap:  { name:"", currency: plan.hotel.currency || "GBP", price:"", nights:"", notes:"" },
+          luxury: { name:"", currency: plan.hotel.currency || "GBP", price:"", nights:"", notes:"" }
+        };
+      }
+
+      // Helper to auto-calc totals for cheap/luxury
+      function wireOptionTotal(prefix, totalId) {
+        const priceEl  = container.querySelector(`#${prefix}-price`);
+        const nightsEl = container.querySelector(`#${prefix}-nights`);
+        const totalEl  = container.querySelector(`#${totalId}`);
+
+        function render() {
+          const price  = Number(priceEl?.value || 0);
+          const nights = Math.max(1, Number(nightsEl?.value || 1));
+          if (price > 0 && nights > 0) {
+            const currencyEl = container.querySelector(`#${prefix}-currency`);
+            const curr = currencyEl?.value || "GBP";
+            totalEl.textContent = `${curr} ${(price * nights).toLocaleString(undefined,{maximumFractionDigits:0})}`;
+          } else {
+            totalEl.textContent = "—";
+          }
+        }
+
+        priceEl?.addEventListener('input', render);
+        nightsEl?.addEventListener('input', render);
+        const currEl = container.querySelector(`#${prefix}-currency`);
+        currEl?.addEventListener('change', render);
+        render();
+      }
+
+      // Seed CHEAP fields
+      const cheap = plan.budget.cheap;
+      const cheapName      = container.querySelector('#cheap-name');
+      const cheapCurrency  = container.querySelector('#cheap-currency');
+      const cheapPrice     = container.querySelector('#cheap-price');
+      const cheapNights    = container.querySelector('#cheap-nights');
+      const cheapNotes     = container.querySelector('#cheap-notes');
+
+      if (cheapName)     cheapName.value     = cheap.name || "";
+      if (cheapCurrency) cheapCurrency.value = cheap.currency || (plan.hotel.currency || "GBP");
+      if (cheapPrice)    cheapPrice.value    = cheap.price || "";
+      if (cheapNights)   cheapNights.value   = cheap.nights || plan.hotel.nights || Math.max(1,(plan.days|0)-1||1);
+      if (cheapNotes)    cheapNotes.value    = cheap.notes || "";
+
+      wireOptionTotal('cheap','cheap-total');
+
+      // Seed LUXURY fields
+      const luxury = plan.budget.luxury;
+      const luxuryName      = container.querySelector('#luxury-name');
+      const luxuryCurrency  = container.querySelector('#luxury-currency');
+      const luxuryPrice     = container.querySelector('#luxury-price');
+      const luxuryNights    = container.querySelector('#luxury-nights');
+      const luxuryNotes     = container.querySelector('#luxury-notes');
+
+      if (luxuryName)     luxuryName.value     = luxury.name || "";
+      if (luxuryCurrency) luxuryCurrency.value = luxury.currency || (plan.hotel.currency || "GBP");
+      if (luxuryPrice)    luxuryPrice.value    = luxury.price || "";
+      if (luxuryNights)   luxuryNights.value   = luxury.nights || plan.hotel.nights || Math.max(1,(plan.days|0)-1||1);
+      if (luxuryNotes)    luxuryNotes.value    = luxury.notes || "";
+
+      wireOptionTotal('luxury','luxury-total');
+
+      // Save CHEAP + LUXURY options
+      const saveBudgetBtn = container.querySelector('#save-budget');
+      saveBudgetBtn?.addEventListener('click', () => {
+        plan.budget.cheap = {
+          name:      cheapName?.value || "",
+          currency:  cheapCurrency?.value || (plan.hotel.currency || "GBP"),
+          price:     cheapPrice?.value || "",
+          nights:    cheapNights?.value || "",
+          notes:     cheapNotes?.value || ""
+        };
+        plan.budget.luxury = {
+          name:      luxuryName?.value || "",
+          currency:  luxuryCurrency?.value || (plan.hotel.currency || "GBP"),
+          price:     luxuryPrice?.value || "",
+          nights:    luxuryNights?.value || "",
+          notes:     luxuryNotes?.value || ""
+        };
+
+        savePlan(name, plan);
+        showSaved(toast);
+      });
 
       // FOOD TAB
 // === FOOD TAB (per day + subtabs) ===

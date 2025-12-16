@@ -352,15 +352,23 @@ document.addEventListener("DOMContentLoaded", () => {
   if (typeof plan.days !== "number" || plan.days < 1) plan.days = 1;
   if (typeof plan.notes !== "string") plan.notes = "";
   if (typeof plan.tips !== "string") plan.tips = "";
-  if (!plan.hotel) {
-    plan.hotel = { name:"", currency:"GBP", nightly:"", nights: Math.max(1,(plan.days|0)-1||1) };
-  } else {
-    if (!("name" in plan.hotel)) plan.hotel.name = "";
-    if (!("currency" in plan.hotel)) plan.hotel.currency = "GBP";
-    if (!("nightly" in plan.hotel)) plan.hotel.nightly = "";
-    if (!("nights" in plan.hotel)) plan.hotel.nights = Math.max(1,(plan.days|0)-1||1);
-  }
 
+// Hotel defaults (medium/main hotel)
+if (!plan.hotel) {
+  plan.hotel = {
+    name: "",
+    currency: "GBP",
+    nightly: "",
+    nights: Math.max(1, (plan.days | 0) - 1 || 1),
+    notes: ""
+  };
+} else {
+  if (!("name" in plan.hotel)) plan.hotel.name = "";
+  if (!("currency" in plan.hotel)) plan.hotel.currency = "GBP";
+  if (!("nightly" in plan.hotel)) plan.hotel.nightly = "";
+  if (!("nights" in plan.hotel)) plan.hotel.nights = Math.max(1, (plan.days | 0) - 1 || 1);
+  if (!("notes" in plan.hotel)) plan.hotel.notes = "";
+}
   // migrate very old single-day format: plan.foodDiary -> plan.food[1]
   if (plan.foodDiary && !plan.food) {
     plan.food = { 1: {
@@ -534,6 +542,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 <label>Total (auto):</label>
                 <div id="hotel-total" aria-live="polite" style="font-weight:600;">—</div>
               </div>
+              <textarea id="hotel-notes" class="textarea" placeholder="Notes (optional)"></textarea>
               <div class="save-bar">
                 <button class="btn primary" id="save-hotel">Save Stay</button>
                 <button class="btn" id="clear-hotel">Clear</button>
@@ -800,6 +809,8 @@ window.renderMap = renderMap;
       const total = container.querySelector('#hotel-total');
       const saveHotelBtn = container.querySelector('#save-hotel');
       const clearHotelBtn = container.querySelector('#clear-hotel');
+      const hotelNotes = container.querySelector('#hotel-notes');
+if (hotelNotes) hotelNotes.value = plan.hotel.notes || "";
       
 
       // Seed values
@@ -828,6 +839,7 @@ window.renderMap = renderMap;
         plan.hotel.currency = currency?.value || "GBP";
         plan.hotel.nightly = nightly?.value || "";
         plan.hotel.nights = Math.max(1, Number(nights?.value||1));
+        plan.hotel.notes = hotelNotes?.value || "";
         savePlan(name, plan);
         showSaved(toast);
       };
@@ -837,6 +849,7 @@ window.renderMap = renderMap;
         if (currency) currency.value = "GBP";
         if (nightly) nightly.value = "";
         if (nights) nights.value = Math.max(1, (plan.days|0)-1 || 1);
+        if (hotelNotes) hotelNotes.value = "";
         saveHotel();
         renderTotal();
       });
@@ -1150,6 +1163,7 @@ clearTipsBtn.addEventListener('click', ()=>{
           plan.hotel.currency = container.querySelector('#currency')?.value || plan.hotel.currency || "GBP";
           plan.hotel.nightly = container.querySelector('#nightly')?.value || plan.hotel.nightly || "";
           plan.hotel.nights = Math.max(1, Number(container.querySelector('#nights')?.value || plan.hotel.nights || 1));
+          plan.hotel.notes = container.querySelector('#hotel-notes')?.value || plan.hotel.notes || "";
 
           savePlan(name, plan);
           popup.removeEventListener('transitionend', onClose);
@@ -3212,4 +3226,4 @@ document.addEventListener("DOMContentLoaded", () => {
 });
   </script>
 </body>
-</html>
+</html> 

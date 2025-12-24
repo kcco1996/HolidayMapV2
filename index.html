@@ -264,13 +264,22 @@ window.getDocs = getDocs;
 let allMarkers = [];
 let allLayerGroup;
 
+let mapRendered = false;
+
 function renderMap() {
- if (!allLayerGroup) {
-  allLayerGroup = L.featureGroup().addTo(map);
-} else {
-  allLayerGroup.clearLayers();
-}
-allMarkers = [];
+  if (mapRendered) return;
+  mapRendered = true;
+
+  if (!allLayerGroup) {
+    allLayerGroup = L.featureGroup().addTo(map);
+  } else {
+    allLayerGroup.clearLayers();
+  }
+
+  allMarkers = [];
+
+  window.renderMap = renderMap;
+
 
   for (const d of destinations) {
     const icon = d.destination ? destinationIcon(d.destination) : undefined;
@@ -322,11 +331,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
   searchInput.addEventListener("input", filterMap);
   regionFilter.addEventListener("change", filterMap);
-  resetBtn.addEventListener("click", () => {
-    searchInput.value = "";
-    regionFilter.value = "all";
-    renderMap();
-  });
+resetBtn.addEventListener("click", () => {
+  searchInput.value = "";
+  regionFilter.value = "all";
+
+  // show all markers again
+  allMarkers.forEach(m => m.addTo(allLayerGroup));
+
+  if (allLayerGroup.getLayers().length > 0) {
+    map.fitBounds(allLayerGroup.getBounds().pad(0.2));
+  }
+});
 
 });
 </script>
@@ -736,10 +751,6 @@ mainTabBtns.forEach(btn=>{
   });
 });
 
-
-
-window.renderMap = renderMap;
-
       // DAYS TAB
       const daysInput = container.querySelector('#days-input');
       const applyDaysBtn = container.querySelector('#apply-days');
@@ -844,7 +855,8 @@ if (hotelNotes) hotelNotes.value = plan.hotel.notes || "";
         savePlan(name, plan);
         showSaved(toast);
       };
-      saveHotelBtn?.addEventListener('click', saveHotel);
+      saveHotelBtn?.addEventListener('pointerup', (ev)=>{ ev.preventDefault(); saveHotel(); });
+saveHotelBtn?.addEventListener('click', (ev)=>{ ev.preventDefault(); saveHotel(); });
       clearHotelBtn?.addEventListener('click', ()=>{
         if (hotelName) hotelName.value = "";
         if (currency) currency.value = "GBP";
@@ -3151,39 +3163,18 @@ clearTipsBtn.addEventListener('click', ()=>{
 
         // === MAP SETUP ===
     const map = L.map("map").setView([48.5, 8], 5);
+    map.on("popupopen", (e) => {
+  const el = e.popup.getElement();
+  if (!el) return;
+  L.DomEvent.disableClickPropagation(el);
+  L.DomEvent.disableScrollPropagation(el);
+});
    const cartoAttr = '&copy; OpenStreetMap contributors, &copy; CARTO';
 L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
   maxZoom: 20,
   subdomains: 'abcd',
   attribution: cartoAttr
 }).addTo(map);
-
-    function renderMap() {
-  const layer = L.featureGroup().addTo(map);
-  const markers = [];
-
-  for (const d of destinations) {
-    const icon = d.destination ? destinationIcon(d.destination) : undefined;
-    const marker = L.marker([d.lat, d.lng], icon ? { icon } : undefined);
-    marker.bindPopup(buildPopup(d), { maxWidth: 600 });
-
-    marker.on('popupopen', (e) => {
-      const el = e.popup.getElement();
-      requestAnimationFrame(() => {
-        const container = el.querySelector('.popup');
-        if (container) initPopupHandlers(container, d);
-      });
-    });
-
-    layer.addLayer(marker);
-    markers.push(marker);
-  }
-
-  if (layer.getLayers().length > 0) {
-    const bounds = layer.getBounds();
-    if (bounds.isValid()) map.fitBounds(bounds.pad(0.2));
-  }
-}
 
 document.addEventListener("DOMContentLoaded", () => {
   const migrateBtn = document.getElementById("migrate-btn");

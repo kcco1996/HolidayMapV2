@@ -215,14 +215,16 @@ window.getDocs = getDocs;
       // ✅ Load Firebase trip plans
       (async () => {
         const plansSnapshot = await getDocs(collection(db, "users", user.uid, "plans"));
-        plansSnapshot.forEach(docSnap => {
-          const plan = docSnap.data()?.data;
-          const name = docSnap.data()?.name;
-          if (plan && name) {
-            localStorage.setItem(`tripPlan:${name}`, JSON.stringify(plan));
-            console.log(`✅ Loaded ${name} from Firebase`);
-          }
-        });
+       plansSnapshot.forEach((docSnap) => {
+  const docData = docSnap.data() || {};
+  const name = docData.name || docSnap.id;     // fallback to doc id
+  const plan = docData.data || docData;        // fallback if stored directly
+
+  if (name && plan) {
+    localStorage.setItem(`tripPlan:${name}`, JSON.stringify(plan));
+    console.log(`✅ Loaded ${name} from Firebase`);
+  }
+});
 
 
         // ✅ Now render the map
@@ -565,7 +567,12 @@ if (!plan.hotel) {
                 <label>Total (auto):</label>
                 <div id="hotel-total" aria-live="polite" style="font-weight:600;">—</div>
               </div>
-              <textarea id="hotel-notes" class="textarea" placeholder="Notes (optional)">${(plan.hotel.notes||"").replace(/</g,"&lt;")}</textarea>
+              <textarea id="hotel-notes" class="textarea" placeholder="Notes (optional)">${
+  (plan.hotel.notes||"")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+}</textarea>
               <div class="save-bar">
                 <button class="btn primary" id="save-hotel">Save Stay</button>
                 <button class="btn" id="clear-hotel">Clear</button>
@@ -1193,7 +1200,12 @@ clearTipsBtn.addEventListener('click', ()=>{
           savePlan(name, plan);
           popup.removeEventListener('transitionend', onClose);
         };
-        popup.addEventListener('transitionend', onClose);
+       window.map.on('popupclose', (e) => {
+  // only run if this popup belongs to this container
+  if (e.popup && e.popup.getElement()?.querySelector(".popup") === container) {
+    onClose();
+  }
+});
       }
     }
 

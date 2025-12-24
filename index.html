@@ -265,11 +265,12 @@ let allMarkers = [];
 let allLayerGroup;
 
 function renderMap() {
-  if (allLayerGroup) {
-    map.removeLayer(allLayerGroup);
-  }
+ if (!allLayerGroup) {
   allLayerGroup = L.featureGroup().addTo(map);
-  allMarkers = [];
+} else {
+  allLayerGroup.clearLayers();
+}
+allMarkers = [];
 
   for (const d of destinations) {
     const icon = d.destination ? destinationIcon(d.destination) : undefined;
@@ -3157,6 +3158,32 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r
   attribution: cartoAttr
 }).addTo(map);
 
+    function renderMap() {
+  const layer = L.featureGroup().addTo(map);
+  const markers = [];
+
+  for (const d of destinations) {
+    const icon = d.destination ? destinationIcon(d.destination) : undefined;
+    const marker = L.marker([d.lat, d.lng], icon ? { icon } : undefined);
+    marker.bindPopup(buildPopup(d), { maxWidth: 600 });
+
+    marker.on('popupopen', (e) => {
+      const el = e.popup.getElement();
+      requestAnimationFrame(() => {
+        const container = el.querySelector('.popup');
+        if (container) initPopupHandlers(container, d);
+      });
+    });
+
+    layer.addLayer(marker);
+    markers.push(marker);
+  }
+
+  if (layer.getLayers().length > 0) {
+    const bounds = layer.getBounds();
+    if (bounds.isValid()) map.fitBounds(bounds.pad(0.2));
+  }
+}
 
 document.addEventListener("DOMContentLoaded", () => {
   const migrateBtn = document.getElementById("migrate-btn");

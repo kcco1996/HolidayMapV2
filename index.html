@@ -423,9 +423,21 @@ if (!plan.hotel) {
   return plan;
 
     }
-    function savePlan(name, data){
-      localStorage.setItem(storageKey(name), JSON.stringify(data));
-    }
+    function savePlan(name, data) {
+  localStorage.setItem(storageKey(name), JSON.stringify(data));
+
+  // If signed in, also save to Firestore (auto-sync)
+  const user = window.firebaseAuth?.currentUser;
+  const db   = window.firebaseDB;
+  if (!user || !db || !window.setDoc || !window.doc) return;
+
+  // Fire-and-forget (don’t block UI)
+  window.setDoc(
+    window.doc(db, "users", user.uid, "plans", name),
+    { name, data },
+    { merge: true }
+  ).catch(err => console.warn("Firestore save failed:", err));
+}
 
     // Small helper for custom destination icons (e.g. flags, city pics)
     function destinationIcon(url) {

@@ -565,7 +565,7 @@ if (!plan.hotel) {
                 <label>Total (auto):</label>
                 <div id="hotel-total" aria-live="polite" style="font-weight:600;">—</div>
               </div>
-              <textarea id="hotel-notes" class="textarea" placeholder="Notes (optional)"></textarea>
+              <textarea id="hotel-notes" class="textarea" placeholder="Notes (optional)">${(plan.hotel.notes||"").replace(/</g,"&lt;")}</textarea>
               <div class="save-bar">
                 <button class="btn primary" id="save-hotel">Save Stay</button>
                 <button class="btn" id="clear-hotel">Clear</button>

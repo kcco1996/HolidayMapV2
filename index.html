@@ -94,7 +94,9 @@
     .food-row .food-text { flex: 1; font-size: 13px; }
     .food-add { display:flex; gap:8px; margin-bottom:8px; }
     .food-add input { flex:1; }
-.leaflet-popup-content { width: min(560px, 80vw) !important; }
+    .leaflet-popup-content {
+  width: 560px !important;  /* Adjust to match maxWidth - padding */
+}
 
 #top-bar {
   position: fixed;
@@ -141,6 +143,24 @@
   <span id="user-info"></span>
   <button id="migrate-btn" class="btn ghost" style="display:none;">Migrate Data to Firebase</button>
 </div>
+
+<div id="migration-status" style="
+  display:none;
+  position:fixed;
+  bottom:10px;
+  right:10px;
+  background:#fff;
+  border:1px solid #ccc;
+  padding:10px;
+  max-width:300px;
+  font-size:13px;
+  line-height:1.4;
+  z-index:1001;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  border-radius:8px;
+  overflow-y:auto;
+  max-height:50vh;
+"></div>
 
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
@@ -215,27 +235,17 @@ window.getDocs = getDocs;
       // ✅ Load Firebase trip plans
       (async () => {
         const plansSnapshot = await getDocs(collection(db, "users", user.uid, "plans"));
-       plansSnapshot.forEach((docSnap) => {
-  const docData = docSnap.data() || {};
-  const name = docData.name || docSnap.id;     // fallback to doc id
-  const plan = docData.data || docData;        // fallback if stored directly
-
-  if (name && plan) {
-    localStorage.setItem(`tripPlan:${name}`, JSON.stringify(plan));
-    console.log(`✅ Loaded ${name} from Firebase`);
-  }
-});
-
+        plansSnapshot.forEach(docSnap => {
+          const plan = docSnap.data()?.data;
+          const name = docSnap.data()?.name;
+          if (plan && name) {
+            localStorage.setItem(`tripPlan:${name}`, JSON.stringify(plan));
+            console.log(`✅ Loaded ${name} from Firebase`);
+          }
+        });
 
         // ✅ Now render the map
-       const tryRender = () => {
-  if (window.renderMap && window.map && window.destinations && window.buildPopup && window.destinationIcon) {
-    window.renderMap();
-  } else {
-    setTimeout(tryRender, 50);
-  }
-};
-tryRender();
+        renderMap();
       })();
 
     } else {
@@ -246,14 +256,7 @@ tryRender();
       migrateBtn.style.display = "none";
 
       // Render map anyway (fallback to localStorage)
-      const tryRender = () => {
-  if (window.renderMap && window.map && window.destinations && window.buildPopup && window.destinationIcon) {
-    window.renderMap();
-  } else {
-    setTimeout(tryRender, 50);
-  }
-};
-tryRender();
+      renderMap();
     }
   });
 
@@ -262,31 +265,23 @@ let allMarkers = [];
 let allLayerGroup;
 
 function renderMap() {
-  // Wait until the non-module script has created these globals
-  if (!window.map || !window.destinations || !window.buildPopup || !window.destinationIcon) return;
-
-  if (!allLayerGroup) {
-    allLayerGroup = L.featureGroup().addTo(window.map);
-  } else {
-    allLayerGroup.clearLayers();
+  if (allLayerGroup) {
+    map.removeLayer(allLayerGroup);
   }
-
+  allLayerGroup = L.featureGroup().addTo(map);
   allMarkers = [];
 
-  for (const d of window.destinations) {
-    const icon = d.destination ? window.destinationIcon(d.destination) : undefined;
+  for (const d of destinations) {
+    const icon = d.destination ? destinationIcon(d.destination) : undefined;
     const marker = L.marker([d.lat, d.lng], icon ? { icon } : undefined);
-
-    marker.bindPopup(window.buildPopup(d), { maxWidth: 600 });
-
-    marker.on("popupopen", (e) => {
+    marker.bindPopup(buildPopup(d), { maxWidth: 600 });
+    marker.on('popupopen', (e) => {
       const el = e.popup.getElement();
       requestAnimationFrame(() => {
-        const container = el?.querySelector(".popup");
-        if (container) window.initPopupHandlers(container, d);
+        const container = el.querySelector('.popup');
+        if (container) initPopupHandlers(container, d);
       });
     });
-
     marker.destinationData = d;
     allLayerGroup.addLayer(marker);
     allMarkers.push(marker);
@@ -294,11 +289,9 @@ function renderMap() {
 
   if (allLayerGroup.getLayers().length > 0) {
     const bounds = allLayerGroup.getBounds();
-    if (bounds.isValid()) window.map.fitBounds(bounds.pad(0.2));
+    if (bounds.isValid()) map.fitBounds(bounds.pad(0.2));
   }
 }
-
-window.renderMap = renderMap;
 
 document.addEventListener("DOMContentLoaded", () => {
   const searchInput = document.getElementById("search-input");
@@ -322,23 +315,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Adjust map view to visible markers
     if (allLayerGroup.getLayers().length > 0) {
-     window.map.fitBounds(allLayerGroup.getBounds().pad(0.2));
+      map.fitBounds(allLayerGroup.getBounds().pad(0.2));
     }
   }
 
   searchInput.addEventListener("input", filterMap);
   regionFilter.addEventListener("change", filterMap);
-resetBtn.addEventListener("click", () => {
-  searchInput.value = "";
-  regionFilter.value = "all";
-
-  // show all markers again
-  allMarkers.forEach(m => m.addTo(allLayerGroup));
-
-  if (allLayerGroup.getLayers().length > 0) {
-    window.map.fitBounds(allLayerGroup.getBounds().pad(0.2));
-  }
-});
+  resetBtn.addEventListener("click", () => {
+    searchInput.value = "";
+    regionFilter.value = "all";
+    renderMap();
+  });
 
 });
 </script>
@@ -425,21 +412,9 @@ if (!plan.hotel) {
   return plan;
 
     }
-    function savePlan(name, data) {
-  localStorage.setItem(storageKey(name), JSON.stringify(data));
-
-  // If signed in, also save to Firestore (auto-sync)
-  const user = window.firebaseAuth?.currentUser;
-  const db   = window.firebaseDB;
-  if (!user || !db || !window.setDoc || !window.doc) return;
-
-  // Fire-and-forget (don’t block UI)
-  window.setDoc(
-    window.doc(db, "users", user.uid, "plans", name),
-    { name, data },
-    { merge: true }
-  ).catch(err => console.warn("Firestore save failed:", err));
-}
+    function savePlan(name, data){
+      localStorage.setItem(storageKey(name), JSON.stringify(data));
+    }
 
     // Small helper for custom destination icons (e.g. flags, city pics)
     function destinationIcon(url) {
@@ -567,12 +542,7 @@ if (!plan.hotel) {
                 <label>Total (auto):</label>
                 <div id="hotel-total" aria-live="polite" style="font-weight:600;">—</div>
               </div>
-              <textarea id="hotel-notes" class="textarea" placeholder="Notes (optional)">${
-  (plan.hotel.notes||"")
-    .replace(/&/g,"&amp;")
-    .replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;")
-}</textarea>
+              <textarea id="hotel-notes" class="textarea" placeholder="Notes (optional)"></textarea>
               <div class="save-bar">
                 <button class="btn primary" id="save-hotel">Save Stay</button>
                 <button class="btn" id="clear-hotel">Clear</button>
@@ -766,9 +736,8 @@ mainTabBtns.forEach(btn=>{
 });
 
 
-    window.buildPopup = buildPopup;
-window.destinationIcon = destinationIcon;
-window.initPopupHandlers = initPopupHandlers;
+
+window.renderMap = renderMap;
 
       // DAYS TAB
       const daysInput = container.querySelector('#days-input');
@@ -874,8 +843,7 @@ if (hotelNotes) hotelNotes.value = plan.hotel.notes || "";
         savePlan(name, plan);
         showSaved(toast);
       };
-      saveHotelBtn?.addEventListener('pointerup', (ev)=>{ ev.preventDefault(); saveHotel(); });
-saveHotelBtn?.addEventListener('click', (ev)=>{ ev.preventDefault(); saveHotel(); });
+      saveHotelBtn?.addEventListener('click', saveHotel);
       clearHotelBtn?.addEventListener('click', ()=>{
         if (hotelName) hotelName.value = "";
         if (currency) currency.value = "GBP";
@@ -1200,12 +1168,7 @@ clearTipsBtn.addEventListener('click', ()=>{
           savePlan(name, plan);
           popup.removeEventListener('transitionend', onClose);
         };
-       window.map.on('popupclose', (e) => {
-  // only run if this popup belongs to this container
-  if (e.popup && e.popup.getElement()?.querySelector(".popup") === container) {
-    onClose();
-  }
-});
+        popup.addEventListener('transitionend', onClose);
       }
     }
 
@@ -3185,23 +3148,41 @@ clearTipsBtn.addEventListener('click', ()=>{
 
     ];
 
-    window.destinations = destinations;
-
         // === MAP SETUP ===
-    window.map = L.map("map").setView([48.5, 8], 5);
-const map = window.map; // optional convenience
-    map.on("popupopen", (e) => {
-  const el = e.popup.getElement();
-  if (!el) return;
-  L.DomEvent.disableClickPropagation(el);
-  L.DomEvent.disableScrollPropagation(el);
-});
+    const map = L.map("map").setView([48.5, 8], 5);
    const cartoAttr = '&copy; OpenStreetMap contributors, &copy; CARTO';
 L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
   maxZoom: 20,
   subdomains: 'abcd',
   attribution: cartoAttr
 }).addTo(map);
+
+    function renderMap() {
+  const layer = L.featureGroup().addTo(map);
+  const markers = [];
+
+  for (const d of destinations) {
+    const icon = d.destination ? destinationIcon(d.destination) : undefined;
+    const marker = L.marker([d.lat, d.lng], icon ? { icon } : undefined);
+    marker.bindPopup(buildPopup(d), { maxWidth: 600 });
+
+    marker.on('popupopen', (e) => {
+      const el = e.popup.getElement();
+      requestAnimationFrame(() => {
+        const container = el.querySelector('.popup');
+        if (container) initPopupHandlers(container, d);
+      });
+    });
+
+    layer.addLayer(marker);
+    markers.push(marker);
+  }
+
+  if (layer.getLayers().length > 0) {
+    const bounds = layer.getBounds();
+    if (bounds.isValid()) map.fitBounds(bounds.pad(0.2));
+  }
+}
 
 document.addEventListener("DOMContentLoaded", () => {
   const migrateBtn = document.getElementById("migrate-btn");
@@ -3228,7 +3209,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const data = JSON.parse(localStorage.getItem(key));
 
         try {
-         await window.setDoc(window.doc(db, "users", user.uid, "plans", name), { name, data });
+          await setDoc(doc(db, "users", user.uid, "plans", name), { name, data });
           const msg = `✅ Migrated "${name}" to Firebase.`;
           const line = document.createElement("div");
           line.textContent = msg;

@@ -144,24 +144,6 @@
   <button id="migrate-btn" class="btn ghost" style="display:none;">Migrate Data to Firebase</button>
 </div>
 
-<div id="migration-status" style="
-  display:none;
-  position:fixed;
-  bottom:10px;
-  right:10px;
-  background:#fff;
-  border:1px solid #ccc;
-  padding:10px;
-  max-width:300px;
-  font-size:13px;
-  line-height:1.4;
-  z-index:1001;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  border-radius:8px;
-  overflow-y:auto;
-  max-height:50vh;
-"></div>
-
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
@@ -170,13 +152,15 @@
     <!-- Firebase SDKs -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-  import {
-    getAuth,
-    GoogleAuthProvider,
-    signInWithPopup,
-    signOut,
-    onAuthStateChanged
-  } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  signOut,
+  onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
   import {
     getFirestore,
     doc,
@@ -211,8 +195,23 @@ window.collection = collection;
 window.getDocs = getDocs;
 
   // Expose sign-in/out functions
-  window.firebaseSignIn = () => signInWithPopup(auth, provider);
-  window.firebaseSignOut = () => signOut(auth);
+ // iOS Safari needs redirect instead of popup
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+// Expose sign-in/out functions
+window.firebaseSignIn = async () => {
+  if (isIOS) {
+    await signInWithRedirect(auth, provider);
+  } else {
+    await signInWithPopup(auth, provider);
+  }
+};
+
+window.firebaseSignOut = () => signOut(auth);
+
+// Handle redirect sign-in result (required for iOS Safari)
+getRedirectResult(auth).catch(console.error);
+
 
   // === SIGN-IN STATE HANDLER ===
   onAuthStateChanged(auth, (user) => {
@@ -233,21 +232,30 @@ window.getDocs = getDocs;
       }
 
       // ✅ Load Firebase trip plans
-      (async () => {
-        const plansSnapshot = await getDocs(collection(db, "users", user.uid, "plans"));
-        plansSnapshot.forEach(docSnap => {
-          const plan = docSnap.data()?.data;
-          const name = docSnap.data()?.name;
-          if (plan && name) {
-            localStorage.setItem(`tripPlan:${name}`, JSON.stringify(plan));
-            console.log(`✅ Loaded ${name} from Firebase`);
-          }
-        });
+   (async () => {
+  try {
+    const plansSnapshot = await getDocs(collection(db, "users", user.uid, "plans"));
 
-        // ✅ Now render the map
-        renderMap();
-      })();
+    plansSnapshot.forEach(docSnap => {
+      const data = docSnap.data();
+      const plan = data?.data;
+      const name = data?.name;
 
+      if (plan && name) {
+        try {
+          localStorage.setItem(`tripPlan:${name}`, JSON.stringify(plan));
+        } catch (e) {
+          console.warn("localStorage write failed on this device:", e);
+          // Optional: keep an in-memory fallback map if you want
+        }
+      }
+    });
+  } catch (err) {
+    console.error("Failed to load plans from Firebase:", err);
+  } finally {
+    renderMap(); // <-- ALWAYS run
+  }
+})();
     } else {
       // Not signed in
       signInBtn.style.display = "inline-block";

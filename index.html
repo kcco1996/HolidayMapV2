@@ -231,7 +231,12 @@
           migrateBtn.style.display = (user.email === "kcco1996@gmail.com") ? "inline-block" : "none";
         }
 
-        if (window.renderMap) window.renderMap();
+       if (user) {
+  hydrateAllPlansOnce().then(() => window.renderMap?.());
+} else {
+  window.renderMap?.();
+}
+
 
       } else {
         if (signInBtn) signInBtn.style.display = "inline-block";
@@ -3101,16 +3106,23 @@ function savePlan(name, data){
         marker.destinationData = d;
         marker.bindPopup(buildPopup(d), { maxWidth: 600 });
 
-        marker.on("popupopen", async (e) => {
-          await hydratePlanFromFirebaseIfSignedIn(d.name);
-          marker.setPopupContent(buildPopup(d));
+        marker.on("popupopen", async () => {
+  async function hydrateAllPlansOnce() {
+  for (const d of destinations) {
+    await hydratePlanFromFirebaseIfSignedIn(d.name);
+  }
+}
 
-          const el = e.popup.getElement();
-          requestAnimationFrame(() => {
-            const container = el.querySelector(".popup");
-            if (container) initPopupHandlers(container, d);
-          });
-        });
+  // Rebuild popup HTML from (possibly) updated localStorage
+  marker.setPopupContent(buildPopup(d));
+
+  // Wait for DOM to update, then grab the NEW popup element
+  requestAnimationFrame(() => {
+    const newEl = marker.getPopup()?.getElement();
+    const container = newEl?.querySelector(".popup");
+    if (container) initPopupHandlers(container, d);
+  });
+});
 
         allLayerGroup.addLayer(marker);
         allMarkers.push(marker);

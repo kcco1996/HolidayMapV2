@@ -206,14 +206,14 @@
     window.collection = collection;
     window.getDocs = getDocs;
 
-   window.firebaseSignIn = async () => {
-  try {
-    await signInWithPopup(auth, provider);
-  } catch (err) {
-    console.warn("Sign-in failed:", err);
-    alert("Google sign-in failed. Check popup blocking and Firebase Auth settings.");
-  }
-};
+    window.firebaseSignIn = async () => {
+      try {
+        await signInWithPopup(auth, provider);
+      } catch (err) {
+        console.warn("Sign-in failed:", err);
+        alert("Google sign-in failed. Check popup blocking and Firebase Auth settings.");
+      }
+    };
     window.firebaseSignOut = () => signOut(auth);
 
     onAuthStateChanged(auth, (user) => {
@@ -231,20 +231,15 @@
           migrateBtn.style.display = (user.email === "kcco1996@gmail.com") ? "inline-block" : "none";
         }
 
-       if (user) {
-  hydrateAllPlansOnce().then(() => window.renderMap?.());
-} else {
-  window.renderMap?.();
-}
-
-
+        // ✅ IMPORTANT: call the global function on window (not a local function scope)
+        window.hydrateAllPlansOnce?.().then(() => window.renderMap?.());
       } else {
         if (signInBtn) signInBtn.style.display = "inline-block";
         if (signOutBtn) signOutBtn.style.display = "none";
         if (userInfo) userInfo.textContent = "";
         if (migrateBtn) migrateBtn.style.display = "none";
 
-        if (window.renderMap) window.renderMap();
+        window.renderMap?.();
       }
     });
   </script>
@@ -254,21 +249,21 @@
     function storageKey(name){ return `tripPlan:${name}`; }
 
     // ---------- Shared defaults (food diary schema) ----------
-const EMPTY_FOOD_DAY = {
-  breakfast: { dish:"", description:"", hot:"", hotDescription:"", cold:"", coldDescription:"" },
-  lunch:     { dish:"", description:"", hot:"", hotDescription:"", cold:"", coldDescription:"" },
-  dinner: {
-    starter:"", starterDescription:"",
-    main:"", mainDescription:"",
-    dessert:"", dessertDescription:"",
-    alcoholic:"", alcoholDescription:"",
-    cold:"", coldDescription:""
-  }
-};
+    const EMPTY_FOOD_DAY = {
+      breakfast: { dish:"", description:"", hot:"", hotDescription:"", cold:"", coldDescription:"" },
+      lunch:     { dish:"", description:"", hot:"", hotDescription:"", cold:"", coldDescription:"" },
+      dinner: {
+        starter:"", starterDescription:"",
+        main:"", mainDescription:"",
+        dessert:"", dessertDescription:"",
+        alcoholic:"", alcoholDescription:"",
+        cold:"", coldDescription:""
+      }
+    };
 
-function cloneFoodDay() {
-  return JSON.parse(JSON.stringify(EMPTY_FOOD_DAY));
-}
+    function cloneFoodDay() {
+      return JSON.parse(JSON.stringify(EMPTY_FOOD_DAY));
+    }
 
     function loadPlan(name){
       const raw = localStorage.getItem(storageKey(name));
@@ -335,80 +330,79 @@ function cloneFoodDay() {
 
       if (!plan.food || typeof plan.food !== "object" || Array.isArray(plan.food)) plan.food = {};
 
- for (let i = 1; i <= plan.days; i++) {
-  if (!plan.food[i] || typeof plan.food[i] !== "object") {
-    plan.food[i] = cloneFoodDay();
-    continue;
-  }
+      for (let i = 1; i <= plan.days; i++) {
+        if (!plan.food[i] || typeof plan.food[i] !== "object") {
+          plan.food[i] = cloneFoodDay();
+          continue;
+        }
 
-  // Normalize older saves so new description fields never vanish
-  plan.food[i].breakfast = { ...cloneFoodDay().breakfast, ...(plan.food[i].breakfast || {}) };
-  plan.food[i].lunch     = { ...cloneFoodDay().lunch,     ...(plan.food[i].lunch || {}) };
-  plan.food[i].dinner    = { ...cloneFoodDay().dinner,    ...(plan.food[i].dinner || {}) };
-}
+        // Normalize older saves so new description fields never vanish
+        plan.food[i].breakfast = { ...cloneFoodDay().breakfast, ...(plan.food[i].breakfast || {}) };
+        plan.food[i].lunch     = { ...cloneFoodDay().lunch,     ...(plan.food[i].lunch || {}) };
+        plan.food[i].dinner    = { ...cloneFoodDay().dinner,    ...(plan.food[i].dinner || {}) };
+      }
 
       return plan;
     }
 
-function deepClean(obj) {
-  // Removes empty strings / empty objects / empty arrays recursively
-  if (obj === null || obj === undefined) return undefined;
+    function deepClean(obj) {
+      // Removes empty strings / empty objects / empty arrays recursively
+      if (obj === null || obj === undefined) return undefined;
 
-  if (typeof obj === "string") {
-    const trimmed = obj.trim();
-    return trimmed === "" ? undefined : trimmed;
-  }
+      if (typeof obj === "string") {
+        const trimmed = obj.trim();
+        return trimmed === "" ? undefined : trimmed;
+      }
 
-  if (Array.isArray(obj)) {
-    const arr = obj.map(deepClean).filter(v => v !== undefined);
-    return arr.length ? arr : undefined;
-  }
+      if (Array.isArray(obj)) {
+        const arr = obj.map(deepClean).filter(v => v !== undefined);
+        return arr.length ? arr : undefined;
+      }
 
-  if (typeof obj === "object") {
-    const out = {};
-    for (const [k, v] of Object.entries(obj)) {
-      const cleaned = deepClean(v);
-      if (cleaned !== undefined) out[k] = cleaned;
+      if (typeof obj === "object") {
+        const out = {};
+        for (const [k, v] of Object.entries(obj)) {
+          const cleaned = deepClean(v);
+          if (cleaned !== undefined) out[k] = cleaned;
+        }
+        return Object.keys(out).length ? out : undefined;
+      }
+
+      return obj;
     }
-    return Object.keys(out).length ? out : undefined;
-  }
 
-  return obj;
-}
+    function prunePlanForStorage(plan) {
+      // Keep required structure small; delete empty stuff but preserve schema expectations on loadPlan()
+      const copy = JSON.parse(JSON.stringify(plan));
 
-function prunePlanForStorage(plan) {
-  // Keep required structure small; delete empty stuff but preserve schema expectations on loadPlan()
-  const copy = JSON.parse(JSON.stringify(plan));
+      // Ensure these always exist (loadPlan relies on them)
+      if (!copy.activities) copy.activities = { 1: "" };
+      if (!copy.hotel) copy.hotel = { name:"", currency:"GBP", nightly:"", nights:1, notes:"" };
+      if (!copy.food) copy.food = {};
 
-  // Ensure these always exist (loadPlan relies on them)
-  if (!copy.activities) copy.activities = { 1: "" };
-  if (!copy.hotel) copy.hotel = { name:"", currency:"GBP", nightly:"", nights:1, notes:"" };
-  if (!copy.food) copy.food = {};
+      // Clean big text blocks / nested diary
+      const cleaned = deepClean(copy) || {};
 
-  // Clean big text blocks / nested diary
-  const cleaned = deepClean(copy) || {};
+      // Always preserve keys your UI expects to exist
+      if (!cleaned.days) cleaned.days = plan.days || 1;
+      if (!cleaned.activities) cleaned.activities = plan.activities || { 1: "" };
+      if (!cleaned.hotel) cleaned.hotel = plan.hotel || { name:"", currency:"GBP", nightly:"", nights:1, notes:"" };
+      if (!cleaned.food) cleaned.food = plan.food || {};
 
-  // Always preserve keys your UI expects to exist
-  if (!cleaned.days) cleaned.days = plan.days || 1;
-  if (!cleaned.activities) cleaned.activities = plan.activities || { 1: "" };
-  if (!cleaned.hotel) cleaned.hotel = plan.hotel || { name:"", currency:"GBP", nightly:"", nights:1, notes:"" };
-  if (!cleaned.food) cleaned.food = plan.food || {};
+      return cleaned;
+    }
 
-  return cleaned;
-}
+    function savePlan(name, data){
+      data.updatedAt = Date.now();
 
-function savePlan(name, data){
-  data.updatedAt = Date.now();
+      const pruned = prunePlanForStorage(data);
 
-  const pruned = prunePlanForStorage(data);
+      // localStorage has a small quota (usually a few MB). Keep this tight.
+      localStorage.setItem(storageKey(name), JSON.stringify(pruned));
 
-  // localStorage has a small quota (usually a few MB). Keep this tight.
-  localStorage.setItem(storageKey(name), JSON.stringify(pruned));
-
-  // Upload the pruned version too (prevents 1MB Firestore doc limit issues)
-  scheduleFirestoreUpload(name, pruned);
-}
-
+      // Upload the pruned version too (prevents 1MB Firestore doc limit issues)
+      scheduleFirestoreUpload(name, pruned);
+    }
 
     function destinationIcon(url) {
       return L.divIcon({
@@ -667,9 +661,9 @@ function savePlan(name, data){
 
         // ensure food structure for new days
         if (!plan.food || typeof plan.food !== "object") plan.food = {};
-    for (let i = 1; i <= plan.days; i++){
-  if (!plan.food[i]) plan.food[i] = cloneFoodDay();
-}
+        for (let i = 1; i <= plan.days; i++){
+          if (!plan.food[i]) plan.food[i] = cloneFoodDay();
+        }
 
         rebuildDaySelector();
         savePlan(name, plan);
@@ -862,15 +856,15 @@ function savePlan(name, data){
         foodDaySelect.value = "1";
       }
 
-  function ensureFoodDay(day){
-  if (!plan.food[day] || typeof plan.food[day] !== "object") {
-    plan.food[day] = cloneFoodDay();
-  } else {
-    plan.food[day].breakfast = { ...cloneFoodDay().breakfast, ...(plan.food[day].breakfast || {}) };
-    plan.food[day].lunch     = { ...cloneFoodDay().lunch,     ...(plan.food[day].lunch || {}) };
-    plan.food[day].dinner    = { ...cloneFoodDay().dinner,    ...(plan.food[day].dinner || {}) };
-  }
-}
+      function ensureFoodDay(day){
+        if (!plan.food[day] || typeof plan.food[day] !== "object") {
+          plan.food[day] = cloneFoodDay();
+        } else {
+          plan.food[day].breakfast = { ...cloneFoodDay().breakfast, ...(plan.food[day].breakfast || {}) };
+          plan.food[day].lunch     = { ...cloneFoodDay().lunch,     ...(plan.food[day].lunch || {}) };
+          plan.food[day].dinner    = { ...cloneFoodDay().dinner,    ...(plan.food[day].dinner || {}) };
+        }
+      }
 
       const setVal = (sel, v)=>{ const el = container.querySelector(sel); if (el) el.value = v || ""; };
       const getVal = (sel)=> (container.querySelector(sel)?.value ?? "");
@@ -964,7 +958,7 @@ function savePlan(name, data){
           '#dinner-alcohol','#dinner-alcohol-desc','#dinner-cold','#dinner-cold-desc'
         ].forEach(sel => setVal(sel,""));
 
-      plan.food[currentFoodDay] = cloneFoodDay();
+        plan.food[currentFoodDay] = cloneFoodDay();
 
         savePlan(name, plan);
         showSaved(toast);
@@ -1015,7 +1009,7 @@ function savePlan(name, data){
       (function initDaily(){
         const sel = container.querySelector('#day-select');
         if (!sel) return;
-        sel.innerHTML = Array.from({length: plan.days}, (_,i)=>`<option value="${i+1}">Day ${i+1}</option>`).join("");
+        sel.innerHTML = Array.from({length: plan.days}, (_,i)=>`<option value="${i+1}">Day ${i + 1}</option>`).join("");
         sel.value = "1";
         container.querySelector('#day-activities').value = plan.activities[1] ?? "";
       })();
@@ -2991,7 +2985,7 @@ function savePlan(name, data){
 
     ];
 
-       // MAP SETUP
+      // MAP SETUP
     // =========================
     const map = L.map("map").setView([48.5, 8], 5);
     const cartoAttr = '&copy; OpenStreetMap contributors, &copy; CARTO';
@@ -3013,80 +3007,87 @@ function savePlan(name, data){
       return String(h >>> 0);
     }
 
- function scheduleFirestoreUpload(destName, planObj) {
-  const auth = window.firebaseAuth;
-  const db = window.firebaseDB;
-  const user = auth?.currentUser;
-  if (!user || !db) return;
+    function scheduleFirestoreUpload(destName, planObj) {
+      const auth = window.firebaseAuth;
+      const db = window.firebaseDB;
+      const user = auth?.currentUser;
+      if (!user || !db) return;
 
-  const json = JSON.stringify(planObj);
-  const h = hashString(json);
-  if (lastUploadedHash.get(destName) === h) return;
+      const json = JSON.stringify(planObj);
+      const h = hashString(json);
+      if (lastUploadedHash.get(destName) === h) return;
 
-  // Rough safety guard (Firestore doc max is ~1MB). This is a fast approximation.
-  if (json.length > 900_000) {
-    console.warn(`⚠️ Skipping Firestore upload for "${destName}" (plan too large).`);
-    return;
-  }
+      // Rough safety guard (Firestore doc max is ~1MB). This is a fast approximation.
+      if (json.length > 900_000) {
+        console.warn(`⚠️ Skipping Firestore upload for "${destName}" (plan too large).`);
+        return;
+      }
 
-  if (pendingUploads.has(destName)) clearTimeout(pendingUploads.get(destName));
+      if (pendingUploads.has(destName)) clearTimeout(pendingUploads.get(destName));
 
-  pendingUploads.set(destName, setTimeout(async () => {
-    try {
-      const ref = window.doc(db, "users", user.uid, "plans", destName);
-      const payload = {
-        name: destName,
-        data: planObj,
-        updatedAt: planObj.updatedAt || Date.now()
-      };
-      await window.setDoc(ref, payload, { merge: true });
+      pendingUploads.set(destName, setTimeout(async () => {
+        try {
+          const ref = window.doc(db, "users", user.uid, "plans", destName);
+          const payload = {
+            name: destName,
+            data: planObj,
+            updatedAt: planObj.updatedAt || Date.now()
+          };
+          await window.setDoc(ref, payload, { merge: true });
 
-      lastUploadedHash.set(destName, h);
-    } catch (err) {
-      console.warn("Firestore upload failed:", destName, err);
+          lastUploadedHash.set(destName, h);
+        } catch (err) {
+          console.warn("Firestore upload failed:", destName, err);
+        }
+      }, 1200));
     }
-  }, 1200));
-}
 
     async function hydratePlanFromFirebaseIfSignedIn(destName) {
-  const auth = window.firebaseAuth;
-  const db = window.firebaseDB;
-  const user = auth?.currentUser;
-  if (!user || !db) return;
+      const auth = window.firebaseAuth;
+      const db = window.firebaseDB;
+      const user = auth?.currentUser;
+      if (!user || !db) return;
 
-  try {
-    const ref = window.doc(db, "users", user.uid, "plans", destName);
-    const snap = await window.getDoc(ref);
-    if (!snap.exists()) return;
+      try {
+        const ref = window.doc(db, "users", user.uid, "plans", destName);
+        const snap = await window.getDoc(ref);
+        if (!snap.exists()) return;
 
-    const remoteDoc = snap.data() || {};
-    const remotePlan = remoteDoc.data;
-    const remoteUpdatedAt = remoteDoc.updatedAt || 0;
-    if (!remotePlan) return;
+        const remoteDoc = snap.data() || {};
+        const remotePlan = remoteDoc.data;
+        const remoteUpdatedAt = remoteDoc.updatedAt || 0;
+        if (!remotePlan) return;
 
-    const localRaw = localStorage.getItem(storageKey(destName));
-    let localPlan = null;
-    try { localPlan = localRaw ? JSON.parse(localRaw) : null; } catch {}
+        const localRaw = localStorage.getItem(storageKey(destName));
+        let localPlan = null;
+        try { localPlan = localRaw ? JSON.parse(localRaw) : null; } catch {}
 
-    const localUpdatedAt = localPlan?.updatedAt || 0;
+        const localUpdatedAt = localPlan?.updatedAt || 0;
 
-    // Prefer Firebase if local missing OR Firebase is newer
-    if (!localPlan || remoteUpdatedAt > localUpdatedAt) {
-      const merged = { ...remotePlan, updatedAt: remoteUpdatedAt };
+        // Prefer Firebase if local missing OR Firebase is newer
+        if (!localPlan || remoteUpdatedAt > localUpdatedAt) {
+          const merged = { ...remotePlan, updatedAt: remoteUpdatedAt };
 
-      localStorage.setItem(storageKey(destName), JSON.stringify(merged));
+          localStorage.setItem(storageKey(destName), JSON.stringify(merged));
 
-      // prevent immediate re-upload loop after hydration
-      const h = hashString(JSON.stringify(merged));
-      lastUploadedHash.set(destName, h);
+          // prevent immediate re-upload loop after hydration
+          const h = hashString(JSON.stringify(merged));
+          lastUploadedHash.set(destName, h);
 
-      console.log(`✅ Hydrated "${destName}" from Firebase (remote newer)`);
+          console.log(`✅ Hydrated "${destName}" from Firebase (remote newer)`);
+        }
+      } catch (err) {
+        console.warn("Hydrate failed:", destName, err);
+      }
     }
-  } catch (err) {
-    console.warn("Hydrate failed:", destName, err);
-  }
-}
 
+    // ✅ IMPORTANT: define this at TOP LEVEL (NOT inside renderMapWithTracking)
+    async function hydrateAllPlansOnce() {
+      for (const d of destinations) {
+        await hydratePlanFromFirebaseIfSignedIn(d.name);
+      }
+    }
+    window.hydrateAllPlansOnce = hydrateAllPlansOnce;
 
     // =========================
     // RENDER MAP + SEARCH/FILTER TRACKING
@@ -3106,23 +3107,17 @@ function savePlan(name, data){
         marker.destinationData = d;
         marker.bindPopup(buildPopup(d), { maxWidth: 600 });
 
+        // ✅ SINGLE clean popupopen handler (no duplicates)
         marker.on("popupopen", async () => {
-  async function hydrateAllPlansOnce() {
-  for (const d of destinations) {
-    await hydratePlanFromFirebaseIfSignedIn(d.name);
-  }
-}
+          await hydratePlanFromFirebaseIfSignedIn(d.name);
+          marker.setPopupContent(buildPopup(d));
 
-  // Rebuild popup HTML from (possibly) updated localStorage
-  marker.setPopupContent(buildPopup(d));
-
-  // Wait for DOM to update, then grab the NEW popup element
-  requestAnimationFrame(() => {
-    const newEl = marker.getPopup()?.getElement();
-    const container = newEl?.querySelector(".popup");
-    if (container) initPopupHandlers(container, d);
-  });
-});
+          requestAnimationFrame(() => {
+            const el = marker.getPopup()?.getElement();
+            const container = el?.querySelector(".popup");
+            if (container) initPopupHandlers(container, d);
+          });
+        });
 
         allLayerGroup.addLayer(marker);
         allMarkers.push(marker);
@@ -3219,23 +3214,24 @@ function savePlan(name, data){
             writeLine(`❌ Skipped "${name}" (invalid JSON).`);
             continue;
           }
-try {
-  // Prune before upload (keeps docs small + avoids Firestore 1MB limit)
-  const pruned = prunePlanForStorage(data);
-  pruned.updatedAt = pruned.updatedAt || Date.now();
 
-  const ref = window.doc(db, "users", user.uid, "plans", name);
+          try {
+            // Prune before upload (keeps docs small + avoids Firestore 1MB limit)
+            const pruned = prunePlanForStorage(data);
+            pruned.updatedAt = pruned.updatedAt || Date.now();
 
-  await window.setDoc(ref, {
-    name,
-    data: pruned,
-    updatedAt: pruned.updatedAt
-  }, { merge: true });
+            const ref = window.doc(db, "users", user.uid, "plans", name);
 
-  writeLine(`✅ Migrated "${name}" to Firebase.`);
-} catch (err) {
-  writeLine(`❌ Failed to migrate "${name}": ${err.message}`);
-}
+            await window.setDoc(ref, {
+              name,
+              data: pruned,
+              updatedAt: pruned.updatedAt
+            }, { merge: true });
+
+            writeLine(`✅ Migrated "${name}" to Firebase.`);
+          } catch (err) {
+            writeLine(`❌ Failed to migrate "${name}": ${err.message}`);
+          }
         }
       });
     });

@@ -131,9 +131,8 @@
       style="position:fixed; top:60px; right:10px; background:#fff; border:1px solid #ccc; padding:6px 10px; border-radius:6px; font-size:13px; z-index:1000; max-height:200px; overflow-y:auto; display:none;"></div>
 
     <!-- ✅ You referenced this id in auth handler, so it must exist -->
-    <button id="sign-in-btn" class="btn" onclick="firebaseSignIn()">Sign in with Google</button>
-
-    <button id="sign-out-btn" class="btn" onclick="firebaseSignOut()" style="display:none;">Sign out</button>
+   <button id="sign-in-btn" class="btn">Sign in with Google</button>
+<button id="sign-out-btn" class="btn" style="display:none;">Sign out</button>
     <span id="user-info"></span>
     <button id="migrate-btn" class="btn ghost" style="display:none;">Migrate Data to Firebase</button>
   </div>
@@ -221,18 +220,16 @@ try {
     window.collection = collection;
     window.getDocs = getDocs;
 
-  window.firebaseSignIn = async () => {
+window.firebaseSignIn = async () => {
   try {
     if (isIOS()) {
-      // iOS: popup often blocked → redirect is reliable
       await signInWithRedirect(auth, provider);
       return;
     }
-    // Desktop/most Android: popup is fine
     await signInWithPopup(auth, provider);
   } catch (err) {
     console.warn("Sign-in failed:", err);
-    alert("Google sign-in failed. On iPhone, try again (redirect sign-in).");
+    alert(`Google sign-in failed: ${err.code || err.message || err}`);
   }
 };
     window.firebaseSignOut = () => signOut(auth);
@@ -241,6 +238,26 @@ try {
 getRedirectResult(auth).catch((err) => {
   // Only log; onAuthStateChanged will still handle user state
   console.warn("Redirect result error:", err);
+});
+
+// Wire buttons AFTER module has loaded (fixes iOS timing issues)
+const signInBtn = document.getElementById("sign-in-btn");
+const signOutBtn = document.getElementById("sign-out-btn");
+
+signInBtn?.addEventListener("click", async () => {
+  try {
+    await window.firebaseSignIn();
+  } catch (e) {
+    alert(`Sign-in error: ${e.code || e.message || e}`);
+  }
+});
+
+signOutBtn?.addEventListener("click", async () => {
+  try {
+    await window.firebaseSignOut();
+  } catch (e) {
+    alert(`Sign-out error: ${e.code || e.message || e}`);
+  }
 });
 
     onAuthStateChanged(auth, (user) => {

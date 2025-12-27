@@ -134,6 +134,7 @@
    <button id="sign-in-btn" class="btn">Sign in with Google</button>
 <button id="sign-out-btn" class="btn" style="display:none;">Sign out</button>
     <span id="user-info"></span>
+    <span id="auth-debug" style="font-size:12px;color:#555;"></span>
     <button id="migrate-btn" class="btn ghost" style="display:none;">Migrate Data to Firebase</button>
   </div>
 
@@ -199,15 +200,19 @@
     const db = getFirestore(app);
     const provider = new GoogleAuthProvider();
 
+    // --- AUTH DEBUG HELPER (visible on page + console) ---
+const dbg = (msg) => {
+  const el = document.getElementById("auth-debug");
+  if (el) el.textContent = msg;
+  console.log("[AUTH]", msg);
+};
+
     const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
-// Try to keep auth state between loads (best effort on iOS)
-try {
-  await setPersistence(auth, browserLocalPersistence);
-} catch (e) {
-  // If iOS blocks it for any reason, fall back to session
-  try { await setPersistence(auth, browserSessionPersistence); } catch {}
-}
+// iOS-safe auth persistence (do NOT await — WebKit bug)
+setPersistence(auth, browserLocalPersistence).catch(() => {
+  setPersistence(auth, browserSessionPersistence).catch(()=>{});
+});
 
     window.firebaseAuth = auth;
     window.firebaseProvider = provider;
@@ -260,7 +265,26 @@ signOutBtn?.addEventListener("click", async () => {
   }
 });
 
+// --- HANDLE GOOGLE REDIRECT RETURN (iOS/ Safari) ---
+(async () => {
+  try {
+    dbg("Checking redirect result...");
+    const res = await getRedirectResult(auth);
+
+    if (res?.user) {
+      dbg(`Redirect result: signed in as ${res.user.email || res.user.displayName || "user"}`);
+    } else {
+      dbg("Redirect result: none (null)");
+    }
+  } catch (err) {
+    dbg(`Redirect result ERROR: ${err.code || err.message || err}`);
+    alert(`Redirect sign-in failed: ${err.code || err.message || err}`);
+  }
+})();
+
+
     onAuthStateChanged(auth, (user) => {
+      dbg(user ? `Auth state: SIGNED IN (${user.email || user.displayName})` : "Auth state: SIGNED OUT");
       const signInBtn = document.getElementById("sign-in-btn");
       const signOutBtn = document.getElementById("sign-out-btn");
       const userInfo = document.getElementById("user-info");
@@ -3114,9 +3138,8 @@ hydratePromise.then(() => window.renderMap?.());
 
         // Prefer Firebase if local missing OR Firebase is newer
         if (!localPlan || remoteUpdatedAt > localUpdatedAt) {
-          const merged = { ...remotePlan, updatedAt: remoteUpdatedAt };
-
-          localStorage.setItem(storageKey(destName), JSON.stringify(merged));
+        const merged = prunePlanForStorage({ ...remotePlan, updatedAt: remoteUpdatedAt });
+localStorage.setItem(storageKey(destName), JSON.stringify(merged));
 
           // prevent immediate re-upload loop after hydration
           const h = hashString(JSON.stringify(merged));

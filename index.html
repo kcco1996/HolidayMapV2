@@ -232,13 +232,13 @@ window.firebaseSignIn = async () => {
     alert(`Google sign-in failed: ${err.code || err.message || err}`);
   }
 };
-    window.firebaseSignOut = () => signOut(auth);
-
-    // If iOS used redirect, this completes the sign-in when you come back
-getRedirectResult(auth).catch((err) => {
-  // Only log; onAuthStateChanged will still handle user state
-  console.warn("Redirect result error:", err);
-});
+    window.firebaseSignOut = async () => {
+  try {
+    await signOut(auth);
+  } catch (err) {
+    alert(`Sign-out failed: ${err.code || err.message || err}`);
+  }
+};
 
 // Wire buttons AFTER module has loaded (fixes iOS timing issues)
 const signInBtn = document.getElementById("sign-in-btn");

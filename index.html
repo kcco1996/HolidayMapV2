@@ -232,7 +232,11 @@
         }
 
         // ✅ IMPORTANT: call the global function on window (not a local function scope)
-        window.hydrateAllPlansOnce?.().then(() => window.renderMap?.());
+       const hydratePromise = window.hydrateAllPlansOnce
+  ? window.hydrateAllPlansOnce()
+  : Promise.resolve();
+
+hydratePromise.then(() => window.renderMap?.());
       } else {
         if (signInBtn) signInBtn.style.display = "inline-block";
         if (signOutBtn) signOutBtn.style.display = "none";

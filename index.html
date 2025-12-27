@@ -164,13 +164,18 @@
   <!-- Firebase SDKs -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-    import {
-      getAuth,
-      GoogleAuthProvider,
-      signInWithPopup,
-      signOut,
-      onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+   import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  signOut,
+  onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence
+} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
     import {
       getFirestore,
       doc,
@@ -195,6 +200,16 @@
     const db = getFirestore(app);
     const provider = new GoogleAuthProvider();
 
+    const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+// Try to keep auth state between loads (best effort on iOS)
+try {
+  await setPersistence(auth, browserLocalPersistence);
+} catch (e) {
+  // If iOS blocks it for any reason, fall back to session
+  try { await setPersistence(auth, browserSessionPersistence); } catch {}
+}
+
     window.firebaseAuth = auth;
     window.firebaseProvider = provider;
     window.firebaseDB = db;
@@ -206,15 +221,27 @@
     window.collection = collection;
     window.getDocs = getDocs;
 
-    window.firebaseSignIn = async () => {
-      try {
-        await signInWithPopup(auth, provider);
-      } catch (err) {
-        console.warn("Sign-in failed:", err);
-        alert("Google sign-in failed. Check popup blocking and Firebase Auth settings.");
-      }
-    };
+  window.firebaseSignIn = async () => {
+  try {
+    if (isIOS()) {
+      // iOS: popup often blocked → redirect is reliable
+      await signInWithRedirect(auth, provider);
+      return;
+    }
+    // Desktop/most Android: popup is fine
+    await signInWithPopup(auth, provider);
+  } catch (err) {
+    console.warn("Sign-in failed:", err);
+    alert("Google sign-in failed. On iPhone, try again (redirect sign-in).");
+  }
+};
     window.firebaseSignOut = () => signOut(auth);
+
+    // If iOS used redirect, this completes the sign-in when you come back
+getRedirectResult(auth).catch((err) => {
+  // Only log; onAuthStateChanged will still handle user state
+  console.warn("Redirect result error:", err);
+});
 
     onAuthStateChanged(auth, (user) => {
       const signInBtn = document.getElementById("sign-in-btn");

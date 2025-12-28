@@ -115,3 +115,12 @@ if (isIOS() || isBrave) {
 export async function signOutUser() {
   await signOut(auth);
 }
+
+// Make the HTML onclick buttons work
+window.firebaseSignIn = () => signIn(console.log);
+window.firebaseSignOut = () => signOutUser();
+
+// Start auth immediately
+window.addEventListener("DOMContentLoaded", () => {
+  initAuth(console.log);
+});

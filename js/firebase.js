@@ -124,3 +124,8 @@ window.firebaseSignOut = () => signOutUser();
 window.addEventListener("DOMContentLoaded", () => {
   initAuth(console.log);
 });
+
+// Make auth helpers callable from other scripts (no imports needed)
+window.initAuth = initAuth;
+window.signIn = signIn;
+window.signOutUser = signOutUser;

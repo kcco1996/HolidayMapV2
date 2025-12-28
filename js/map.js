@@ -2890,6 +2890,18 @@ document.addEventListener("DOMContentLoaded", () => {
     renderMap();
   });
 
+  window.addEventListener("DOMContentLoaded", async () => {
+  // start firebase auth listener + process redirect result
+  if (window.initAuth) await window.initAuth((m) => console.log("[AUTH]", m));
+
+  const btn = document.getElementById("sign-in-btn");
+  if (btn) {
+    btn.addEventListener("click", async () => {
+      if (window.signIn) await window.signIn((m) => console.log("[AUTH]", m));
+    });
+  }
+});
+
   // initial render
   renderMap();
 

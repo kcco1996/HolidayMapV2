@@ -37,12 +37,13 @@ export const firebaseConfig = {
 export const isIOS = () =>
   /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
+// ---- App init ----
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const provider = new GoogleAuthProvider();
 
-// Expose helpers for map.js
+// ---- Expose helpers for legacy code (map.js etc.) ----
 window.firebaseAuth = auth;
 window.firebaseDB = db;
 window.firebaseProvider = provider;
@@ -54,10 +55,50 @@ window.deleteField = deleteField;
 window.collection = collection;
 window.getDocs = getDocs;
 
-export async function initAuth(debugLog = console.log) {
+// ---- Internal helpers ----
+let _authInitStarted = false;
+
+async function detectBrave() {
+  try {
+    // Brave exposes navigator.brave.isBrave()
+    if (
+      typeof navigator.brave !== "undefined" &&
+      typeof navigator.brave.isBrave === "function"
+    ) {
+      return await navigator.brave.isBrave();
+    }
+  } catch {}
+  // Fallback heuristic
+  return /Brave/i.test(navigator.userAgent || "");
+}
+
+function envInfo() {
+  const host = location.hostname;
+  const proto = location.protocol;
+  const isHttps = proto === "https:";
+  const isLocalhost = host === "localhost" || host === "127.0.0.1";
+  return { host, proto, isHttps, isLocalhost };
+}
+
+function setBuildStamp() {
   const stamp = document.getElementById("build-stamp");
   if (stamp) stamp.textContent = `Build: ${ASSET_VERSION}`;
+}
 
+// ---- Auth boot ----
+export async function initAuth(debugLog = console.log) {
+  if (_authInitStarted) {
+    debugLog?.("initAuth: already started (skipping)");
+    return;
+  }
+  _authInitStarted = true;
+
+  setBuildStamp();
+
+  const { host, proto, isHttps, isLocalhost } = envInfo();
+  debugLog?.(`Env: host=${host} protocol=${proto} https=${isHttps} localhost=${isLocalhost}`);
+
+  // 1) Persistence: try local, fallback to session (iOS/private mode / strict browsers)
   try {
     await setPersistence(auth, browserLocalPersistence);
     debugLog?.("Persistence: browserLocalPersistence OK");
@@ -71,61 +112,74 @@ export async function initAuth(debugLog = console.log) {
     }
   }
 
+  // 2) Complete redirect sign-in if we came back from Google
   try {
     const res = await getRedirectResult(auth);
     debugLog?.(res ? "Redirect result: OK" : "Redirect result: none");
+    if (res?.user) debugLog?.(`Redirect user: ${res.user.email || res.user.uid || "(no id)"}`);
   } catch (e) {
     debugLog?.(`Redirect result error: ${e?.code || e?.message || e}`);
   }
 
+  // 3) Broadcast auth state (your app listens for AUTH_STATE)
   onAuthStateChanged(auth, (user) => {
+    debugLog?.(user ? `Auth state: SIGNED IN (${user.email || user.uid})` : "Auth state: SIGNED OUT");
     window.dispatchEvent(new CustomEvent("AUTH_STATE", { detail: user || null }));
   });
 }
+
+// ---- Sign in ----
 export async function signIn(debugLog = console.log) {
   debugLog?.("Sign-in clicked");
 
-  // Brave detection (more reliable than !!navigator.brave)
-  const isBrave =
-    (typeof navigator.brave !== "undefined" && typeof navigator.brave.isBrave === "function")
-      ? await navigator.brave.isBrave()
-      : false;
+  const brave = await detectBrave();
+  const { isHttps, isLocalhost } = envInfo();
 
-  // Brave & iOS: redirect is most reliable
-if (isIOS() || isBrave) {
-  debugLog?.("Using redirect (Brave / iOS)");
+  debugLog?.(`SignIn strategy: brave=${brave} iOS=${isIOS()} https=${isHttps} localhost=${isLocalhost}`);
+
+  // Strategy (least pain):
+  // - On HTTPS origins (GitHub Pages / web.app): use redirect (most reliable for Brave too).
+  // - On localhost/http: try popup first, then redirect fallback.
   try {
-    await signInWithRedirect(auth, provider);
-  } catch (e) {
-    debugLog?.(`Redirect sign-in error: ${e?.code || e?.message || e}`);
-    alert(`Redirect sign-in error: ${e?.code || e?.message || e}`);
-  }
-  return;
-}
-  // Other browsers: popup first, fallback to redirect
-  try {
+    if (isHttps) {
+      debugLog?.("Using redirect (HTTPS origin)");
+      await signInWithRedirect(auth, provider);
+      return;
+    }
+
+    // Local dev (http): popup is usually the only thing that feels “instant”.
+    debugLog?.("Using popup first (localhost/http)");
     await signInWithPopup(auth, provider);
     debugLog?.("Popup sign-in OK");
   } catch (e1) {
-    debugLog?.(`Popup failed, trying redirect: ${e1?.code || e1?.message || e1}`);
-    await signInWithRedirect(auth, provider);
+    debugLog?.(`Popup failed: ${e1?.code || e1?.message || e1}`);
+
+    try {
+      debugLog?.("Trying redirect fallback");
+      await signInWithRedirect(auth, provider);
+    } catch (e2) {
+      debugLog?.(`Redirect sign-in error: ${e2?.code || e2?.message || e2}`);
+      alert(`Sign-in error: ${e2?.code || e2?.message || e2}`);
+      throw e2;
+    }
   }
 }
 
+// ---- Sign out ----
 export async function signOutUser() {
   await signOut(auth);
 }
 
-// Make the HTML onclick buttons work
+// ---- Make HTML onclick buttons work (if you still use them) ----
 window.firebaseSignIn = () => signIn(console.log);
 window.firebaseSignOut = () => signOutUser();
 
-// Start auth immediately
+// ---- Start auth immediately (but safe if app.js also calls it) ----
 window.addEventListener("DOMContentLoaded", () => {
   initAuth(console.log);
 });
 
-// Make auth helpers callable from other scripts (no imports needed)
+// ---- Make helpers callable from other scripts (no imports needed) ----
 window.initAuth = initAuth;
 window.signIn = signIn;
 window.signOutUser = signOutUser;

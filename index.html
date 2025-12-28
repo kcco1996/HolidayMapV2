@@ -3107,7 +3107,7 @@
 
       signInBtn?.addEventListener("click", async () => {
         dbg("Sign-in clicked");
-        sessionStorage.setItem("AUTH_REDIRECT_STARTED", "1");
+        localStorage.setItem("AUTH_REDIRECT_STARTED", "1");
         try { await window.firebaseSignIn(); }
         catch (e) { alert(`Sign-in error: ${e.code || e.message || e}`); }
       });
@@ -3203,7 +3203,11 @@
     const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
     // iOS-safe auth persistence
-    await setPersistence(auth, browserSessionPersistence);
+    try {
+  await setPersistence(auth, browserLocalPersistence);
+} catch (e) {
+  console.warn("setPersistence failed:", e);
+}
 
     // Expose things your non-module code needs
     window.firebaseAuth = auth;
@@ -3238,17 +3242,18 @@
     };
 
     // Redirect result handling (only if redirect was started)
-    try {
-      const started = sessionStorage.getItem("AUTH_REDIRECT_STARTED") === "1";
-      if (started) {
-        await getRedirectResult(auth);
-        sessionStorage.removeItem("AUTH_REDIRECT_STARTED");
-      }
-    } catch (e) {
-      sessionStorage.removeItem("AUTH_REDIRECT_STARTED");
-      console.warn("Redirect result error:", e?.code || e?.message || e);
-    }
-
+   try {
+  const started = localStorage.getItem("AUTH_REDIRECT_STARTED") === "1";
+  if (started) {
+    const res = await getRedirectResult(auth);
+    localStorage.removeItem("AUTH_REDIRECT_STARTED");
+    console.log("Redirect result:", res ? "OK" : "null (no result)");
+  }
+} catch (e) {
+  localStorage.removeItem("AUTH_REDIRECT_STARTED");
+  alert(`Redirect result error: ${e?.code || e?.message || e}`);
+  console.warn("Redirect result error:", e?.code || e?.message || e);
+}
     window.firebaseOnAuthStateChanged = (cb) => onAuthStateChanged(auth, cb);
 
     window.onFirebaseReady?.();

@@ -1,14 +1,1185 @@
-// js/map.js
-const withV = window.withV || ((u) => u);
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Kieran’s Holiday Destinations Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-// ----------------------------------------------------------------------------
-// 1) Destination data
-// ----------------------------------------------------------------------------
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin="" />
 
-// If window.destinations exists, use it. Otherwise use the hardcoded array.
-const destinations = Array.isArray(window.destinations) && window.destinations.length
-  ? window.destinations
-  : [
+  <style>
+    html, body { height: 100%; margin: 0; }
+    #map { height: 100vh; width: 100%; }
+
+    .popup .header { display:flex; align-items:center; gap:10px; }
+    .popup .header img { width:40px; height:40px; object-fit:contain; }
+    .popup .title { line-height:1.3; }
+
+    .destination-icon { background: transparent; border: 0; }
+    .destination-icon img { display: block; height: 20px; width: auto; }
+
+    /* --- Trip planner styles inside popups --- */
+    .tabs {
+      display: flex; gap: 6px; margin-top: 8px; margin-bottom: 8px; flex-wrap: wrap;
+    }
+    .tab-btn {
+      border: 1px solid #ccc; background: #f6f6f6; padding: 4px 8px; border-radius: 6px;
+      cursor: pointer; font-size: 13px;
+    }
+    .tab-btn.active { background: #e7f0ff; border-color: #8db6ff; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .row { display:flex; align-items:center; gap:8px; margin: 6px 0; }
+    .row label { font-size: 13px; min-width: 130px; }
+    .row input[type="number"], .row input[type="text"], .row select { padding: 4px; }
+
+    .hint { font-size: 12px; color: #666; margin-top: 4px; }
+    .save-bar { display:flex; gap:8px; margin-top:8px; }
+    .btn {
+      border:1px solid #bbb; background:#fff; padding:6px 10px; border-radius:6px; cursor:pointer; font-size:13px;
+    }
+    .btn.primary { background:#2563eb; color:#fff; border-color:#2563eb; }
+    .btn.ghost { background:#f6f6f6; }
+    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .textarea {
+      width: 100%; height: 140px; padding: 8px; border: 1px solid #ccc; border-radius: 6px;
+      resize: vertical; font: 13px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+
+    .day-nav { display:flex; align-items:center; gap:8px; margin: 8px 0; flex-wrap: wrap; }
+    .day-nav .btn { padding: 4px 8px; }
+    .day-nav select { padding: 4px 8px; }
+
+    .saved-toast {
+      font-size: 12px; color: #065f46; background:#ecfdf5; border:1px solid #a7f3d0;
+      padding: 4px 8px; border-radius: 6px; display:none; margin-left:auto;
+    }
+    .saved-toast.show { display:block; }
+
+
+     /* Search Bar*/
+
+    #controls-bar {
+  position: fixed;
+  top: 10px;
+  left: 80px;
+  background: rgba(255,255,255,0.95);
+  border: 1px solid #ccc;
+  padding: 8px 12px;
+  border-radius: 8px;
+  z-index: 1000;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+}
+
+#controls-bar input, 
+#controls-bar select {
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 13px;
+}
+
+    /* Food list */
+    .food-row { display:flex; align-items:center; gap:8px; margin:6px 0; }
+    .food-row input[type="checkbox"] { transform: translateY(1px); }
+    .food-row .food-text { flex: 1; font-size: 13px; }
+    .food-add { display:flex; gap:8px; margin-bottom:8px; }
+    .food-add input { flex:1; }
+    .leaflet-popup-content {
+  width: 560px !important;  /* Adjust to match maxWidth - padding */
+}
+
+#top-bar {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  background: rgba(255,255,255,0.95);
+  border: 1px solid #ccc;
+  padding: 8px 12px;
+  border-radius: 8px;
+  z-index: 1000;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+}
+#top-bar .btn {
+  padding: 4px 8px;
+  font-size: 13px;
+  cursor: pointer;
+}
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <div id="controls-bar">
+  <input type="text" id="search-input" placeholder="Search destination..." />
+  <select id="region-filter">
+    <option value="all">🌍 All Regions</option>
+    <option value="north-america">North America</option>
+    <option value="south-america">South America</option>
+    <option value="europe">Europe</option>
+    <option value="africa">Africa</option>
+    <option value="asia">Asia</option>
+    <option value="oceania">Oceania</option>
+  </select>
+  <button id="reset-view" class="btn ghost">Show All</button>
+</div>
+
+<div id="top-bar">
+  <div id="migration-status" style="position:fixed; top:60px; right:10px; background:#fff; border:1px solid #ccc; padding:6px 10px; border-radius:6px; font-size:13px; z-index:1000; max-height:200px; overflow-y:auto; display:none;"></div>
+ <button id="sign-in-btn" class="btn" onclick="firebaseSignIn()">Sign in with Google</button>
+  <button id="sign-out-btn" class="btn" onclick="firebaseSignOut()" style="display:none;">Sign out</button>
+  <span id="user-info"></span>
+  <button id="migrate-btn" class="btn ghost" style="display:none;">Migrate Data to Firebase</button>
+</div>
+
+<div id="migration-status" style="
+  display:none;
+  position:fixed;
+  bottom:10px;
+  right:10px;
+  background:#fff;
+  border:1px solid #ccc;
+  padding:10px;
+  max-width:300px;
+  font-size:13px;
+  line-height:1.4;
+  z-index:1001;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  border-radius:8px;
+  overflow-y:auto;
+  max-height:50vh;
+"></div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+     
+    <!-- Firebase SDKs -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+  import {
+    getAuth,
+    GoogleAuthProvider,
+    signInWithPopup,
+    signOut,
+    onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+  import {
+    getFirestore,
+    doc,
+    setDoc,
+    getDoc,
+    collection,
+    getDocs
+  } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+  // Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyCAY-izVSAjouJjL960zS8xs84jaOZQBIo",
+    authDomain: "kieranholidaymap.firebaseapp.com",
+    projectId: "kieranholidaymap",
+    storageBucket: "kieranholidaymap.firebasestorage.app",
+    messagingSenderId: "733529027142",
+    appId: "1:733529027142:web:f1af423b12491a937dd047"
+  };
+
+  // Init Firebase
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const provider = new GoogleAuthProvider();
+
+  window.firebaseAuth = auth;
+  window.firebaseProvider = provider;
+  window.firebaseDB = db;
+  window.setDoc = setDoc;
+window.doc = doc;
+window.collection = collection;
+window.getDocs = getDocs;
+
+  // Expose sign-in/out functions
+  window.firebaseSignIn = () => signInWithPopup(auth, provider);
+  window.firebaseSignOut = () => signOut(auth);
+
+  // === SIGN-IN STATE HANDLER ===
+  onAuthStateChanged(auth, (user) => {
+    const signInBtn = document.getElementById("sign-in-btn");
+    const signOutBtn = document.getElementById("sign-out-btn");
+    const userInfo = document.getElementById("user-info");
+    const migrateBtn = document.getElementById("migrate-btn");
+
+    if (user) {
+      signInBtn.style.display = "none";
+      signOutBtn.style.display = "inline-block";
+      userInfo.textContent = `Signed in as: ${user.displayName}`;
+
+      if (user.email === "kcco1996@gmail.com") {
+        migrateBtn.style.display = "inline-block";
+      } else {
+        migrateBtn.style.display = "none";
+      }
+
+      // ✅ Load Firebase trip plans
+      (async () => {
+        const plansSnapshot = await getDocs(collection(db, "users", user.uid, "plans"));
+        plansSnapshot.forEach(docSnap => {
+          const plan = docSnap.data()?.data;
+          const name = docSnap.data()?.name;
+          if (plan && name) {
+            localStorage.setItem(`tripPlan:${name}`, JSON.stringify(plan));
+            console.log(`✅ Loaded ${name} from Firebase`);
+          }
+        });
+
+        // ✅ Now render the map
+        renderMap();
+      })();
+
+    } else {
+      // Not signed in
+      signInBtn.style.display = "inline-block";
+      signOutBtn.style.display = "none";
+      userInfo.textContent = "";
+      migrateBtn.style.display = "none";
+
+      // Render map anyway (fallback to localStorage)
+      renderMap();
+    }
+  });
+
+  // === FILTER + SEARCH CONTROLS ===
+let allMarkers = [];
+let allLayerGroup;
+
+function renderMap() {
+  if (allLayerGroup) {
+    map.removeLayer(allLayerGroup);
+  }
+  allLayerGroup = L.featureGroup().addTo(map);
+  allMarkers = [];
+
+  for (const d of destinations) {
+    const icon = d.destination ? destinationIcon(d.destination) : undefined;
+    const marker = L.marker([d.lat, d.lng], icon ? { icon } : undefined);
+    marker.bindPopup(buildPopup(d), { maxWidth: 600 });
+    marker.on('popupopen', (e) => {
+      const el = e.popup.getElement();
+      requestAnimationFrame(() => {
+        const container = el.querySelector('.popup');
+        if (container) initPopupHandlers(container, d);
+      });
+    });
+    marker.destinationData = d;
+    allLayerGroup.addLayer(marker);
+    allMarkers.push(marker);
+  }
+
+  if (allLayerGroup.getLayers().length > 0) {
+    const bounds = allLayerGroup.getBounds();
+    if (bounds.isValid()) map.fitBounds(bounds.pad(0.2));
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const searchInput = document.getElementById("search-input");
+  const regionFilter = document.getElementById("region-filter");
+  const resetBtn = document.getElementById("reset-view");
+
+  function filterMap() {
+    const query = searchInput.value.trim().toLowerCase();
+    const region = regionFilter.value;
+
+    allMarkers.forEach(marker => {
+      const d = marker.destinationData;
+      const nameMatch = d.name.toLowerCase().includes(query);
+      const regionMatch = (region === "all") || d.region === region;
+      if (nameMatch && regionMatch) {
+        marker.addTo(allLayerGroup);
+      } else {
+        allLayerGroup.removeLayer(marker);
+      }
+    });
+
+    // Adjust map view to visible markers
+    if (allLayerGroup.getLayers().length > 0) {
+      map.fitBounds(allLayerGroup.getBounds().pad(0.2));
+    }
+  }
+
+  searchInput.addEventListener("input", filterMap);
+  regionFilter.addEventListener("change", filterMap);
+  resetBtn.addEventListener("click", () => {
+    searchInput.value = "";
+    regionFilter.value = "all";
+    renderMap();
+  });
+
+});
+</script>
+
+  <script>
+    // ---------- Storage helpers ----------
+    function storageKey(name){ return `tripPlan:${name}`; }
+   function loadPlan(name){
+  const raw = localStorage.getItem(storageKey(name));
+  const base = {
+    days: 1,
+    activities: {1:""},
+    notes: "",
+    hotel: { name:"", currency:"GBP", nightly:"", nights: 1 },
+    food: {}   // { [day]: {breakfast:{...}, lunch:{...}, dinner:{...}} }
+  };
+
+  let plan;
+  try { plan = raw ? JSON.parse(raw) : base; }
+  catch { plan = base; }
+
+  // defaults
+  if (!plan.activities) plan.activities = {1:""};
+  if (typeof plan.days !== "number" || plan.days < 1) plan.days = 1;
+  if (typeof plan.notes !== "string") plan.notes = "";
+  if (typeof plan.tips !== "string") plan.tips = "";
+
+// Hotel defaults (medium/main hotel)
+if (!plan.hotel) {
+  plan.hotel = {
+    name: "",
+    currency: "GBP",
+    nightly: "",
+    nights: Math.max(1, (plan.days | 0) - 1 || 1),
+    notes: ""
+  };
+} else {
+  if (!("name" in plan.hotel)) plan.hotel.name = "";
+  if (!("currency" in plan.hotel)) plan.hotel.currency = "GBP";
+  if (!("nightly" in plan.hotel)) plan.hotel.nightly = "";
+  if (!("nights" in plan.hotel)) plan.hotel.nights = Math.max(1, (plan.days | 0) - 1 || 1);
+  if (!("notes" in plan.hotel)) plan.hotel.notes = "";
+}
+  // migrate very old single-day format: plan.foodDiary -> plan.food[1]
+  if (plan.foodDiary && !plan.food) {
+    plan.food = { 1: {
+      breakfast: {
+        dish: plan.foodDiary?.breakfast?.dish || "",
+        hot:  plan.foodDiary?.breakfast?.hot  || "",
+        cold: plan.foodDiary?.breakfast?.cold || "",
+        description: plan.foodDiary?.breakfast?.description || ""
+      },
+      lunch: {
+        dish: plan.foodDiary?.lunch?.dish || "",
+        hot:  plan.foodDiary?.lunch?.hot  || "",
+        cold: plan.foodDiary?.lunch?.cold || "",
+        description: plan.foodDiary?.lunch?.description || ""
+      },
+      dinner: {
+        starter: plan.foodDiary?.dinner?.starter || "",
+        main:    plan.foodDiary?.dinner?.main    || "",
+        dessert: plan.foodDiary?.dinner?.dessert || "",
+        alcoholic: plan.foodDiary?.dinner?.alcoholic || "",
+        cold: plan.foodDiary?.dinner?.cold || "",
+        description: plan.foodDiary?.dinner?.description || ""
+      }
+    }};
+    delete plan.foodDiary;
+  }
+
+  if (!plan.food || typeof plan.food !== "object" || Array.isArray(plan.food)) plan.food = {};
+
+  // ensure structure for all days
+  for (let i=1; i<=plan.days; i++){
+    if (!plan.food[i]) {
+      plan.food[i] = {
+        breakfast: { dish:"", hot:"", cold:"", description:"" },
+        lunch:     { dish:"", hot:"", cold:"", description:"" },
+        dinner:    { starter:"", main:"", dessert:"", alcoholic:"", cold:"", description:"" }
+      };
+    }
+  }
+
+  return plan;
+
+    }
+    function savePlan(name, data){
+      localStorage.setItem(storageKey(name), JSON.stringify(data));
+    }
+
+    // Small helper for custom destination icons (e.g. flags, city pics)
+    function destinationIcon(url) {
+      return L.divIcon({
+        html: `<img src="${url}" alt="">`,
+        className: 'destination-icon',
+        iconSize: [null],
+        iconAnchor: [20, 20],
+        popupAnchor: [0, -18]
+      });
+    }
+
+      function buildPopup(d) {
+      const plan = loadPlan(d.name);
+      const days = Math.max(1, Number(plan.days || 1));
+      const nightsDefault = Math.max(
+        1,
+        Number(plan.hotel?.nights ?? Math.max(1, days - 1))
+      );
+
+      // Day dropdown options
+      const dayOptions = Array.from(
+        { length: days },
+        (_, i) => `<option value="${i + 1}">Day ${i + 1}</option>`
+      ).join("");
+
+      // Currency options (keep your existing list)
+      const currencies = ["GBP","EUR","USD","CAD","AUD","NZD","JPY","CNY"];
+      const currencyOptions = currencies
+        .map(
+          c =>
+            `<option value="${c}" ${
+              plan.hotel.currency === c ? "selected" : ""
+            }>${c}</option>`
+        )
+        .join("");
+
+      return `
+        <div class="popup" data-dest="${encodeURIComponent(d.name)}">
+          <div class="header">
+            ${d.destination ? `<img src="${d.destination}" alt="${d.name} icon" />` : ""}
+            <div class="title">
+              <h3 style="margin:0 0 4px;">${d.name}</h3>
+              ${d.note ? `<p style="margin:0 0 4px;">${d.note}</p>` : ""}
+              <p style="margin:6px 0 0;">
+                <a href="https://maps.google.com/?q=${d.lat},${d.lng}"
+                   target="_blank" rel="noopener">Open in Google Maps</a>
+              </p>
+            </div>
+          </div>
+
+          <div class="tabs">
+            <button class="tab-btn active" data-tab="tab-days">Days</button>
+            <button class="tab-btn" data-tab="tab-daily">Daily Plan</button>
+            <button class="tab-btn" data-tab="tab-stay">Stay & Budget</button>
+            <button class="tab-btn" data-tab="tab-food">Food</button>
+            <button class="tab-btn" data-tab="tab-notes">Notes</button>
+            <button class="tab-btn" data-tab="tab-tips">Tips</button>
+            <span class="saved-toast" aria-live="polite">Saved</span>
+          </div>
+
+          <!-- Days tab -->
+          <div id="tab-days" class="tab-panel active">
+            <div class="row">
+              <label for="days-input">Number of days:</label>
+              <input id="days-input" type="number" min="1" step="1" value="${days}">
+              <button class="btn primary" id="apply-days">Apply</button>
+            </div>
+            <p class="hint">
+              Set how long you’ll stay. This also influences default nights
+              for hotel total (editable).
+            </p>
+          </div>
+
+          <!-- Daily Plan tab -->
+          <div id="tab-daily" class="tab-panel">
+            <div class="day-nav">
+              <button class="btn ghost" id="prev-day" title="Previous day">&#9664;</button>
+              <label for="day-select" style="min-width:auto;">Go to:</label>
+              <select id="day-select">${dayOptions}</select>
+              <button class="btn ghost" id="next-day" title="Next day">&#9654;</button>
+            </div>
+            <textarea id="day-activities" class="textarea"
+              placeholder="Activities for this day (times, places, tickets, restaurants, notes)..."></textarea>
+            <div class="save-bar">
+              <button class="btn primary" id="save-day">Save Day</button>
+              <button class="btn" id="clear-day">Clear Day</button>
+            </div>
+          </div>
+
+          <!-- Stay & Budget tab -->
+                    <!-- Stay & Budget tab -->
+          <div id="tab-stay" class="tab-panel">
+
+            <!-- Sub-tabs: Cheap / Medium / Luxury -->
+            <div class="tabs budget-subtabs">
+              <button class="tab-btn" data-btab="tab-cheap">Cheap option</button>
+              <button class="tab-btn active" data-btab="tab-medium">Medium option (main hotel)</button>
+              <button class="tab-btn" data-btab="tab-luxury">Luxury option</button>
+            </div>
+
+            <!-- MEDIUM = MAIN HOTEL -->
+            <div id="tab-medium" class="tab-panel active">
+              <h4>Main Hotel</h4>
+
+              <div class="row">
+                <label for="hotel-name">Hotel name (optional):</label>
+                <input id="hotel-name" type="text"
+                       value="${(plan.hotel.name||"").replace(/"/g,'&quot;')}"
+                       placeholder="e.g., Hotel Central">
+              </div>
+              <div class="row">
+                <label for="currency">Currency:</label>
+                <select id="currency">${currencyOptions}</select>
+              </div>
+              <div class="row">
+                <label for="nightly">Avg price per night:</label>
+                <input id="nightly" type="number" min="0" step="1" value="${plan.hotel.nightly||""}">
+              </div>
+              <div class="row">
+                <label for="nights">Nights:</label>
+                <input id="nights" type="number" min="1" step="1" value="${nightsDefault}">
+              </div>
+              <div class="row">
+                <label>Total (auto):</label>
+                <div id="hotel-total" aria-live="polite" style="font-weight:600;">—</div>
+              </div>
+              <textarea id="hotel-notes" class="textarea" placeholder="Notes (optional)"></textarea>
+              <div class="save-bar">
+                <button class="btn primary" id="save-hotel">Save Stay</button>
+                <button class="btn" id="clear-hotel">Clear</button>
+              </div>
+            </div>
+
+            <!-- CHEAP OPTION -->
+            <div id="tab-cheap" class="tab-panel">
+              <h4>Cheap option</h4>
+
+              <div class="row">
+                <label>Name:</label>
+                <input id="cheap-name" type="text">
+              </div>
+              <div class="row">
+                <label>Currency:</label>
+                <select id="cheap-currency">${currencyOptions}</select>
+              </div>
+              <div class="row">
+                <label>Price per night:</label>
+                <input id="cheap-price" type="number" min="0" step="1">
+              </div>
+              <div class="row">
+                <label>Nights:</label>
+                <input id="cheap-nights" type="number" min="1" step="1">
+              </div>
+              <div class="row">
+                <label>Total:</label>
+                <div id="cheap-total" style="font-weight:600;">—</div>
+              </div>
+              <textarea id="cheap-notes" class="textarea" placeholder="Notes (optional)"></textarea>
+            </div>
+
+            <!-- LUXURY OPTION -->
+            <div id="tab-luxury" class="tab-panel">
+              <h4>Luxury option</h4>
+
+              <div class="row">
+                <label>Name:</label>
+                <input id="luxury-name" type="text">
+              </div>
+              <div class="row">
+                <label>Currency:</label>
+                <select id="luxury-currency">${currencyOptions}</select>
+              </div>
+              <div class="row">
+                <label>Price per night:</label>
+                <input id="luxury-price" type="number" min="0" step="1">
+              </div>
+              <div class="row">
+                <label>Nights:</label>
+                <input id="luxury-nights" type="number" min="1" step="1">
+              </div>
+              <div class="row">
+                <label>Total:</label>
+                <div id="luxury-total" style="font-weight:600;">—</div>
+              </div>
+              <textarea id="luxury-notes" class="textarea" placeholder="Notes (optional)"></textarea>
+            </div>
+
+            <div class="save-bar">
+              <button class="btn primary" id="save-budget">Save Hotel Options</button>
+            </div>
+          </div>
+
+          <!-- Food tab (unchanged structure) -->
+          <div id="tab-food" class="tab-panel">
+            <div class="day-nav">
+              <label for="food-day-select">Day:</label>
+              <select id="food-day-select"></select>
+            </div>
+
+            <div class="tabs food-subtabs">
+              <button class="tab-btn active" data-subtab="tab-breakfast">Breakfast</button>
+              <button class="tab-btn" data-subtab="tab-lunch">Lunch</button>
+              <button class="tab-btn" data-subtab="tab-dinner">Dinner</button>
+            </div>
+
+            <div id="tab-breakfast" class="tab-panel active">
+              <div class="row">
+                <label>Dish:</label>
+                <input id="breakfast-dish" type="text">
+                <input id="breakfast-dish-desc" type="text" placeholder="Description">
+              </div>
+              <div class="row">
+                <label>Hot drink:</label>
+                <input id="breakfast-hot" type="text">
+                <input id="breakfast-hot-desc" type="text" placeholder="Description">
+              </div>
+              <div class="row">
+                <label>Cold drink:</label>
+                <input id="breakfast-cold" type="text">
+                <input id="breakfast-cold-desc" type="text" placeholder="Description">
+              </div>
+            </div>
+
+            <div id="tab-lunch" class="tab-panel">
+              <div class="row">
+                <label>Dish:</label>
+                <input id="lunch-dish" type="text">
+                <input id="lunch-dish-desc" type="text" placeholder="Description">
+              </div>
+              <div class="row">
+                <label>Hot drink:</label>
+                <input id="lunch-hot" type="text">
+                <input id="lunch-hot-desc" type="text" placeholder="Description">
+              </div>
+              <div class="row">
+                <label>Cold drink:</label>
+                <input id="lunch-cold" type="text">
+                <input id="lunch-cold-desc" type="text" placeholder="Description">
+              </div>
+            </div>
+
+            <div id="tab-dinner" class="tab-panel">
+              <div class="row">
+                <label>Starter:</label>
+                <input id="dinner-starter" type="text">
+                <input id="dinner-starter-desc" type="text" placeholder="Description">
+              </div>
+              <div class="row">
+                <label>Main course:</label>
+                <input id="dinner-main" type="text">
+                <input id="dinner-main-desc" type="text" placeholder="Description">
+              </div>
+              <div class="row">
+                <label>Dessert:</label>
+                <input id="dinner-dessert" type="text">
+                <input id="dinner-dessert-desc" type="text" placeholder="Description">
+              </div>
+              <div class="row">
+                <label>Alcoholic drink:</label>
+                <input id="dinner-alcohol" type="text">
+                <input id="dinner-alcohol-desc" type="text" placeholder="Description">
+              </div>
+              <div class="row">
+                <label>Cold drink:</label>
+                <input id="dinner-cold" type="text">
+                <input id="dinner-cold-desc" type="text" placeholder="Description">
+              </div>
+            </div>
+
+            <div class="save-bar">
+              <button class="btn primary" id="save-food">Save Food Diary</button>
+              <button class="btn" id="clear-food">Clear</button>
+            </div>
+
+           <p class="hint">Food diary is saved per destination and includes breakfast, lunch, and dinner entries per day.</p>
+</div>
+
+          <!-- Notes tab -->
+          <div id="tab-notes" class="tab-panel">
+            <textarea id="notes-text" class="textarea"
+              placeholder="Anything else to remember (tickets, packing, misc)"></textarea>
+            <div class="save-bar">
+              <button class="btn primary" id="save-notes">Save Notes</button>
+              <button class="btn" id="clear-notes">Clear</button>
+            </div>
+          </div>
+
+          <!-- Tips tab -->
+          <div id="tab-tips" class="tab-panel">
+            <textarea id="tips-text" class="textarea"
+              placeholder="Write any travel tips, local secrets, or reminders here..."></textarea>
+            <div class="save-bar">
+              <button class="btn primary" id="save-tips">Save Tips</button>
+              <button class="btn" id="clear-tips">Clear</button>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    // After the popup’s HTML is placed in the DOM, wire up its logic
+    function initPopupHandlers(container, d){
+      const name = d.name;
+      const toast = container.querySelector('.saved-toast');
+      const plan = loadPlan(name);
+
+      // Tabs
+      // Main tabs (only buttons with data-tab — top level only)
+const mainTabBtns = container.querySelectorAll('.tab-btn[data-tab]');
+mainTabBtns.forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    mainTabBtns.forEach(b=>b.classList.remove('active'));
+    // Only top-level tab panels
+    container.querySelectorAll(':scope > .tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    const panel = container.querySelector('#'+btn.dataset.tab);
+    if (panel) panel.classList.add('active');
+  });
+});
+
+
+
+window.renderMap = renderMap;
+
+      // DAYS TAB
+      const daysInput = container.querySelector('#days-input');
+      const applyDaysBtn = container.querySelector('#apply-days');
+      const rebuildDaySelector = ()=>{
+        const daySelect = container.querySelector('#day-select');
+        if (!daySelect) return;
+        const newDays = Math.max(1, Number(daysInput.value||1));
+        // Expand/trim activities
+        for (let i=1; i<=newDays; i++){
+          if (!(i in plan.activities)) plan.activities[i] = "";
+        }
+        Object.keys(plan.activities).map(k=>+k).filter(k=>k>newDays).forEach(k=>delete plan.activities[k]);
+        // Rebuild
+        daySelect.innerHTML = Array.from({length: newDays}, (_,i)=>`<option value="${i+1}">Day ${i+1}</option>`).join("");
+        // Update default nights if user hasn’t customized
+        const nightsEl = container.querySelector('#nights');
+        if (nightsEl && (!plan.hotel.nights || plan.hotel.nights === Math.max(1, plan.days - 1))) {
+          nightsEl.value = Math.max(1, newDays - 1);
+        }
+      };
+
+      applyDaysBtn.addEventListener('click', ()=>{
+        plan.days = Math.max(1, Number(daysInput.value||1));
+        rebuildDaySelector();
+        savePlan(name, plan);
+        showSaved(toast);
+      });
+
+      // DAILY PLAN TAB
+      const daySelect = container.querySelector('#day-select');
+      const prevBtn = container.querySelector('#prev-day');
+      const nextBtn = container.querySelector('#next-day');
+      const dayArea = container.querySelector('#day-activities');
+      const saveDayBtn = container.querySelector('#save-day');
+      const clearDayBtn = container.querySelector('#clear-day');
+
+      const loadDayText = ()=>{
+        const day = Number(daySelect?.value||1);
+        dayArea.value = plan.activities[day] ?? "";
+      };
+      const saveDayText = ()=>{
+        const day = Number(daySelect?.value||1);
+        plan.activities[day] = dayArea.value;
+        savePlan(name, plan);
+        showSaved(toast);
+      };
+
+      if (daySelect){
+        daySelect.addEventListener('change', ()=>{ saveDayText(); loadDayText(); });
+        prevBtn.addEventListener('click', ()=>{
+          const v = Number(daySelect.value||1);
+          if (v>1){ saveDayText(); daySelect.value = String(v-1); loadDayText(); }
+        });
+        nextBtn.addEventListener('click', ()=>{
+          const v = Number(daySelect.value||1);
+          const max = Math.max(1, Number(daysInput.value||plan.days||1));
+          if (v<max){ saveDayText(); daySelect.value = String(v+1); loadDayText(); }
+        });
+      }
+      saveDayBtn?.addEventListener('click', saveDayText);
+      clearDayBtn?.addEventListener('click', ()=>{ dayArea.value = ""; saveDayText(); });
+
+      // STAY & BUDGET TAB
+      const hotelName = container.querySelector('#hotel-name');
+      const currency = container.querySelector('#currency');
+      const nightly = container.querySelector('#nightly');
+      const nights = container.querySelector('#nights');
+      const total = container.querySelector('#hotel-total');
+      const saveHotelBtn = container.querySelector('#save-hotel');
+      const clearHotelBtn = container.querySelector('#clear-hotel');
+      const hotelNotes = container.querySelector('#hotel-notes');
+if (hotelNotes) hotelNotes.value = plan.hotel.notes || "";
+      
+
+      // Seed values
+      if (hotelName) hotelName.value = plan.hotel.name || "";
+      if (currency) currency.value = plan.hotel.currency || "GBP";
+      if (nightly) nightly.value = plan.hotel.nightly || "";
+      if (nights) nights.value = plan.hotel.nights || Math.max(1, (plan.days|0)-1 || 1);
+
+      const renderTotal = ()=>{
+        const n = Number(nightly?.value||0);
+        const k = Math.max(1, Number(nights?.value||1));
+        const curr = currency?.value || "GBP";
+        if (n > 0 && k > 0) {
+          total.textContent = `${curr} ${(n * k).toLocaleString(undefined,{maximumFractionDigits:0})}`;
+        } else {
+          total.textContent = "—";
+        }
+      };
+      nightly?.addEventListener('input', renderTotal);
+      nights?.addEventListener('input', renderTotal);
+      currency?.addEventListener('change', renderTotal);
+      renderTotal();
+
+      const saveHotel = ()=>{
+        plan.hotel.name = hotelName?.value || "";
+        plan.hotel.currency = currency?.value || "GBP";
+        plan.hotel.nightly = nightly?.value || "";
+        plan.hotel.nights = Math.max(1, Number(nights?.value||1));
+        plan.hotel.notes = hotelNotes?.value || "";
+        savePlan(name, plan);
+        showSaved(toast);
+      };
+      saveHotelBtn?.addEventListener('click', saveHotel);
+      clearHotelBtn?.addEventListener('click', ()=>{
+        if (hotelName) hotelName.value = "";
+        if (currency) currency.value = "GBP";
+        if (nightly) nightly.value = "";
+        if (nights) nights.value = Math.max(1, (plan.days|0)-1 || 1);
+        if (hotelNotes) hotelNotes.value = "";
+        saveHotel();
+        renderTotal();
+      });
+
+// BUDGET SUB-TABS
+      // BUDGET SUB-TABS (Cheap / Medium / Luxury)
+      const bButtons = container.querySelectorAll('.budget-subtabs .tab-btn');
+      const bPanels = {
+        'tab-cheap': container.querySelector('#tab-cheap'),
+        'tab-medium': container.querySelector('#tab-medium'),
+        'tab-luxury': container.querySelector('#tab-luxury')
+      };
+
+      bButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          bButtons.forEach(b => b.classList.remove('active'));
+          Object.values(bPanels).forEach(p => p && p.classList.remove('active'));
+          btn.classList.add('active');
+          const panel = bPanels[btn.dataset.btab];
+          if (panel) panel.classList.add('active');
+        });
+      });
+
+      // Ensure budget structure exists (cheap + luxury; medium stays in plan.hotel)
+      if (!plan.budget) {
+        plan.budget = {
+          cheap:  { name:"", currency: plan.hotel.currency || "GBP", price:"", nights:"", notes:"" },
+          luxury: { name:"", currency: plan.hotel.currency || "GBP", price:"", nights:"", notes:"" }
+        };
+      }
+
+      // Helper to auto-calc totals for cheap/luxury
+      function wireOptionTotal(prefix, totalId) {
+        const priceEl  = container.querySelector(`#${prefix}-price`);
+        const nightsEl = container.querySelector(`#${prefix}-nights`);
+        const totalEl  = container.querySelector(`#${totalId}`);
+
+        function render() {
+          const price  = Number(priceEl?.value || 0);
+          const nights = Math.max(1, Number(nightsEl?.value || 1));
+          if (price > 0 && nights > 0) {
+            const currencyEl = container.querySelector(`#${prefix}-currency`);
+            const curr = currencyEl?.value || "GBP";
+            totalEl.textContent = `${curr} ${(price * nights).toLocaleString(undefined,{maximumFractionDigits:0})}`;
+          } else {
+            totalEl.textContent = "—";
+          }
+        }
+
+        priceEl?.addEventListener('input', render);
+        nightsEl?.addEventListener('input', render);
+        const currEl = container.querySelector(`#${prefix}-currency`);
+        currEl?.addEventListener('change', render);
+        render();
+      }
+
+      // Seed CHEAP fields
+      const cheap = plan.budget.cheap;
+      const cheapName      = container.querySelector('#cheap-name');
+      const cheapCurrency  = container.querySelector('#cheap-currency');
+      const cheapPrice     = container.querySelector('#cheap-price');
+      const cheapNights    = container.querySelector('#cheap-nights');
+      const cheapNotes     = container.querySelector('#cheap-notes');
+
+      if (cheapName)     cheapName.value     = cheap.name || "";
+      if (cheapCurrency) cheapCurrency.value = cheap.currency || (plan.hotel.currency || "GBP");
+      if (cheapPrice)    cheapPrice.value    = cheap.price || "";
+      if (cheapNights)   cheapNights.value   = cheap.nights || plan.hotel.nights || Math.max(1,(plan.days|0)-1||1);
+      if (cheapNotes)    cheapNotes.value    = cheap.notes || "";
+
+      wireOptionTotal('cheap','cheap-total');
+
+      // Seed LUXURY fields
+      const luxury = plan.budget.luxury;
+      const luxuryName      = container.querySelector('#luxury-name');
+      const luxuryCurrency  = container.querySelector('#luxury-currency');
+      const luxuryPrice     = container.querySelector('#luxury-price');
+      const luxuryNights    = container.querySelector('#luxury-nights');
+      const luxuryNotes     = container.querySelector('#luxury-notes');
+
+      if (luxuryName)     luxuryName.value     = luxury.name || "";
+      if (luxuryCurrency) luxuryCurrency.value = luxury.currency || (plan.hotel.currency || "GBP");
+      if (luxuryPrice)    luxuryPrice.value    = luxury.price || "";
+      if (luxuryNights)   luxuryNights.value   = luxury.nights || plan.hotel.nights || Math.max(1,(plan.days|0)-1||1);
+      if (luxuryNotes)    luxuryNotes.value    = luxury.notes || "";
+
+      wireOptionTotal('luxury','luxury-total');
+
+      // Save CHEAP + LUXURY options
+      const saveBudgetBtn = container.querySelector('#save-budget');
+      saveBudgetBtn?.addEventListener('click', () => {
+        plan.budget.cheap = {
+          name:      cheapName?.value || "",
+          currency:  cheapCurrency?.value || (plan.hotel.currency || "GBP"),
+          price:     cheapPrice?.value || "",
+          nights:    cheapNights?.value || "",
+          notes:     cheapNotes?.value || ""
+        };
+        plan.budget.luxury = {
+          name:      luxuryName?.value || "",
+          currency:  luxuryCurrency?.value || (plan.hotel.currency || "GBP"),
+          price:     luxuryPrice?.value || "",
+          nights:    luxuryNights?.value || "",
+          notes:     luxuryNotes?.value || ""
+        };
+
+        savePlan(name, plan);
+        showSaved(toast);
+      });
+
+      // FOOD TAB
+// === FOOD TAB (per day + subtabs) ===
+const foodDaySelect = container.querySelector('#food-day-select');
+const saveFoodBtn   = container.querySelector('#save-food');
+const clearFoodBtn  = container.querySelector('#clear-food');
+
+// Build day options
+if (foodDaySelect) {
+  foodDaySelect.innerHTML = Array.from({length: plan.days}, (_,i)=>`<option value="${i+1}">Day ${i+1}</option>`).join('');
+  foodDaySelect.value = "1";
+}
+
+function ensureFoodDay(day){
+  if (!plan.food[day]) {
+    plan.food[day] = {
+      breakfast: { dish:"", hot:"", cold:"", description:"" },
+      lunch:     { dish:"", hot:"", cold:"", description:"" },
+      dinner:    { starter:"", main:"", dessert:"", alcoholic:"", cold:"", description:"" }
+    };
+  }
+}
+
+const setVal = (sel, v)=>{ const el = container.querySelector(sel); if (el) el.value = v || ""; };
+const getVal = (sel)=> (container.querySelector(sel)?.value ?? "");
+
+// Load inputs for a given day
+function loadFoodForDay(day){
+  ensureFoodDay(day);
+  const f = plan.food[day];
+
+  // breakfast
+  setVal('#breakfast-dish', f.breakfast.dish);
+  setVal('#breakfast-dish-desc', f.breakfast.description);
+  setVal('#breakfast-hot', f.breakfast.hot);
+  setVal('#breakfast-hot-desc', f.breakfast.hotDescription);
+  setVal('#breakfast-cold', f.breakfast.cold);
+  setVal('#breakfast-cold-desc', f.breakfast.coldDescription);
+
+  // lunch
+  setVal('#lunch-dish', f.lunch.dish);
+  setVal('#lunch-dish-desc', f.lunch.description);
+  setVal('#lunch-hot', f.lunch.hot);
+  setVal('#lunch-hot-desc', f.lunch.hotDescription);
+  setVal('#lunch-cold', f.lunch.cold);
+  setVal('#lunch-cold-desc', f.lunch.coldDescription);
+
+  // dinner
+  setVal('#dinner-starter', f.dinner.starter);
+  setVal('#dinner-starter-desc', f.dinner.starterDescription);
+  setVal('#dinner-main', f.dinner.main);
+  setVal('#dinner-main-desc', f.dinner.mainDescription);
+  setVal('#dinner-dessert', f.dinner.dessert);
+  setVal('#dinner-dessert-desc', f.dinner.dessertDescription);
+  setVal('#dinner-alcohol', f.dinner.alcoholic);
+  setVal('#dinner-alcohol-desc', f.dinner.alcoholDescription);
+  setVal('#dinner-cold', f.dinner.cold);
+  setVal('#dinner-cold-desc', f.dinner.coldDescription);
+}
+
+// Read inputs and save into plan for a given day
+function saveFoodForDay(day){
+  ensureFoodDay(day);
+  plan.food[day] = {
+    breakfast: {
+      dish: getVal('#breakfast-dish'),
+      description: getVal('#breakfast-dish-desc'),
+      hot: getVal('#breakfast-hot'),
+      hotDescription: getVal('#breakfast-hot-desc'),
+      cold: getVal('#breakfast-cold'),
+      coldDescription: getVal('#breakfast-cold-desc')
+    },
+    lunch: {
+      dish: getVal('#lunch-dish'),
+      description: getVal('#lunch-dish-desc'),
+      hot: getVal('#lunch-hot'),
+      hotDescription: getVal('#lunch-hot-desc'),
+      cold: getVal('#lunch-cold'),
+      coldDescription: getVal('#lunch-cold-desc')
+    },
+    dinner: {
+      starter: getVal('#dinner-starter'),
+      starterDescription: getVal('#dinner-starter-desc'),
+      main: getVal('#dinner-main'),
+      mainDescription: getVal('#dinner-main-desc'),
+      dessert: getVal('#dinner-dessert'),
+      dessertDescription: getVal('#dinner-dessert-desc'),
+      alcoholic: getVal('#dinner-alcohol'),
+      alcoholDescription: getVal('#dinner-alcohol-desc'),
+      cold: getVal('#dinner-cold'),
+      coldDescription: getVal('#dinner-cold-desc'),
+      description: getVal('#dinner-desc')  // optional overall notes
+    }
+  };
+}
+
+let currentFoodDay = Number(foodDaySelect?.value || 1);
+loadFoodForDay(currentFoodDay);
+
+// Switch days (auto-save previous day)
+foodDaySelect?.addEventListener('change', ()=>{
+  saveFoodForDay(currentFoodDay);
+  savePlan(name, plan);
+  currentFoodDay = Number(foodDaySelect.value || 1);
+  loadFoodForDay(currentFoodDay);
+  showSaved(toast);
+});
+
+// Save/Clear buttons
+saveFoodBtn?.addEventListener('click', ()=>{
+  saveFoodForDay(currentFoodDay);
+  savePlan(name, plan);
+  showSaved(toast);
+});
+
+clearFoodBtn?.addEventListener('click', ()=>{
+  // clear inputs on screen
+  ['#breakfast-dish','#breakfast-hot','#breakfast-cold','#breakfast-desc',
+   '#lunch-dish','#lunch-hot','#lunch-cold','#lunch-desc',
+   '#dinner-starter','#dinner-main','#dinner-dessert','#dinner-alcohol','#dinner-cold','#dinner-desc'
+  ].forEach(sel=> setVal(sel,""));
+  // clear in plan for this day
+  plan.food[currentFoodDay] = {
+    breakfast: { dish:"", hot:"", cold:"", description:"" },
+    lunch:     { dish:"", hot:"", cold:"", description:"" },
+    dinner:    { starter:"", main:"", dessert:"", alcoholic:"", cold:"", description:"" }
+  };
+  savePlan(name, plan);
+  showSaved(toast);
+});
+
+// Food subtabs (Breakfast/Lunch/Dinner)
+const subButtons = container.querySelectorAll('.food-subtabs .tab-btn');
+function activateSubtab(id){
+  subButtons.forEach(b=>b.classList.remove('active'));
+  container.querySelectorAll('#tab-breakfast,#tab-lunch,#tab-dinner').forEach(p=>p.classList.remove('active'));
+  container.querySelector(`.food-subtabs .tab-btn[data-subtab="${id}"]`)?.classList.add('active');
+  container.querySelector('#'+id)?.classList.add('active');
+}
+subButtons.forEach(btn=>{
+  btn.addEventListener('click', ()=> activateSubtab(btn.dataset.subtab));
+});
+
+
+      // NOTES TAB
+      const notesArea = container.querySelector('#notes-text');
+      notesArea.value = plan.notes || "";
+      const saveNotesBtn = container.querySelector('#save-notes');
+      const clearNotesBtn = container.querySelector('#clear-notes');
+      saveNotesBtn.addEventListener('click', ()=>{
+        plan.notes = notesArea.value;
+        savePlan(name, plan);
+        showSaved(toast);
+      });
+      clearNotesBtn.addEventListener('click', ()=>{
+        notesArea.value = "";
+        plan.notes = "";
+        savePlan(name, plan);
+        showSaved(toast);
+      });
+
+      // TIPS TAB
+const tipsArea = container.querySelector('#tips-text');
+tipsArea.value = plan.tips || "";
+const saveTipsBtn = container.querySelector('#save-tips');
+const clearTipsBtn = container.querySelector('#clear-tips');
+saveTipsBtn.addEventListener('click', ()=>{
+  plan.tips = tipsArea.value;
+  savePlan(name, plan);
+  showSaved(toast);
+});
+clearTipsBtn.addEventListener('click', ()=>{
+  tipsArea.value = "";
+  plan.tips = "";
+  savePlan(name, plan);
+  showSaved(toast);
+});
+
+      // Initialise daily plan UI
+      daysInput.value = Math.max(1, Number(plan.days||1));
+      // Build selector & load current day content
+      (function initDaily(){
+        const daySelect = container.querySelector('#day-select');
+        if (!daySelect) return;
+        daySelect.innerHTML = Array.from({length: plan.days}, (_,i)=>`<option value="${i+1}">Day ${i+1}</option>`).join("");
+        daySelect.value = "1";
+        dayArea.value = plan.activities[1] ?? "";
+      })();
+
+      // Auto-save on popup close
+      const popup = container.closest('.leaflet-popup');
+      if (popup){
+        const onClose = ()=>{
+          // Save current pieces
+          plan.days = Math.max(1, Number(daysInput.value||1));
+          plan.notes = notesArea.value;
+          const currentDay = Number((container.querySelector('#day-select')?.value)||1);
+          plan.activities[currentDay] = dayArea.value;
+
+          // Hotel panel save (non-destructive)
+          plan.hotel.name = container.querySelector('#hotel-name')?.value || plan.hotel.name || "";
+          plan.hotel.currency = container.querySelector('#currency')?.value || plan.hotel.currency || "GBP";
+          plan.hotel.nightly = container.querySelector('#nightly')?.value || plan.hotel.nightly || "";
+          plan.hotel.nights = Math.max(1, Number(container.querySelector('#nights')?.value || plan.hotel.nights || 1));
+          plan.hotel.notes = container.querySelector('#hotel-notes')?.value || plan.hotel.notes || "";
+
+          savePlan(name, plan);
+          popup.removeEventListener('transitionend', onClose);
+        };
+        popup.addEventListener('transitionend', onClose);
+      }
+    }
+
+    function showSaved(toastEl){
+      if (!toastEl) return;
+      toastEl.classList.add('show');
+      setTimeout(()=>toastEl.classList.remove('show'), 1200);
+    }
+
+    // === HOLIDAY DESTINATIONS ===
+    const destinations = [
 
     // North America
            {
@@ -1976,1021 +3147,83 @@ const destinations = Array.isArray(window.destinations) && window.destinations.l
       },
 
     ];
-function storageKey(name) {
-  return `tripPlan:${name}`;
-}
 
-// --------------------------
-// Food diary defaults
-// --------------------------
-const EMPTY_FOOD_DAY = {
-  breakfast: { dish:"", description:"", hot:"", hotDescription:"", cold:"", coldDescription:"" },
-  lunch:     { dish:"", description:"", hot:"", hotDescription:"", cold:"", coldDescription:"" },
-  dinner:    { starter:"", starterDescription:"", main:"", mainDescription:"", dessert:"", dessertDescription:"", alcoholic:"", alcoholDescription:"", cold:"", coldDescription:"" }
-};
-function cloneFoodDay() {
-  return JSON.parse(JSON.stringify(EMPTY_FOOD_DAY));
-}
-
-// --------------------------
-// Load / save plans
-// --------------------------
-function loadPlan(name) {
-  const raw = localStorage.getItem(storageKey(name));
-  const base = {
-    days: 1,
-    activities: { 1: "" },
-    notes: "",
-    tips: "",
-    hotel: { name:"", currency:"GBP", nightly:"", nights: 1, notes:"" },
-    budget: {
-      cheap:  { name:"", currency:"GBP", price:"", nights:"", notes:"" },
-      luxury: { name:"", currency:"GBP", price:"", nights:"", notes:"" }
-    },
-    food: {}
-  };
-
-  let plan;
-  try { plan = raw ? JSON.parse(raw) : base; } catch { plan = base; }
-
-  if (!plan.activities) plan.activities = { 1: "" };
-  if (typeof plan.days !== "number" || plan.days < 1) plan.days = 1;
-  if (typeof plan.notes !== "string") plan.notes = "";
-  if (typeof plan.tips !== "string") plan.tips = "";
-
-  if (!plan.hotel) {
-    plan.hotel = { name:"", currency:"GBP", nightly:"", nights: Math.max(1, (plan.days|0)-1 || 1), notes:"" };
-  } else {
-    if (!("name" in plan.hotel)) plan.hotel.name = "";
-    if (!("currency" in plan.hotel)) plan.hotel.currency = "GBP";
-    if (!("nightly" in plan.hotel)) plan.hotel.nightly = "";
-    if (!("nights" in plan.hotel)) plan.hotel.nights = Math.max(1, (plan.days|0)-1 || 1);
-    if (!("notes" in plan.hotel)) plan.hotel.notes = "";
-  }
-
-  // normalize budget container
-  if (!plan.budget) {
-    plan.budget = {
-      cheap:  { name:"", currency: plan.hotel.currency || "GBP", price:"", nights:"", notes:"" },
-      luxury: { name:"", currency: plan.hotel.currency || "GBP", price:"", nights:"", notes:"" }
-    };
-  } else {
-    if (!plan.budget.cheap) plan.budget.cheap = { name:"", currency: plan.hotel.currency || "GBP", price:"", nights:"", notes:"" };
-    if (!plan.budget.luxury) plan.budget.luxury = { name:"", currency: plan.hotel.currency || "GBP", price:"", nights:"", notes:"" };
-  }
-
-  // old single-day migration support (optional)
-  if (plan.foodDiary && !plan.food) {
-    plan.food = { 1: cloneFoodDay() };
-    delete plan.foodDiary;
-  }
-
-  if (!plan.food || typeof plan.food !== "object" || Array.isArray(plan.food)) plan.food = {};
-  for (let i = 1; i <= plan.days; i++) {
-    if (!plan.food[i] || typeof plan.food[i] !== "object") {
-      plan.food[i] = cloneFoodDay();
-      continue;
-    }
-    plan.food[i].breakfast = { ...cloneFoodDay().breakfast, ...(plan.food[i].breakfast || {}) };
-    plan.food[i].lunch     = { ...cloneFoodDay().lunch, ...(plan.food[i].lunch || {}) };
-    plan.food[i].dinner    = { ...cloneFoodDay().dinner, ...(plan.food[i].dinner || {}) };
-  }
-
-  return plan;
-}
-
-function deepClean(obj) {
-  if (obj === null || obj === undefined) return undefined;
-  if (typeof obj === "string") {
-    const trimmed = obj.trim();
-    return trimmed === "" ? undefined : trimmed;
-  }
-  if (Array.isArray(obj)) {
-    const arr = obj.map(deepClean).filter(v => v !== undefined);
-    return arr.length ? arr : undefined;
-  }
-  if (typeof obj === "object") {
-    const out = {};
-    for (const [k, v] of Object.entries(obj)) {
-      const cleaned = deepClean(v);
-      if (cleaned !== undefined) out[k] = cleaned;
-    }
-    return Object.keys(out).length ? out : undefined;
-  }
-  return obj;
-}
-
-function prunePlanForStorage(plan) {
-  const copy = JSON.parse(JSON.stringify(plan));
-
-  if (!copy.activities) copy.activities = { 1: "" };
-  if (!copy.hotel) copy.hotel = { name:"", currency:"GBP", nightly:"", nights:1, notes:"" };
-  if (!copy.budget) copy.budget = { cheap:{}, luxury:{} };
-  if (!copy.food) copy.food = {};
-
-  const cleaned = deepClean(copy) || {};
-
-  if (!cleaned.days) cleaned.days = plan.days || 1;
-  if (!cleaned.activities) cleaned.activities = plan.activities || { 1: "" };
-  if (!cleaned.hotel) cleaned.hotel = plan.hotel || { name:"", currency:"GBP", nightly:"", nights:1, notes:"" };
-  if (!cleaned.budget) cleaned.budget = plan.budget || { cheap:{}, luxury:{} };
-  if (!cleaned.food) cleaned.food = plan.food || {};
-
-  return cleaned;
-}
-
-// --------------------------
-// Firebase-safe sync (your same approach)
-// --------------------------
-const pendingUploads = new Map();
-const lastUploadedHash = new Map();
-
-function hashString(s) {
-  let h = 2166136261;
-  for (let i = 0; i < s.length; i++) h = (h ^ s.charCodeAt(i)) * 16777619;
-  return String(h >>> 0);
-}
-
-function scheduleFirestoreUpload(destName, planObj) {
-  const auth = window.firebaseAuth;
-  const db = window.firebaseDB;
-  const user = auth?.currentUser;
-  if (!user || !db) return;
-
-  const json = JSON.stringify(planObj);
-  const h = hashString(json);
-  if (lastUploadedHash.get(destName) === h) return;
-
-  if (json.length > 900_000) {
-    console.warn(`⚠️ Skipping Firestore upload for "${destName}" (plan too large).`);
-    return;
-  }
-
-  if (pendingUploads.has(destName)) clearTimeout(pendingUploads.get(destName));
-  pendingUploads.set(destName, setTimeout(async () => {
-    try {
-      const ref = window.doc(db, "users", user.uid, "plans", destName);
-      const payload = { name: destName, data: planObj, updatedAt: planObj.updatedAt || Date.now() };
-      await window.setDoc(ref, payload, { merge: true });
-      lastUploadedHash.set(destName, h);
-    } catch (err) {
-      console.warn("Firestore upload failed:", destName, err);
-    }
-  }, 1200));
-}
-
-async function hydratePlanFromFirebaseIfSignedIn(destName) {
-  const auth = window.firebaseAuth;
-  const db = window.firebaseDB;
-  const user = auth?.currentUser;
-  if (!user || !db) return;
-
-  try {
-    const ref = window.doc(db, "users", user.uid, "plans", destName);
-    const snap = await window.getDoc(ref);
-    if (!snap.exists()) return;
-
-    const remoteDoc = snap.data() || {};
-    const remotePlan = remoteDoc.data;
-    const remoteUpdatedAt = remoteDoc.updatedAt || 0;
-    if (!remotePlan) return;
-
-    const localRaw = localStorage.getItem(storageKey(destName));
-    let localPlan = null;
-    try { localPlan = localRaw ? JSON.parse(localRaw) : null; } catch {}
-
-    const localUpdatedAt = localPlan?.updatedAt || 0;
-
-    if (!localPlan || remoteUpdatedAt > localUpdatedAt) {
-      const merged = { ...remotePlan, updatedAt: remoteUpdatedAt };
-      localStorage.setItem(storageKey(destName), JSON.stringify(merged));
-      lastUploadedHash.set(destName, hashString(JSON.stringify(merged)));
-      console.log(`✅ Hydrated "${destName}" from Firebase (remote newer)`);
-    }
-  } catch (err) {
-    console.warn("Hydrate failed:", destName, err);
-  }
-}
-
-// --------------------------
-// Save plan (local + firebase debounce)
-// --------------------------
-function savePlan(name, data) {
-  data.updatedAt = Date.now();
-  const pruned = prunePlanForStorage(data);
-  localStorage.setItem(storageKey(name), JSON.stringify(pruned));
-  scheduleFirestoreUpload(name, pruned);
-}
-
-function showSaved(toastEl) {
-  if (!toastEl) return;
-  toastEl.classList.add("show");
-  setTimeout(() => toastEl.classList.remove("show"), 1200);
-}
-
-// --------------------------
-// Icons
-// --------------------------
-function destinationIcon(url) {
-  const src = window.withV ? window.withV(url) : url;
-  return L.divIcon({
-    html: `<img src="${src}" alt="">`,
-    className: "destination-icon",
-    iconSize: [20, 20],
-    iconAnchor: [10, 10],
-    popupAnchor: [0, -12]
-  });
-}
-
-// --------------------------
-// POPUP HTML (your design, fixed template strings)
-// --------------------------
-function buildPopup(d) {
-  const plan = loadPlan(d.name);
-  const days = Math.max(1, Number(plan.days || 1));
-  const nightsDefault = Math.max(1, Number(plan.hotel?.nights ?? Math.max(1, days - 1)));
-
-  const dayOptions = Array.from({ length: days }, (_, i) =>
-    `<option value="${i + 1}">Day ${i + 1}</option>`
-  ).join("");
-
-  const currencies = ["GBP","EUR","USD","CAD","AUD","NZD","JPY","CNY"];
-  const currencyOptions = currencies.map(c =>
-    `<option value="${c}" ${plan.hotel.currency === c ? "selected" : ""}>${c}</option>`
-  ).join("");
-
-  const iconHtml = d.destination ? `<img src="${(window.withV ? window.withV(d.destination) : d.destination)}" alt="${d.name} icon" />` : "";
-
-  return `
-    <div class="popup" data-dest="${encodeURIComponent(d.name)}">
-      <div class="header">
-        ${iconHtml}
-        <div class="title">
-          <h3 style="margin:0 0 4px;">${d.name}</h3>
-          ${d.note ? `<p style="margin:0 0 4px;">${d.note}</p>` : ""}
-          <p style="margin:6px 0 0;">
-            <a href="https://maps.google.com/?q=${d.lat},${d.lng}" target="_blank" rel="noopener">Open in Google Maps</a>
-          </p>
-        </div>
-      </div>
-
-      <div class="tabs">
-        <button class="tab-btn active" data-tab="tab-days">Days</button>
-        <button class="tab-btn" data-tab="tab-daily">Daily Plan</button>
-        <button class="tab-btn" data-tab="tab-stay">Stay & Budget</button>
-        <button class="tab-btn" data-tab="tab-food">Food</button>
-        <button class="tab-btn" data-tab="tab-notes">Notes</button>
-        <button class="tab-btn" data-tab="tab-tips">Tips</button>
-        <span class="saved-toast" aria-live="polite">Saved</span>
-      </div>
-
-      <div id="tab-days" class="tab-panel active">
-        <div class="row">
-          <label for="days-input">Number of days:</label>
-          <input id="days-input" type="number" min="1" step="1" value="${days}">
-          <button class="btn primary" id="apply-days">Apply</button>
-        </div>
-        <p class="hint">Set how long you’ll stay. This also influences default nights for hotel total (editable).</p>
-      </div>
-
-      <div id="tab-daily" class="tab-panel">
-        <div class="day-nav">
-          <button class="btn ghost" id="prev-day" title="Previous day">&#9664;</button>
-          <label for="day-select" style="min-width:auto;">Go to:</label>
-          <select id="day-select">${dayOptions}</select>
-          <button class="btn ghost" id="next-day" title="Next day">&#9654;</button>
-        </div>
-        <textarea id="day-activities" class="textarea" placeholder="Activities for this day (times, places, tickets, restaurants, notes)..."></textarea>
-        <div class="save-bar">
-          <button class="btn primary" id="save-day">Save Day</button>
-          <button class="btn" id="clear-day">Clear Day</button>
-        </div>
-      </div>
-
-      <div id="tab-stay" class="tab-panel">
-        <div class="tabs budget-subtabs">
-          <button class="tab-btn" data-btab="tab-cheap">Cheap option</button>
-          <button class="tab-btn active" data-btab="tab-medium">Medium option (main hotel)</button>
-          <button class="tab-btn" data-btab="tab-luxury">Luxury option</button>
-        </div>
-
-        <div id="tab-medium" class="tab-panel active">
-          <h4>Main Hotel</h4>
-          <div class="row">
-            <label for="hotel-name">Hotel name (optional):</label>
-            <input id="hotel-name" type="text" value="${(plan.hotel.name||"").replace(/"/g,'&quot;')}" placeholder="e.g., Hotel Central">
-          </div>
-          <div class="row">
-            <label for="currency">Currency:</label>
-            <select id="currency">${currencyOptions}</select>
-          </div>
-          <div class="row">
-            <label for="nightly">Avg price per night:</label>
-            <input id="nightly" type="number" min="0" step="1" value="${plan.hotel.nightly||""}">
-          </div>
-          <div class="row">
-            <label for="nights">Nights:</label>
-            <input id="nights" type="number" min="1" step="1" value="${nightsDefault}">
-          </div>
-          <div class="row">
-            <label>Total (auto):</label>
-            <div id="hotel-total" aria-live="polite" style="font-weight:600;">—</div>
-          </div>
-          <textarea id="hotel-notes" class="textarea" placeholder="Notes (optional)"></textarea>
-          <div class="save-bar">
-            <button class="btn primary" id="save-hotel">Save Stay</button>
-            <button class="btn" id="clear-hotel">Clear</button>
-          </div>
-        </div>
-
-        <div id="tab-cheap" class="tab-panel">
-          <h4>Cheap option</h4>
-          <div class="row"><label>Name:</label><input id="cheap-name" type="text"></div>
-          <div class="row"><label>Currency:</label><select id="cheap-currency">${currencyOptions}</select></div>
-          <div class="row"><label>Price per night:</label><input id="cheap-price" type="number" min="0" step="1"></div>
-          <div class="row"><label>Nights:</label><input id="cheap-nights" type="number" min="1" step="1"></div>
-          <div class="row"><label>Total:</label><div id="cheap-total" style="font-weight:600;">—</div></div>
-          <textarea id="cheap-notes" class="textarea" placeholder="Notes (optional)"></textarea>
-        </div>
-
-        <div id="tab-luxury" class="tab-panel">
-          <h4>Luxury option</h4>
-          <div class="row"><label>Name:</label><input id="luxury-name" type="text"></div>
-          <div class="row"><label>Currency:</label><select id="luxury-currency">${currencyOptions}</select></div>
-          <div class="row"><label>Price per night:</label><input id="luxury-price" type="number" min="0" step="1"></div>
-          <div class="row"><label>Nights:</label><input id="luxury-nights" type="number" min="1" step="1"></div>
-          <div class="row"><label>Total:</label><div id="luxury-total" style="font-weight:600;">—</div></div>
-          <textarea id="luxury-notes" class="textarea" placeholder="Notes (optional)"></textarea>
-        </div>
-
-        <div class="save-bar">
-          <button class="btn primary" id="save-budget">Save Hotel Options</button>
-        </div>
-      </div>
-
-      <div id="tab-food" class="tab-panel">
-        <div class="day-nav">
-          <label for="food-day-select">Day:</label>
-          <select id="food-day-select"></select>
-        </div>
-
-        <div class="tabs food-subtabs">
-          <button class="tab-btn active" data-subtab="tab-breakfast">Breakfast</button>
-          <button class="tab-btn" data-subtab="tab-lunch">Lunch</button>
-          <button class="tab-btn" data-subtab="tab-dinner">Dinner</button>
-        </div>
-
-        <div id="tab-breakfast" class="tab-panel active">
-          <div class="row"><label>Dish:</label><input id="breakfast-dish" type="text"><input id="breakfast-dish-desc" type="text" placeholder="Description"></div>
-          <div class="row"><label>Hot drink:</label><input id="breakfast-hot" type="text"><input id="breakfast-hot-desc" type="text" placeholder="Description"></div>
-          <div class="row"><label>Cold drink:</label><input id="breakfast-cold" type="text"><input id="breakfast-cold-desc" type="text" placeholder="Description"></div>
-        </div>
-
-        <div id="tab-lunch" class="tab-panel">
-          <div class="row"><label>Dish:</label><input id="lunch-dish" type="text"><input id="lunch-dish-desc" type="text" placeholder="Description"></div>
-          <div class="row"><label>Hot drink:</label><input id="lunch-hot" type="text"><input id="lunch-hot-desc" type="text" placeholder="Description"></div>
-          <div class="row"><label>Cold drink:</label><input id="lunch-cold" type="text"><input id="lunch-cold-desc" type="text" placeholder="Description"></div>
-        </div>
-
-        <div id="tab-dinner" class="tab-panel">
-          <div class="row"><label>Starter:</label><input id="dinner-starter" type="text"><input id="dinner-starter-desc" type="text" placeholder="Description"></div>
-          <div class="row"><label>Main course:</label><input id="dinner-main" type="text"><input id="dinner-main-desc" type="text" placeholder="Description"></div>
-          <div class="row"><label>Dessert:</label><input id="dinner-dessert" type="text"><input id="dinner-dessert-desc" type="text" placeholder="Description"></div>
-          <div class="row"><label>Alcoholic drink:</label><input id="dinner-alcohol" type="text"><input id="dinner-alcohol-desc" type="text" placeholder="Description"></div>
-          <div class="row"><label>Cold drink:</label><input id="dinner-cold" type="text"><input id="dinner-cold-desc" type="text" placeholder="Description"></div>
-        </div>
-
-        <div class="save-bar">
-          <button class="btn primary" id="save-food">Save Food Diary</button>
-          <button class="btn" id="clear-food">Clear</button>
-        </div>
-
-        <p class="hint">Food diary is saved per destination and includes breakfast, lunch, and dinner entries per day.</p>
-      </div>
-
-      <div id="tab-notes" class="tab-panel">
-        <textarea id="notes-text" class="textarea" placeholder="Anything else to remember (tickets, packing, misc)"></textarea>
-        <div class="save-bar">
-          <button class="btn primary" id="save-notes">Save Notes</button>
-          <button class="btn" id="clear-notes">Clear</button>
-        </div>
-      </div>
-
-      <div id="tab-tips" class="tab-panel">
-        <textarea id="tips-text" class="textarea" placeholder="Write any travel tips, local secrets, or reminders here..."></textarea>
-        <div class="save-bar">
-          <button class="btn primary" id="save-tips">Save Tips</button>
-          <button class="btn" id="clear-tips">Clear</button>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-// --------------------------
-// Popup handlers (your logic, corrected)
-// --------------------------
-function initPopupHandlers(container, d) {
-  const name = d.name;
-  const toast = container.querySelector(".saved-toast");
-  const plan = loadPlan(name);
-
-  // Main tabs
-  const mainTabBtns = container.querySelectorAll('.tab-btn[data-tab]');
-  mainTabBtns.forEach(btn => {
-    btn.addEventListener("click", () => {
-      mainTabBtns.forEach(b => b.classList.remove("active"));
-      container.querySelectorAll(':scope > .tab-panel').forEach(p => p.classList.remove("active"));
-      btn.classList.add("active");
-      const panel = container.querySelector("#" + btn.dataset.tab);
-      if (panel) panel.classList.add("active");
-    });
-  });
-
-  // DAYS
-  const daysInput = container.querySelector("#days-input");
-  const applyDaysBtn = container.querySelector("#apply-days");
-
-  const rebuildDaySelector = () => {
-    const newDays = Math.max(1, Number(daysInput?.value || 1));
-
-    // activities
-    for (let i = 1; i <= newDays; i++) {
-      if (!(i in plan.activities)) plan.activities[i] = "";
-    }
-    Object.keys(plan.activities).map(k => +k).filter(k => k > newDays).forEach(k => delete plan.activities[k]);
-
-    // day-select
-    const daySelect = container.querySelector("#day-select");
-    if (daySelect) {
-      daySelect.innerHTML = Array.from({ length: newDays }, (_, i) => `<option value="${i + 1}">Day ${i + 1}</option>`).join("");
-      if (!daySelect.value) daySelect.value = "1";
-    }
-
-    // food-day-select
-    const foodDaySelect = container.querySelector("#food-day-select");
-    if (foodDaySelect) {
-      foodDaySelect.innerHTML = Array.from({ length: newDays }, (_, i) => `<option value="${i + 1}">Day ${i + 1}</option>`).join("");
-      if (!foodDaySelect.value) foodDaySelect.value = "1";
-    }
-
-    // nights default tweak
-    const nightsEl = container.querySelector("#nights");
-    if (nightsEl && (!plan.hotel.nights || plan.hotel.nights === Math.max(1, plan.days - 1))) {
-      nightsEl.value = String(Math.max(1, newDays - 1));
-    }
-  };
-
-  applyDaysBtn?.addEventListener("click", () => {
-    plan.days = Math.max(1, Number(daysInput?.value || 1));
-    if (!plan.food || typeof plan.food !== "object") plan.food = {};
-    for (let i = 1; i <= plan.days; i++) if (!plan.food[i]) plan.food[i] = cloneFoodDay();
-    rebuildDaySelector();
-    savePlan(name, plan);
-    showSaved(toast);
-  });
-
-  // DAILY PLAN
-  const daySelect = container.querySelector("#day-select");
-  const prevBtn = container.querySelector("#prev-day");
-  const nextBtn = container.querySelector("#next-day");
-  const dayArea = container.querySelector("#day-activities");
-
-  const loadDayText = () => {
-    const day = Number(daySelect?.value || 1);
-    dayArea.value = plan.activities[day] ?? "";
-  };
-  const saveDayText = () => {
-    const day = Number(daySelect?.value || 1);
-    plan.activities[day] = dayArea.value;
-    savePlan(name, plan);
-    showSaved(toast);
-  };
-
-  if (daySelect) {
-    daySelect.addEventListener("change", () => {
-      saveDayText();
-      loadDayText();
-    });
-    prevBtn?.addEventListener("click", () => {
-      const v = Number(daySelect.value || 1);
-      if (v > 1) {
-        saveDayText();
-        daySelect.value = String(v - 1);
-        loadDayText();
-      }
-    });
-    nextBtn?.addEventListener("click", () => {
-      const v = Number(daySelect.value || 1);
-      const max = Math.max(1, Number(daysInput?.value || plan.days || 1));
-      if (v < max) {
-        saveDayText();
-        daySelect.value = String(v + 1);
-        loadDayText();
-      }
-    });
-  }
-
-  container.querySelector("#save-day")?.addEventListener("click", saveDayText);
-  container.querySelector("#clear-day")?.addEventListener("click", () => {
-    dayArea.value = "";
-    saveDayText();
-  });
-
-  // STAY & BUDGET
-  const hotelName = container.querySelector("#hotel-name");
-  const currency = container.querySelector("#currency");
-  const nightly = container.querySelector("#nightly");
-  const nights = container.querySelector("#nights");
-  const total = container.querySelector("#hotel-total");
-  const hotelNotes = container.querySelector("#hotel-notes");
-
-  // seed hotel fields
-  if (hotelNotes) hotelNotes.value = plan.hotel.notes || "";
-  if (hotelName) hotelName.value = plan.hotel.name || "";
-  if (currency) currency.value = plan.hotel.currency || "GBP";
-  if (nightly) nightly.value = plan.hotel.nightly || "";
-  if (nights) nights.value = String(plan.hotel.nights || Math.max(1, (plan.days|0)-1 || 1));
-
-  const renderTotal = () => {
-    const n = Number(nightly?.value || 0);
-    const k = Math.max(1, Number(nights?.value || 1));
-    const curr = currency?.value || "GBP";
-    total.textContent = (n > 0 && k > 0) ? `${curr} ${(n * k).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : "—";
-  };
-
-  nightly?.addEventListener("input", renderTotal);
-  nights?.addEventListener("input", renderTotal);
-  currency?.addEventListener("change", renderTotal);
-  renderTotal();
-
-  const saveHotel = () => {
-    plan.hotel.name = hotelName?.value || "";
-    plan.hotel.currency = currency?.value || "GBP";
-    plan.hotel.nightly = nightly?.value || "";
-    plan.hotel.nights = Math.max(1, Number(nights?.value || 1));
-    plan.hotel.notes = hotelNotes?.value || "";
-    savePlan(name, plan);
-    showSaved(toast);
-  };
-
-  container.querySelector("#save-hotel")?.addEventListener("click", saveHotel);
-  container.querySelector("#clear-hotel")?.addEventListener("click", () => {
-    if (hotelName) hotelName.value = "";
-    if (currency) currency.value = "GBP";
-    if (nightly) nightly.value = "";
-    if (nights) nights.value = String(Math.max(1, (plan.days|0)-1 || 1));
-    if (hotelNotes) hotelNotes.value = "";
-    saveHotel();
-    renderTotal();
-  });
-
-  // Budget subtabs
-  const bButtons = container.querySelectorAll(".budget-subtabs .tab-btn");
-  const bPanels = {
-    "tab-cheap": container.querySelector("#tab-cheap"),
-    "tab-medium": container.querySelector("#tab-medium"),
-    "tab-luxury": container.querySelector("#tab-luxury")
-  };
-  bButtons.forEach(btn => {
-    btn.addEventListener("click", () => {
-      bButtons.forEach(b => b.classList.remove("active"));
-      Object.values(bPanels).forEach(p => p && p.classList.remove("active"));
-      btn.classList.add("active");
-      const panel = bPanels[btn.dataset.btab];
-      if (panel) panel.classList.add("active");
-    });
-  });
-
-  const cheap = plan.budget.cheap;
-  const luxury = plan.budget.luxury;
-
-  const cheapName = container.querySelector("#cheap-name");
-  const cheapCurrency = container.querySelector("#cheap-currency");
-  const cheapPrice = container.querySelector("#cheap-price");
-  const cheapNights = container.querySelector("#cheap-nights");
-  const cheapNotes = container.querySelector("#cheap-notes");
-
-  const luxuryName = container.querySelector("#luxury-name");
-  const luxuryCurrency = container.querySelector("#luxury-currency");
-  const luxuryPrice = container.querySelector("#luxury-price");
-  const luxuryNights = container.querySelector("#luxury-nights");
-  const luxuryNotes = container.querySelector("#luxury-notes");
-
-  // seed cheap/luxury
-  if (cheapName) cheapName.value = cheap.name || "";
-  if (cheapCurrency) cheapCurrency.value = cheap.currency || (plan.hotel.currency || "GBP");
-  if (cheapPrice) cheapPrice.value = cheap.price || "";
-  if (cheapNights) cheapNights.value = cheap.nights || String(plan.hotel.nights || Math.max(1,(plan.days|0)-1||1));
-  if (cheapNotes) cheapNotes.value = cheap.notes || "";
-
-  if (luxuryName) luxuryName.value = luxury.name || "";
-  if (luxuryCurrency) luxuryCurrency.value = luxury.currency || (plan.hotel.currency || "GBP");
-  if (luxuryPrice) luxuryPrice.value = luxury.price || "";
-  if (luxuryNights) luxuryNights.value = luxury.nights || String(plan.hotel.nights || Math.max(1,(plan.days|0)-1||1));
-  if (luxuryNotes) luxuryNotes.value = luxury.notes || "";
-
-  function wireOptionTotal(prefix, totalId) {
-    const priceEl = container.querySelector(`#${prefix}-price`);
-    const nightsEl = container.querySelector(`#${prefix}-nights`);
-    const totalEl = container.querySelector(`#${totalId}`);
-    const currEl = container.querySelector(`#${prefix}-currency`);
-
-    const render = () => {
-      const price = Number(priceEl?.value || 0);
-      const n = Math.max(1, Number(nightsEl?.value || 1));
-      const curr = currEl?.value || "GBP";
-      totalEl.textContent = (price > 0 && n > 0) ? `${curr} ${(price * n).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : "—";
-    };
-
-    priceEl?.addEventListener("input", render);
-    nightsEl?.addEventListener("input", render);
-    currEl?.addEventListener("change", render);
-    render();
-  }
-  wireOptionTotal("cheap", "cheap-total");
-  wireOptionTotal("luxury", "luxury-total");
-
-  container.querySelector("#save-budget")?.addEventListener("click", () => {
-    plan.budget.cheap = {
-      name: cheapName?.value || "",
-      currency: cheapCurrency?.value || (plan.hotel.currency || "GBP"),
-      price: cheapPrice?.value || "",
-      nights: cheapNights?.value || "",
-      notes: cheapNotes?.value || ""
-    };
-    plan.budget.luxury = {
-      name: luxuryName?.value || "",
-      currency: luxuryCurrency?.value || (plan.hotel.currency || "GBP"),
-      price: luxuryPrice?.value || "",
-      nights: luxuryNights?.value || "",
-      notes: luxuryNotes?.value || ""
-    };
-    savePlan(name, plan);
-    showSaved(toast);
-  });
-
-  // FOOD TAB
-  const foodDaySelect = container.querySelector("#food-day-select");
-  const saveFoodBtn = container.querySelector("#save-food");
-  const clearFoodBtn = container.querySelector("#clear-food");
-
-  if (foodDaySelect) {
-    foodDaySelect.innerHTML = Array.from({ length: plan.days }, (_, i) => `<option value="${i + 1}">Day ${i + 1}</option>`).join("");
-    foodDaySelect.value = "1";
-  }
-
-  function ensureFoodDay(day) {
-    if (!plan.food[day] || typeof plan.food[day] !== "object") plan.food[day] = cloneFoodDay();
-    plan.food[day].breakfast = { ...cloneFoodDay().breakfast, ...(plan.food[day].breakfast || {}) };
-    plan.food[day].lunch     = { ...cloneFoodDay().lunch, ...(plan.food[day].lunch || {}) };
-    plan.food[day].dinner    = { ...cloneFoodDay().dinner, ...(plan.food[day].dinner || {}) };
-  }
-
-  const setVal = (sel, v) => {
-    const el = container.querySelector(sel);
-    if (el) el.value = v || "";
-  };
-  const getVal = (sel) => (container.querySelector(sel)?.value ?? "");
-
-  function loadFoodForDay(day) {
-    ensureFoodDay(day);
-    const f = plan.food[day];
-
-    setVal("#breakfast-dish", f.breakfast.dish);
-    setVal("#breakfast-dish-desc", f.breakfast.description);
-    setVal("#breakfast-hot", f.breakfast.hot);
-    setVal("#breakfast-hot-desc", f.breakfast.hotDescription);
-    setVal("#breakfast-cold", f.breakfast.cold);
-    setVal("#breakfast-cold-desc", f.breakfast.coldDescription);
-
-    setVal("#lunch-dish", f.lunch.dish);
-    setVal("#lunch-dish-desc", f.lunch.description);
-    setVal("#lunch-hot", f.lunch.hot);
-    setVal("#lunch-hot-desc", f.lunch.hotDescription);
-    setVal("#lunch-cold", f.lunch.cold);
-    setVal("#lunch-cold-desc", f.lunch.coldDescription);
-
-    setVal("#dinner-starter", f.dinner.starter);
-    setVal("#dinner-starter-desc", f.dinner.starterDescription);
-    setVal("#dinner-main", f.dinner.main);
-    setVal("#dinner-main-desc", f.dinner.mainDescription);
-    setVal("#dinner-dessert", f.dinner.dessert);
-    setVal("#dinner-dessert-desc", f.dinner.dessertDescription);
-    setVal("#dinner-alcohol", f.dinner.alcoholic);
-    setVal("#dinner-alcohol-desc", f.dinner.alcoholDescription);
-    setVal("#dinner-cold", f.dinner.cold);
-    setVal("#dinner-cold-desc", f.dinner.coldDescription);
-  }
-
-  function saveFoodForDay(day) {
-    ensureFoodDay(day);
-    plan.food[day] = {
-      breakfast: {
-        dish: getVal("#breakfast-dish"),
-        description: getVal("#breakfast-dish-desc"),
-        hot: getVal("#breakfast-hot"),
-        hotDescription: getVal("#breakfast-hot-desc"),
-        cold: getVal("#breakfast-cold"),
-        coldDescription: getVal("#breakfast-cold-desc")
-      },
-      lunch: {
-        dish: getVal("#lunch-dish"),
-        description: getVal("#lunch-dish-desc"),
-        hot: getVal("#lunch-hot"),
-        hotDescription: getVal("#lunch-hot-desc"),
-        cold: getVal("#lunch-cold"),
-        coldDescription: getVal("#lunch-cold-desc")
-      },
-      dinner: {
-        starter: getVal("#dinner-starter"),
-        starterDescription: getVal("#dinner-starter-desc"),
-        main: getVal("#dinner-main"),
-        mainDescription: getVal("#dinner-main-desc"),
-        dessert: getVal("#dinner-dessert"),
-        dessertDescription: getVal("#dinner-dessert-desc"),
-        alcoholic: getVal("#dinner-alcohol"),
-        alcoholDescription: getVal("#dinner-alcohol-desc"),
-        cold: getVal("#dinner-cold"),
-        coldDescription: getVal("#dinner-cold-desc")
-      }
-    };
-  }
-
-  let currentFoodDay = Number(foodDaySelect?.value || 1);
-  loadFoodForDay(currentFoodDay);
-
-  foodDaySelect?.addEventListener("change", () => {
-    saveFoodForDay(currentFoodDay);
-    savePlan(name, plan);
-    currentFoodDay = Number(foodDaySelect.value || 1);
-    loadFoodForDay(currentFoodDay);
-    showSaved(toast);
-  });
-
-  saveFoodBtn?.addEventListener("click", () => {
-    saveFoodForDay(currentFoodDay);
-    savePlan(name, plan);
-    showSaved(toast);
-  });
-
-  clearFoodBtn?.addEventListener("click", () => {
-    [
-      "#breakfast-dish","#breakfast-dish-desc","#breakfast-hot","#breakfast-hot-desc","#breakfast-cold","#breakfast-cold-desc",
-      "#lunch-dish","#lunch-dish-desc","#lunch-hot","#lunch-hot-desc","#lunch-cold","#lunch-cold-desc",
-      "#dinner-starter","#dinner-starter-desc","#dinner-main","#dinner-main-desc","#dinner-dessert","#dinner-dessert-desc",
-      "#dinner-alcohol","#dinner-alcohol-desc","#dinner-cold","#dinner-cold-desc"
-    ].forEach(sel => setVal(sel, ""));
-    plan.food[currentFoodDay] = cloneFoodDay();
-    savePlan(name, plan);
-    showSaved(toast);
-  });
-
-  // Food subtabs
-  const subButtons = container.querySelectorAll(".food-subtabs .tab-btn");
-  const subPanels = ["tab-breakfast", "tab-lunch", "tab-dinner"].map(id => container.querySelector("#" + id));
-
-  function activateSubtab(id) {
-    subButtons.forEach(b => b.classList.remove("active"));
-    subPanels.forEach(p => p && p.classList.remove("active"));
-    container.querySelector(`.food-subtabs .tab-btn[data-subtab="${id}"]`)?.classList.add("active");
-    container.querySelector("#" + id)?.classList.add("active");
-  }
-  subButtons.forEach(btn => btn.addEventListener("click", () => activateSubtab(btn.dataset.subtab)));
-
-  // Notes
-  const notesArea = container.querySelector("#notes-text");
-  if (notesArea) notesArea.value = plan.notes || "";
-  container.querySelector("#save-notes")?.addEventListener("click", () => {
-    plan.notes = notesArea?.value || "";
-    savePlan(name, plan);
-    showSaved(toast);
-  });
-  container.querySelector("#clear-notes")?.addEventListener("click", () => {
-    if (notesArea) notesArea.value = "";
-    plan.notes = "";
-    savePlan(name, plan);
-    showSaved(toast);
-  });
-
-  // Tips
-  const tipsArea = container.querySelector("#tips-text");
-  if (tipsArea) tipsArea.value = plan.tips || "";
-  container.querySelector("#save-tips")?.addEventListener("click", () => {
-    plan.tips = tipsArea?.value || "";
-    savePlan(name, plan);
-    showSaved(toast);
-  });
-  container.querySelector("#clear-tips")?.addEventListener("click", () => {
-    if (tipsArea) tipsArea.value = "";
-    plan.tips = "";
-    savePlan(name, plan);
-    showSaved(toast);
-  });
-
-  // Init daily selector
-  if (daySelect) {
-    daySelect.value = "1";
-    loadDayText();
-  }
-}
-
-// --------------------------
-// Map setup + Voyager background (your “before”)
-// --------------------------
-const map = L.map("map").setView([48.5, 8], 5);
-const cartoAttr = "&copy; OpenStreetMap contributors, &copy; CARTO";
-L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+        // === MAP SETUP ===
+    const map = L.map("map").setView([48.5, 8], 5);
+   const cartoAttr = '&copy; OpenStreetMap contributors, &copy; CARTO';
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
   maxZoom: 20,
-  subdomains: "abcd",
+  subdomains: 'abcd',
   attribution: cartoAttr
 }).addTo(map);
 
-// --------------------------
-// Render map + popup hydration
-// --------------------------
-let allMarkers = [];
-let allLayerGroup;
-
-function renderMap() {
-  if (allLayerGroup) map.removeLayer(allLayerGroup);
-  allLayerGroup = L.featureGroup().addTo(map);
-  allMarkers = [];
+    function renderMap() {
+  const layer = L.featureGroup().addTo(map);
+  const markers = [];
 
   for (const d of destinations) {
     const icon = d.destination ? destinationIcon(d.destination) : undefined;
     const marker = L.marker([d.lat, d.lng], icon ? { icon } : undefined);
-    marker.destinationData = d;
-
     marker.bindPopup(buildPopup(d), { maxWidth: 600 });
 
-    marker.on("popupopen", async () => {
-      await hydratePlanFromFirebaseIfSignedIn(d.name);
-      marker.setPopupContent(buildPopup(d));
-
+    marker.on('popupopen', (e) => {
+      const el = e.popup.getElement();
       requestAnimationFrame(() => {
-        const el = marker.getPopup()?.getElement();
-        const container = el?.querySelector(".popup");
+        const container = el.querySelector('.popup');
         if (container) initPopupHandlers(container, d);
       });
     });
 
-    allLayerGroup.addLayer(marker);
-    allMarkers.push(marker);
+    layer.addLayer(marker);
+    markers.push(marker);
   }
 
-  if (allLayerGroup.getLayers().length > 0) {
-    const bounds = allLayerGroup.getBounds();
+  if (layer.getLayers().length > 0) {
+    const bounds = layer.getBounds();
     if (bounds.isValid()) map.fitBounds(bounds.pad(0.2));
   }
 }
 
-window.renderMap = renderMap;
-
-// Hydrate all once
-async function hydrateAllPlansOnce() {
-  for (const d of destinations) {
-    await hydratePlanFromFirebaseIfSignedIn(d.name);
-  }
-}
-window.hydrateAllPlansOnce = hydrateAllPlansOnce;
-
-// --------------------------
-// Search/filter + migrate button
-// --------------------------
 document.addEventListener("DOMContentLoaded", () => {
-  const searchInput = document.getElementById("search-input");
-  const regionFilter = document.getElementById("region-filter");
-  const resetBtn = document.getElementById("reset-view");
   const migrateBtn = document.getElementById("migrate-btn");
 
-  function filterMap() {
-    const query = (searchInput?.value || "").trim().toLowerCase();
-    const region = regionFilter?.value || "all";
+  if (migrateBtn) {
+    migrateBtn.addEventListener("click", async () => {
+      const user = firebaseAuth.currentUser;
+      const db = firebaseDB;
 
-    allMarkers.forEach(marker => {
-      const d = marker.destinationData;
-      const nameMatch = d.name.toLowerCase().includes(query);
-      const regionMatch = (region === "all") || d.region === region;
+      if (!user || !db) return;
 
-      if (nameMatch && regionMatch) marker.addTo(allLayerGroup);
-      else allLayerGroup.removeLayer(marker);
-    });
+      const statusBox = document.getElementById("migration-status");
+      statusBox.innerHTML = "";
+      statusBox.style.display = "block";
 
-    if (allLayerGroup.getLayers().length > 0) {
-      map.fitBounds(allLayerGroup.getBounds().pad(0.2));
-    }
-  }
-
-  // --- FORCE-WIRE AUTH BUTTONS (GitHub-safe) ---
-window.addEventListener("DOMContentLoaded", () => {
-  const signInBtn = document.getElementById("sign-in-btn");
-  const signOutBtn = document.getElementById("sign-out-btn");
-
-  if (signInBtn) {
-    signInBtn.addEventListener("click", async () => {
-      console.log("[AUTH] Sign-in button clicked (wired in map.js)");
-      // Try whichever function exists (depending on your current firebase.js version)
-      if (typeof window.signIn === "function") return window.signIn(console.log);
-      if (typeof window.firebaseSignIn === "function") return window.firebaseSignIn();
-      console.warn("[AUTH] No signIn function found on window");
-    });
-  }
-
-  if (signOutBtn) {
-    signOutBtn.addEventListener("click", async () => {
-      console.log("[AUTH] Sign-out button clicked (wired in map.js)");
-      if (typeof window.signOutUser === "function") return window.signOutUser();
-      if (typeof window.firebaseSignOut === "function") return window.firebaseSignOut();
-      console.warn("[AUTH] No signOut function found on window");
-    });
-  }
-});
-
-  searchInput?.addEventListener("input", filterMap);
-  regionFilter?.addEventListener("change", filterMap);
-  resetBtn?.addEventListener("click", () => {
-    if (searchInput) searchInput.value = "";
-    if (regionFilter) regionFilter.value = "all";
-    renderMap();
-  });
-
-  window.addEventListener("DOMContentLoaded", async () => {
-  // start firebase auth listener + process redirect result
-  if (window.initAuth) await window.initAuth((m) => console.log("[AUTH]", m));
-
-  const btn = document.getElementById("sign-in-btn");
-  if (btn) {
-    btn.addEventListener("click", async () => {
-      if (window.signIn) await window.signIn((m) => console.log("[AUTH]", m));
-    });
-  }
-});
-
-  // initial render
-  renderMap();
-
-  // Migration: upload local tripPlan:* docs
-  migrateBtn?.addEventListener("click", async () => {
-    const user = window.firebaseAuth?.currentUser;
-    const db = window.firebaseDB;
-    if (!user || !db) return;
-
-    const statusBox = document.getElementById("migration-status");
-    const topBox = document.getElementById("migration-status-top");
-
-    const writeLine = (msg) => {
-      const line = document.createElement("div");
-      line.textContent = msg;
-      if (statusBox) statusBox.appendChild(line);
-      if (topBox) topBox.appendChild(line.cloneNode(true));
-    };
-
-    if (statusBox) { statusBox.innerHTML = ""; statusBox.style.display = "block"; }
-    if (topBox) { topBox.innerHTML = ""; topBox.style.display = "block"; }
-
-    const keys = Object.keys(localStorage).filter(k => k.startsWith("tripPlan:"));
-    if (keys.length === 0) { writeLine("❌ No local plans found."); return; }
-
-    for (const key of keys) {
-      const name = key.replace("tripPlan:", "");
-      let data;
-      try { data = JSON.parse(localStorage.getItem(key)); }
-      catch { writeLine(`❌ Skipped "${name}" (invalid JSON).`); continue; }
-
-      try {
-        const pruned = prunePlanForStorage(data);
-        pruned.updatedAt = pruned.updatedAt || Date.now();
-
-        const ref = window.doc(db, "users", user.uid, "plans", name);
-        await window.setDoc(ref, { name, data: pruned, updatedAt: pruned.updatedAt }, { merge: true });
-
-        writeLine(`✅ Migrated "${name}" to Firebase.`);
-      } catch (err) {
-        writeLine(`❌ Failed to migrate "${name}": ${err?.message || err}`);
+      const keys = Object.keys(localStorage).filter(k => k.startsWith("tripPlan:"));
+      if (keys.length === 0) {
+        statusBox.innerHTML = "❌ No local plans found.";
+        return;
       }
-    }
-  });
-});
 
-// ---- FINAL AUTH UI SYNC PATCH ----
-window.addEventListener("AUTH_STATE", (e) => {
-  const user = e.detail;
+      for (const key of keys) {
+        const name = key.replace("tripPlan:", "");
+        const data = JSON.parse(localStorage.getItem(key));
 
-  const signInBtn  = document.getElementById("sign-in-btn");
-  const signOutBtn = document.getElementById("sign-out-btn");
-  const userInfo   = document.getElementById("user-info");
-  const migrateBtn = document.getElementById("migrate-btn");
-
-  if (user) {
-    if (signInBtn)  signInBtn.style.display = "none";
-    if (signOutBtn) signOutBtn.style.display = "inline-block";
-    if (userInfo)   userInfo.textContent = user.email || user.displayName || "Signed in";
-    if (migrateBtn) migrateBtn.style.display = "inline-block";
-  } else {
-    if (signInBtn)  signInBtn.style.display = "inline-block";
-    if (signOutBtn) signOutBtn.style.display = "none";
-    if (userInfo)   userInfo.textContent = "";
-    if (migrateBtn) migrateBtn.style.display = "none";
+        try {
+          await setDoc(doc(db, "users", user.uid, "plans", name), { name, data });
+          const msg = `✅ Migrated "${name}" to Firebase.`;
+          const line = document.createElement("div");
+          line.textContent = msg;
+          statusBox.appendChild(line);
+        } catch (err) {
+          const msg = `❌ Failed to migrate "${name}": ${err.message}`;
+          const line = document.createElement("div");
+          line.textContent = msg;
+          statusBox.appendChild(line);
+        }
+      }
+    });
   }
 });
+  </script>
+</body>
+</html> 

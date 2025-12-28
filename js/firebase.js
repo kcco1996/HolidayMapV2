@@ -128,40 +128,34 @@ export async function initAuth(debugLog = console.log) {
   });
 }
 
-// ---- Sign in ----
 export async function signIn(debugLog = console.log) {
   debugLog?.("Sign-in clicked");
 
-  const brave = await detectBrave();
-  const { isHttps, isLocalhost } = envInfo();
+  const isBrave =
+    (typeof navigator.brave !== "undefined" && typeof navigator.brave.isBrave === "function")
+      ? await navigator.brave.isBrave()
+      : false;
 
-  debugLog?.(`SignIn strategy: brave=${brave} iOS=${isIOS()} https=${isHttps} localhost=${isLocalhost}`);
+  const forceRedirect = isIOS() || isBrave;
 
-  // Strategy (least pain):
-  // - On HTTPS origins (GitHub Pages / web.app): use redirect (most reliable for Brave too).
-  // - On localhost/http: try popup first, then redirect fallback.
+  debugLog?.(
+    `SignIn strategy: brave=${isBrave} iOS=${isIOS()} https=${location.protocol === "https:"} host=${location.host}`
+  );
+
+  // Always redirect on Brave/iOS (most reliable)
+  if (forceRedirect) {
+    debugLog?.("Using redirect (Brave/iOS)");
+    return signInWithRedirect(auth, provider);
+  }
+
+  // Non-Brave desktop: popup then fallback to redirect
   try {
-    if (isHttps) {
-      debugLog?.("Using redirect (HTTPS origin)");
-      await signInWithRedirect(auth, provider);
-      return;
-    }
-
-    // Local dev (http): popup is usually the only thing that feels “instant”.
-    debugLog?.("Using popup first (localhost/http)");
+    debugLog?.("Using popup first");
     await signInWithPopup(auth, provider);
     debugLog?.("Popup sign-in OK");
-  } catch (e1) {
-    debugLog?.(`Popup failed: ${e1?.code || e1?.message || e1}`);
-
-    try {
-      debugLog?.("Trying redirect fallback");
-      await signInWithRedirect(auth, provider);
-    } catch (e2) {
-      debugLog?.(`Redirect sign-in error: ${e2?.code || e2?.message || e2}`);
-      alert(`Sign-in error: ${e2?.code || e2?.message || e2}`);
-      throw e2;
-    }
+  } catch (e) {
+    debugLog?.(`Popup failed, trying redirect fallback: ${e?.code || e?.message || e}`);
+    return signInWithRedirect(auth, provider);
   }
 }
 

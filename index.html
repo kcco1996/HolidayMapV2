@@ -154,12 +154,10 @@
 
   <!-- =========================
        MAIN APP SCRIPT FIRST
-       (so renderMap/hydrate exist before Firebase auth callbacks)
        ========================= -->
   <script>
     // ===== Cache-bust assets (important for iPhone Safari + GitHub Pages) =====
-    // Change this string whenever you deploy a new version.
-    const ASSET_VERSION = "2025-12-28-1";
+    const ASSET_VERSION = "2025-12-28-2";
     const withV = (url) => url ? `${url}?v=${encodeURIComponent(ASSET_VERSION)}` : url;
 
     // ---------- Storage helpers ----------
@@ -201,18 +199,12 @@
       if (typeof plan.tips !== "string") plan.tips = "";
 
       if (!plan.hotel) {
-        plan.hotel = {
-          name: "",
-          currency: "GBP",
-          nightly: "",
-          nights: Math.max(1, (plan.days | 0) - 1 || 1),
-          notes: ""
-        };
+        plan.hotel = { name:"", currency:"GBP", nightly:"", nights: Math.max(1, (plan.days|0)-1 || 1), notes:"" };
       } else {
         if (!("name" in plan.hotel)) plan.hotel.name = "";
         if (!("currency" in plan.hotel)) plan.hotel.currency = "GBP";
         if (!("nightly" in plan.hotel)) plan.hotel.nightly = "";
-        if (!("nights" in plan.hotel)) plan.hotel.nights = Math.max(1, (plan.days | 0) - 1 || 1);
+        if (!("nights" in plan.hotel)) plan.hotel.nights = Math.max(1, (plan.days|0)-1 || 1);
         if (!("notes" in plan.hotel)) plan.hotel.notes = "";
       }
 
@@ -397,7 +389,7 @@
       setTimeout(()=>toastEl.classList.remove('show'), 1200);
     }
 
-    // POPUP HTML (yours, unchanged except cache-busting on the icon)
+    // POPUP HTML (unchanged)
     function buildPopup(d) {
       const plan = loadPlan(d.name);
       const days = Math.max(1, Number(plan.days || 1));
@@ -583,7 +575,7 @@
         </div>`;
     }
 
-    // POPUP HANDLERS (your logic — unchanged)
+    // POPUP HANDLERS (unchanged)
     function initPopupHandlers(container, d){
       const name = d.name;
       const toast = container.querySelector('.saved-toast');
@@ -680,7 +672,7 @@
       if (hotelName) hotelName.value = plan.hotel.name || "";
       if (currency) currency.value = plan.hotel.currency || "GBP";
       if (nightly) nightly.value = plan.hotel.nightly || "";
-      if (nights) nights.value = plan.hotel.nights || Math.max(1, (plan.days|0)-1 || 1);
+     if (nights) nights.value = plan.hotel.nights || Math.max(1, (plan.days|0)-1 || 1);
 
       const renderTotal = ()=>{
         const n = Number(nightly?.value||0);
@@ -2942,7 +2934,7 @@
       },
 
     ];
-   // MAP SETUP
+       // MAP SETUP
     const map = L.map("map").setView([48.5, 8], 5);
     const cartoAttr = '&copy; OpenStreetMap contributors, &copy; CARTO';
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
@@ -2975,14 +2967,15 @@
         marker.destinationData = d;
         marker.bindPopup(buildPopup(d), { maxWidth: 600 });
 
-        marker.on("popupopen", () => {
-          marker.setPopupContent(buildPopup(d));
+marker.on("popupopen", async () => {
+  await hydratePlanFromFirebaseIfSignedIn(d.name);
+  marker.setPopupContent(buildPopup(d));
 
-          requestAnimationFrame(() => {
-            const el = marker.getPopup()?.getElement();
-            const container = el?.querySelector(".popup");
-            if (container) initPopupHandlers(container, d);
-          });
+  requestAnimationFrame(() => {
+    const el = marker.getPopup()?.getElement();
+    const container = el?.querySelector(".popup");
+    if (container) initPopupHandlers(container, d);
+  });
 
           hydratePlanFromFirebaseIfSignedIn(d.name).then(() => {
             marker.setPopupContent(buildPopup(d));
@@ -3101,7 +3094,12 @@
       const signInBtn = document.getElementById("sign-in-btn");
       const signOutBtn = document.getElementById("sign-out-btn");
 
+      // ✅ Single, correct click handler:
+      // - sets a flag so redirect result isn't "null spam"
+      // - calls your firebaseSignIn helper (popup or redirect depending on device)
       signInBtn?.addEventListener("click", async () => {
+        dbg("Sign-in clicked");
+        sessionStorage.setItem("AUTH_REDIRECT_STARTED", "1");
         try { await window.firebaseSignIn(); }
         catch (e) { alert(`Sign-in error: ${e.code || e.message || e}`); }
       });
@@ -3139,7 +3137,6 @@
 
   <!-- =========================
        FIREBASE MODULE LAST
-       (attaches to window + calls window.onFirebaseReady())
        ========================= -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
@@ -3181,7 +3178,7 @@
 
     const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
-    // iOS-safe auth persistence (do NOT await — WebKit bug)
+    // iOS-safe auth persistence (do NOT await — WebKit oddities)
     setPersistence(auth, browserLocalPersistence).catch(() => {
       setPersistence(auth, browserSessionPersistence).catch(()=>{});
     });
@@ -3200,21 +3197,40 @@
 
     window.firebaseSignOut = async () => { await signOut(auth); };
 
+    // ✅ Central sign-in helper:
+    // - iOS: redirect (DON'T await)
+    // - else: popup, fallback to redirect
     window.firebaseSignIn = async () => {
       try {
         if (isIOS()) {
-          await signInWithRedirect(auth, provider);
+          sessionStorage.setItem("AUTH_REDIRECT_STARTED", "1");
+          signInWithRedirect(auth, provider); // no await
           return;
         }
         await signInWithPopup(auth, provider);
       } catch (err) {
-        try { await signInWithRedirect(auth, provider); }
-        catch (e2) { alert(`Google sign-in failed: ${e2?.code || e2?.message || e2}`); }
+        // Fallback to redirect if popup blocked / fails
+        try {
+          sessionStorage.setItem("AUTH_REDIRECT_STARTED", "1");
+          signInWithRedirect(auth, provider); // no await
+        } catch (e2) {
+          alert(`Google sign-in failed: ${e2?.code || e2?.message || e2}`);
+        }
       }
     };
 
-    // Handle redirect return (iOS/Safari)
-    try { await getRedirectResult(auth); } catch {}
+    // ✅ Redirect result handling (only if redirect was started)
+    try {
+      const started = sessionStorage.getItem("AUTH_REDIRECT_STARTED") === "1";
+      if (started) {
+        await getRedirectResult(auth);
+        sessionStorage.removeItem("AUTH_REDIRECT_STARTED");
+      }
+    } catch (e) {
+      sessionStorage.removeItem("AUTH_REDIRECT_STARTED");
+      // Let the main script show unhandledrejection/debug if needed
+      console.warn("Redirect result error:", e?.code || e?.message || e);
+    }
 
     // Provide auth state change handler to non-module script
     window.firebaseOnAuthStateChanged = (cb) => onAuthStateChanged(auth, cb);

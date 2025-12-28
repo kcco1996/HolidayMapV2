@@ -92,12 +92,16 @@ export async function signIn(debugLog = console.log) {
       : false;
 
   // Brave & iOS: redirect is most reliable
-  if (isIOS() || isBrave) {
-    debugLog?.("Using redirect (Brave / iOS)");
+if (isIOS() || isBrave) {
+  debugLog?.("Using redirect (Brave / iOS)");
+  try {
     await signInWithRedirect(auth, provider);
-    return;
+  } catch (e) {
+    debugLog?.(`Redirect sign-in error: ${e?.code || e?.message || e}`);
+    alert(`Redirect sign-in error: ${e?.code || e?.message || e}`);
   }
-
+  return;
+}
   // Other browsers: popup first, fallback to redirect
   try {
     await signInWithPopup(auth, provider);

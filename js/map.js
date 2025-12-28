@@ -2882,6 +2882,31 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // --- FORCE-WIRE AUTH BUTTONS (GitHub-safe) ---
+window.addEventListener("DOMContentLoaded", () => {
+  const signInBtn = document.getElementById("sign-in-btn");
+  const signOutBtn = document.getElementById("sign-out-btn");
+
+  if (signInBtn) {
+    signInBtn.addEventListener("click", async () => {
+      console.log("[AUTH] Sign-in button clicked (wired in map.js)");
+      // Try whichever function exists (depending on your current firebase.js version)
+      if (typeof window.signIn === "function") return window.signIn(console.log);
+      if (typeof window.firebaseSignIn === "function") return window.firebaseSignIn();
+      console.warn("[AUTH] No signIn function found on window");
+    });
+  }
+
+  if (signOutBtn) {
+    signOutBtn.addEventListener("click", async () => {
+      console.log("[AUTH] Sign-out button clicked (wired in map.js)");
+      if (typeof window.signOutUser === "function") return window.signOutUser();
+      if (typeof window.firebaseSignOut === "function") return window.firebaseSignOut();
+      console.warn("[AUTH] No signOut function found on window");
+    });
+  }
+});
+
   searchInput?.addEventListener("input", filterMap);
   regionFilter?.addEventListener("change", filterMap);
   resetBtn?.addEventListener("click", () => {

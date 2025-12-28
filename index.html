@@ -207,6 +207,15 @@ const dbg = (msg) => {
   console.log("[AUTH]", msg);
 };
 
+window.addEventListener("error", (e) => {
+  dbg(`JS ERROR: ${e.message || e.type}`);
+});
+
+window.addEventListener("unhandledrejection", (e) => {
+  const msg = e?.reason?.code || e?.reason?.message || String(e?.reason);
+  dbg(`PROMISE ERROR: ${msg}`);
+});
+
     const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
 // iOS-safe auth persistence (do NOT await — WebKit bug)
@@ -225,18 +234,7 @@ setPersistence(auth, browserLocalPersistence).catch(() => {
     window.collection = collection;
     window.getDocs = getDocs;
 
-window.firebaseSignIn = async () => {
-  try {
-    if (isIOS()) {
-      await signInWithRedirect(auth, provider);
-      return;
-    }
-    await signInWithPopup(auth, provider);
-  } catch (err) {
-    console.warn("Sign-in failed:", err);
-    alert(`Google sign-in failed: ${err.code || err.message || err}`);
-  }
-};
+
     window.firebaseSignOut = async () => {
   try {
     await signOut(auth);
@@ -264,6 +262,33 @@ signOutBtn?.addEventListener("click", async () => {
     alert(`Sign-out error: ${e.code || e.message || e}`);
   }
 });
+
+window.firebaseSignIn = async () => {
+  try {
+    // iOS: always redirect (most reliable)
+    if (isIOS()) {
+      dbg("iOS detected → using redirect sign-in");
+      await signInWithRedirect(auth, provider);
+      return;
+    }
+
+    // Non-iOS: try popup, fallback to redirect if blocked/unsupported
+    dbg("Using popup sign-in (non-iOS)");
+    await signInWithPopup(auth, provider);
+  } catch (err) {
+    const code = err?.code || "";
+    dbg(`Popup failed (${code}) → falling back to redirect`);
+
+    // Common popup issues: blocked / unsupported / cancelled
+    try {
+      await signInWithRedirect(auth, provider);
+    } catch (e2) {
+      dbg(`Redirect also failed: ${e2?.code || e2?.message || e2}`);
+      alert(`Google sign-in failed: ${e2?.code || e2?.message || e2}`);
+    }
+  }
+};
+
 
 // --- HANDLE GOOGLE REDIRECT RETURN (iOS/ Safari) ---
 (async () => {
@@ -293,7 +318,7 @@ signOutBtn?.addEventListener("click", async () => {
       if (user) {
         if (signInBtn) signInBtn.style.display = "none";
         if (signOutBtn) signOutBtn.style.display = "inline-block";
-        if (userInfo) userInfo.textContent = `Signed in as: ${user.displayName}`;
+        userInfo.textContent = `Signed in as: ${user.email || user.displayName || "Unknown"}`;
 
         if (migrateBtn) {
           migrateBtn.style.display = (user.email === "kcco1996@gmail.com") ? "inline-block" : "none";
@@ -3180,8 +3205,28 @@ localStorage.setItem(storageKey(destName), JSON.stringify(merged));
 
         // ✅ SINGLE clean popupopen handler (no duplicates)
         marker.on("popupopen", async () => {
-          await hydratePlanFromFirebaseIfSignedIn(d.name);
-          marker.setPopupContent(buildPopup(d));
+         marker.on("popupopen", () => {
+  // Always show local immediately
+  marker.setPopupContent(buildPopup(d));
+
+  requestAnimationFrame(() => {
+    const el = marker.getPopup()?.getElement();
+    const container = el?.querySelector(".popup");
+    if (container) initPopupHandlers(container, d);
+  });
+
+  // If signed in, hydrate then refresh
+  hydratePlanFromFirebaseIfSignedIn(d.name).then(() => {
+    marker.setPopupContent(buildPopup(d));
+
+    requestAnimationFrame(() => {
+      const el = marker.getPopup()?.getElement();
+      const container = el?.querySelector(".popup");
+      if (container) initPopupHandlers(container, d);
+    });
+  });
+});
+
 
           requestAnimationFrame(() => {
             const el = marker.getPopup()?.getElement();

@@ -183,3 +183,25 @@ window.addEventListener("DOMContentLoaded", () => {
 window.initAuth = initAuth;
 window.signIn = signIn;
 window.signOutUser = signOutUser;
+
+// ---- FINAL AUTH UI SYNC PATCH ----
+window.addEventListener("AUTH_STATE", (e) => {
+  const user = e.detail;
+
+  const signInBtn  = document.getElementById("sign-in-btn");
+  const signOutBtn = document.getElementById("sign-out-btn");
+  const userInfo   = document.getElementById("user-info");
+  const migrateBtn = document.getElementById("migrate-btn");
+
+  if (user) {
+    if (signInBtn)  signInBtn.style.display = "none";
+    if (signOutBtn) signOutBtn.style.display = "inline-block";
+    if (userInfo)   userInfo.textContent = user.email || user.displayName || "Signed in";
+    if (migrateBtn) migrateBtn.style.display = "inline-block";
+  } else {
+    if (signInBtn)  signInBtn.style.display = "inline-block";
+    if (signOutBtn) signOutBtn.style.display = "none";
+    if (userInfo)   userInfo.textContent = "";
+    if (migrateBtn) migrateBtn.style.display = "none";
+  }
+});

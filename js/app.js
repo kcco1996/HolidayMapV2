@@ -1,6 +1,6 @@
 // js/app.js
 import { initAuth, signIn, signOutUser, ASSET_VERSION } from "./firebase.js";
-import "./map.js"; // your map logic lives here now
+import "./map.js"; // defines window.renderMap + window.hydrateAllPlansOnce + migrate handler helpers
 
 const debugEl = document.getElementById("auth-debug");
 const userInfo = document.getElementById("user-info");
@@ -15,14 +15,12 @@ const log = (msg) => {
 
 await initAuth(log);
 
-// Buttons
 signInBtn?.addEventListener("click", () => signIn(log));
 signOutBtn?.addEventListener("click", async () => {
   try { await signOutUser(); }
   catch (e) { alert(`Sign-out error: ${e?.code || e?.message || e}`); }
 });
 
-// React to auth state
 window.addEventListener("AUTH_STATE", async (e) => {
   const user = e.detail;
 
@@ -32,10 +30,10 @@ window.addEventListener("AUTH_STATE", async (e) => {
     if (signOutBtn) signOutBtn.style.display = "inline-block";
     if (userInfo) userInfo.textContent = `Signed in as: ${user.email || user.displayName || user.uid}`;
 
-    // Only show migrate for your email
-    if (migrateBtn) migrateBtn.style.display = (user.email === "kcco1996@gmail.com") ? "inline-block" : "none";
+    if (migrateBtn) {
+      migrateBtn.style.display = (user.email === "kcco1996@gmail.com") ? "inline-block" : "none";
+    }
 
-    // Let your map code refresh from firebase if it exposes these hooks
     if (typeof window.hydrateAllPlansOnce === "function") await window.hydrateAllPlansOnce();
     if (typeof window.renderMap === "function") window.renderMap();
   } else {
@@ -49,7 +47,7 @@ window.addEventListener("AUTH_STATE", async (e) => {
   }
 });
 
-// Extra iPhone stability: refresh when returning to tab
+// iPhone stability: refresh after tab returns
 const refreshIfSignedIn = async () => {
   const user = window.firebaseAuth?.currentUser;
   if (!user) return;
@@ -62,6 +60,6 @@ document.addEventListener("visibilitychange", () => {
 });
 window.addEventListener("pageshow", () => refreshIfSignedIn());
 
-// Optional: expose version helper for assets
+// asset version helper
 window.ASSET_VERSION = ASSET_VERSION;
 window.withV = (url) => url ? `${url}?v=${encodeURIComponent(ASSET_VERSION)}` : url;

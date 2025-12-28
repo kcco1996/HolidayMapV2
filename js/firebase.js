@@ -42,7 +42,7 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const provider = new GoogleAuthProvider();
 
-// expose Firestore helpers globally so your existing code can keep using window.doc / window.setDoc etc.
+// Expose helpers for map.js
 window.firebaseAuth = auth;
 window.firebaseDB = db;
 window.firebaseProvider = provider;
@@ -55,11 +55,9 @@ window.collection = collection;
 window.getDocs = getDocs;
 
 export async function initAuth(debugLog = console.log) {
-  // Build stamp visible (proves phone is running latest)
   const stamp = document.getElementById("build-stamp");
   if (stamp) stamp.textContent = `Build: ${ASSET_VERSION}`;
 
-  // persistence: try local, fallback to session (iOS private mode etc.)
   try {
     await setPersistence(auth, browserLocalPersistence);
     debugLog?.("Persistence: browserLocalPersistence OK");
@@ -73,7 +71,6 @@ export async function initAuth(debugLog = console.log) {
     }
   }
 
-  // Handle redirect result (safe to call always)
   try {
     const res = await getRedirectResult(auth);
     debugLog?.(res ? "Redirect result: OK" : "Redirect result: none");
@@ -81,7 +78,6 @@ export async function initAuth(debugLog = console.log) {
     debugLog?.(`Redirect result error: ${e?.code || e?.message || e}`);
   }
 
-  // Emit auth state changes to the rest of the app
   onAuthStateChanged(auth, (user) => {
     window.dispatchEvent(new CustomEvent("AUTH_STATE", { detail: user || null }));
   });
@@ -90,14 +86,12 @@ export async function initAuth(debugLog = console.log) {
 export async function signIn(debugLog = console.log) {
   debugLog?.("Sign-in clicked");
 
-  // iOS: redirect is more reliable than popup
   if (isIOS()) {
     debugLog?.("Using redirect (iOS)");
     await signInWithRedirect(auth, provider);
     return;
   }
 
-  // Desktop: popup first; fallback to redirect
   try {
     await signInWithPopup(auth, provider);
     debugLog?.("Popup sign-in OK");

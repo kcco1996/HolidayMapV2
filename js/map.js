@@ -1,13 +1,14 @@
 // js/map.js
 const withV = window.withV || ((u) => u);
 
-// -----------------------------------------------------------------------------
-// 1) Your destination data + icons
-// -----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
+// 1) Destination data
+// ----------------------------------------------------------------------------
 
-// Example placeholders – replace with your real ones
-const destinations = window.destinations || [ //
-
+// If window.destinations exists, use it. Otherwise use the hardcoded array.
+const destinations = Array.isArray(window.destinations) && window.destinations.length
+  ? window.destinations
+  : [
 
     // North America
            {
@@ -1975,242 +1976,962 @@ const destinations = window.destinations || [ //
       },
 
     ];
-// -----------------------------------------------------------------------------
-// 2) Storage helpers (localStorage)
-// -----------------------------------------------------------------------------
-
-function lsKeyForDestination(destName) {
-  return `holidayPlan:${destName}`;
+function storageKey(name) {
+  return `tripPlan:${name}`;
 }
 
-function loadLocalPlan(destName) {
-  try {
-    const raw = localStorage.getItem(lsKeyForDestination(destName));
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
+// --------------------------
+// Food diary defaults
+// --------------------------
+const EMPTY_FOOD_DAY = {
+  breakfast: { dish:"", description:"", hot:"", hotDescription:"", cold:"", coldDescription:"" },
+  lunch:     { dish:"", description:"", hot:"", hotDescription:"", cold:"", coldDescription:"" },
+  dinner:    { starter:"", starterDescription:"", main:"", mainDescription:"", dessert:"", dessertDescription:"", alcoholic:"", alcoholDescription:"", cold:"", coldDescription:"" }
+};
+function cloneFoodDay() {
+  return JSON.parse(JSON.stringify(EMPTY_FOOD_DAY));
+}
+
+// --------------------------
+// Load / save plans
+// --------------------------
+function loadPlan(name) {
+  const raw = localStorage.getItem(storageKey(name));
+  const base = {
+    days: 1,
+    activities: { 1: "" },
+    notes: "",
+    tips: "",
+    hotel: { name:"", currency:"GBP", nightly:"", nights: 1, notes:"" },
+    budget: {
+      cheap:  { name:"", currency:"GBP", price:"", nights:"", notes:"" },
+      luxury: { name:"", currency:"GBP", price:"", nights:"", notes:"" }
+    },
+    food: {}
+  };
+
+  let plan;
+  try { plan = raw ? JSON.parse(raw) : base; } catch { plan = base; }
+
+  if (!plan.activities) plan.activities = { 1: "" };
+  if (typeof plan.days !== "number" || plan.days < 1) plan.days = 1;
+  if (typeof plan.notes !== "string") plan.notes = "";
+  if (typeof plan.tips !== "string") plan.tips = "";
+
+  if (!plan.hotel) {
+    plan.hotel = { name:"", currency:"GBP", nightly:"", nights: Math.max(1, (plan.days|0)-1 || 1), notes:"" };
+  } else {
+    if (!("name" in plan.hotel)) plan.hotel.name = "";
+    if (!("currency" in plan.hotel)) plan.hotel.currency = "GBP";
+    if (!("nightly" in plan.hotel)) plan.hotel.nightly = "";
+    if (!("nights" in plan.hotel)) plan.hotel.nights = Math.max(1, (plan.days|0)-1 || 1);
+    if (!("notes" in plan.hotel)) plan.hotel.notes = "";
   }
-}
 
-function saveLocalPlan(destName, planObj) {
-  localStorage.setItem(lsKeyForDestination(destName), JSON.stringify(planObj));
-}
+  // normalize budget container
+  if (!plan.budget) {
+    plan.budget = {
+      cheap:  { name:"", currency: plan.hotel.currency || "GBP", price:"", nights:"", notes:"" },
+      luxury: { name:"", currency: plan.hotel.currency || "GBP", price:"", nights:"", notes:"" }
+    };
+  } else {
+    if (!plan.budget.cheap) plan.budget.cheap = { name:"", currency: plan.hotel.currency || "GBP", price:"", nights:"", notes:"" };
+    if (!plan.budget.luxury) plan.budget.luxury = { name:"", currency: plan.hotel.currency || "GBP", price:"", nights:"", notes:"" };
+  }
 
-// -----------------------------------------------------------------------------
-// 3) Firebase helpers (NO imports here — expects window.firebaseAuth/window.firebaseDB)
-// -----------------------------------------------------------------------------
+  // old single-day migration support (optional)
+  if (plan.foodDiary && !plan.food) {
+    plan.food = { 1: cloneFoodDay() };
+    delete plan.foodDiary;
+  }
 
-function currentUser() {
-  return window.firebaseAuth?.currentUser || null;
-}
-
-function uidOrNull() {
-  const u = currentUser();
-  return u ? u.uid : null;
-}
-
-// users/{uid}/destinations/{destName}
-function docRefForDestination(destName) {
-  const uid = uidOrNull();
-  if (!uid) return null;
-  return window.doc(window.firebaseDB, "users", uid, "destinations", destName);
-}
-
-async function loadPlanFromFirebase(destName) {
-  const ref = docRefForDestination(destName);
-  if (!ref) return null;
-  const snap = await window.getDoc(ref);
-  return snap.exists() ? snap.data() : null;
-}
-
-async function savePlanToFirebase(destName, planObj) {
-  const ref = docRefForDestination(destName);
-  if (!ref) throw new Error("Not signed in");
-  await window.setDoc(ref, planObj, { merge: true });
-}
-
-// Optional: one-time hydration (slow if you have many destinations)
-async function hydrateAllPlansOnce() {
-  const u = currentUser();
-  if (!u) return;
-
-  for (const d of destinations) {
-    const name = d.name || d.title || d.destination || d;
-    try {
-      const fb = await loadPlanFromFirebase(name);
-      if (fb) saveLocalPlan(name, fb);
-    } catch (e) {
-      console.warn("Hydrate failed for", name, e);
+  if (!plan.food || typeof plan.food !== "object" || Array.isArray(plan.food)) plan.food = {};
+  for (let i = 1; i <= plan.days; i++) {
+    if (!plan.food[i] || typeof plan.food[i] !== "object") {
+      plan.food[i] = cloneFoodDay();
+      continue;
     }
+    plan.food[i].breakfast = { ...cloneFoodDay().breakfast, ...(plan.food[i].breakfast || {}) };
+    plan.food[i].lunch     = { ...cloneFoodDay().lunch, ...(plan.food[i].lunch || {}) };
+    plan.food[i].dinner    = { ...cloneFoodDay().dinner, ...(plan.food[i].dinner || {}) };
+  }
+
+  return plan;
+}
+
+function deepClean(obj) {
+  if (obj === null || obj === undefined) return undefined;
+  if (typeof obj === "string") {
+    const trimmed = obj.trim();
+    return trimmed === "" ? undefined : trimmed;
+  }
+  if (Array.isArray(obj)) {
+    const arr = obj.map(deepClean).filter(v => v !== undefined);
+    return arr.length ? arr : undefined;
+  }
+  if (typeof obj === "object") {
+    const out = {};
+    for (const [k, v] of Object.entries(obj)) {
+      const cleaned = deepClean(v);
+      if (cleaned !== undefined) out[k] = cleaned;
+    }
+    return Object.keys(out).length ? out : undefined;
+  }
+  return obj;
+}
+
+function prunePlanForStorage(plan) {
+  const copy = JSON.parse(JSON.stringify(plan));
+
+  if (!copy.activities) copy.activities = { 1: "" };
+  if (!copy.hotel) copy.hotel = { name:"", currency:"GBP", nightly:"", nights:1, notes:"" };
+  if (!copy.budget) copy.budget = { cheap:{}, luxury:{} };
+  if (!copy.food) copy.food = {};
+
+  const cleaned = deepClean(copy) || {};
+
+  if (!cleaned.days) cleaned.days = plan.days || 1;
+  if (!cleaned.activities) cleaned.activities = plan.activities || { 1: "" };
+  if (!cleaned.hotel) cleaned.hotel = plan.hotel || { name:"", currency:"GBP", nightly:"", nights:1, notes:"" };
+  if (!cleaned.budget) cleaned.budget = plan.budget || { cheap:{}, luxury:{} };
+  if (!cleaned.food) cleaned.food = plan.food || {};
+
+  return cleaned;
+}
+
+// --------------------------
+// Firebase-safe sync (your same approach)
+// --------------------------
+const pendingUploads = new Map();
+const lastUploadedHash = new Map();
+
+function hashString(s) {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) h = (h ^ s.charCodeAt(i)) * 16777619;
+  return String(h >>> 0);
+}
+
+function scheduleFirestoreUpload(destName, planObj) {
+  const auth = window.firebaseAuth;
+  const db = window.firebaseDB;
+  const user = auth?.currentUser;
+  if (!user || !db) return;
+
+  const json = JSON.stringify(planObj);
+  const h = hashString(json);
+  if (lastUploadedHash.get(destName) === h) return;
+
+  if (json.length > 900_000) {
+    console.warn(`⚠️ Skipping Firestore upload for "${destName}" (plan too large).`);
+    return;
+  }
+
+  if (pendingUploads.has(destName)) clearTimeout(pendingUploads.get(destName));
+  pendingUploads.set(destName, setTimeout(async () => {
+    try {
+      const ref = window.doc(db, "users", user.uid, "plans", destName);
+      const payload = { name: destName, data: planObj, updatedAt: planObj.updatedAt || Date.now() };
+      await window.setDoc(ref, payload, { merge: true });
+      lastUploadedHash.set(destName, h);
+    } catch (err) {
+      console.warn("Firestore upload failed:", destName, err);
+    }
+  }, 1200));
+}
+
+async function hydratePlanFromFirebaseIfSignedIn(destName) {
+  const auth = window.firebaseAuth;
+  const db = window.firebaseDB;
+  const user = auth?.currentUser;
+  if (!user || !db) return;
+
+  try {
+    const ref = window.doc(db, "users", user.uid, "plans", destName);
+    const snap = await window.getDoc(ref);
+    if (!snap.exists()) return;
+
+    const remoteDoc = snap.data() || {};
+    const remotePlan = remoteDoc.data;
+    const remoteUpdatedAt = remoteDoc.updatedAt || 0;
+    if (!remotePlan) return;
+
+    const localRaw = localStorage.getItem(storageKey(destName));
+    let localPlan = null;
+    try { localPlan = localRaw ? JSON.parse(localRaw) : null; } catch {}
+
+    const localUpdatedAt = localPlan?.updatedAt || 0;
+
+    if (!localPlan || remoteUpdatedAt > localUpdatedAt) {
+      const merged = { ...remotePlan, updatedAt: remoteUpdatedAt };
+      localStorage.setItem(storageKey(destName), JSON.stringify(merged));
+      lastUploadedHash.set(destName, hashString(JSON.stringify(merged)));
+      console.log(`✅ Hydrated "${destName}" from Firebase (remote newer)`);
+    }
+  } catch (err) {
+    console.warn("Hydrate failed:", destName, err);
   }
 }
-window.hydrateAllPlansOnce = hydrateAllPlansOnce;
 
-// -----------------------------------------------------------------------------
-// 4) Leaflet map + markers
-// -----------------------------------------------------------------------------
+// --------------------------
+// Save plan (local + firebase debounce)
+// --------------------------
+function savePlan(name, data) {
+  data.updatedAt = Date.now();
+  const pruned = prunePlanForStorage(data);
+  localStorage.setItem(storageKey(name), JSON.stringify(pruned));
+  scheduleFirestoreUpload(name, pruned);
+}
 
-let map;
-let markerByName = new Map();
+function showSaved(toastEl) {
+  if (!toastEl) return;
+  toastEl.classList.add("show");
+  setTimeout(() => toastEl.classList.remove("show"), 1200);
+}
 
-// Simple cache so we don’t recreate identical icons 500 times
-const iconCache = new Map();
-
-function getIcon(iconUrl) {
-  const url = iconUrl || "assets/black-dot.png";
-  if (iconCache.has(url)) return iconCache.get(url);
-
-  const icon = L.icon({
-    iconUrl: url,
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
-    popupAnchor: [0, -10],
+// --------------------------
+// Icons
+// --------------------------
+function destinationIcon(url) {
+  const src = window.withV ? window.withV(url) : url;
+  return L.divIcon({
+    html: `<img src="${src}" alt="">`,
+    className: "destination-icon",
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+    popupAnchor: [0, -12]
   });
-
-  iconCache.set(url, icon);
-  return icon;
 }
 
-function ensureMap() {
-  if (map) return map;
+// --------------------------
+// POPUP HTML (your design, fixed template strings)
+// --------------------------
+function buildPopup(d) {
+  const plan = loadPlan(d.name);
+  const days = Math.max(1, Number(plan.days || 1));
+  const nightsDefault = Math.max(1, Number(plan.hotel?.nights ?? Math.max(1, days - 1)));
 
-  map = L.map("map", { preferCanvas: true }).setView([20, 0], 2);
+  const dayOptions = Array.from({ length: days }, (_, i) =>
+    `<option value="${i + 1}">Day ${i + 1}</option>`
+  ).join("");
 
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    attribution: "&copy; OpenStreetMap contributors",
-  }).addTo(map);
+  const currencies = ["GBP","EUR","USD","CAD","AUD","NZD","JPY","CNY"];
+  const currencyOptions = currencies.map(c =>
+    `<option value="${c}" ${plan.hotel.currency === c ? "selected" : ""}>${c}</option>`
+  ).join("");
 
-  return map;
-}
+  const iconHtml = d.destination ? `<img src="${(window.withV ? window.withV(d.destination) : d.destination)}" alt="${d.name} icon" />` : "";
 
-function buildPopupHTML(destName, plan) {
   return `
-    <div class="popup">
+    <div class="popup" data-dest="${encodeURIComponent(d.name)}">
       <div class="header">
+        ${iconHtml}
         <div class="title">
-          <strong>${destName}</strong>
-          <div class="hint">Plan loads from localStorage (and Firebase when signed in)</div>
+          <h3 style="margin:0 0 4px;">${d.name}</h3>
+          ${d.note ? `<p style="margin:0 0 4px;">${d.note}</p>` : ""}
+          <p style="margin:6px 0 0;">
+            <a href="https://maps.google.com/?q=${d.lat},${d.lng}" target="_blank" rel="noopener">Open in Google Maps</a>
+          </p>
         </div>
       </div>
 
       <div class="tabs">
-        <button class="tab-btn active" data-tab="days">Days</button>
-        <button class="tab-btn" data-tab="notes">Notes</button>
+        <button class="tab-btn active" data-tab="tab-days">Days</button>
+        <button class="tab-btn" data-tab="tab-daily">Daily Plan</button>
+        <button class="tab-btn" data-tab="tab-stay">Stay & Budget</button>
+        <button class="tab-btn" data-tab="tab-food">Food</button>
+        <button class="tab-btn" data-tab="tab-notes">Notes</button>
+        <button class="tab-btn" data-tab="tab-tips">Tips</button>
+        <span class="saved-toast" aria-live="polite">Saved</span>
       </div>
 
-      <div class="tab-panel active" data-panel="days">
+      <div id="tab-days" class="tab-panel active">
         <div class="row">
-          <label>Days</label>
-          <input id="days-input" type="number" min="1" value="${plan?.days || 1}">
+          <label for="days-input">Number of days:</label>
+          <input id="days-input" type="number" min="1" step="1" value="${days}">
+          <button class="btn primary" id="apply-days">Apply</button>
         </div>
+        <p class="hint">Set how long you’ll stay. This also influences default nights for hotel total (editable).</p>
+      </div>
+
+      <div id="tab-daily" class="tab-panel">
+        <div class="day-nav">
+          <button class="btn ghost" id="prev-day" title="Previous day">&#9664;</button>
+          <label for="day-select" style="min-width:auto;">Go to:</label>
+          <select id="day-select">${dayOptions}</select>
+          <button class="btn ghost" id="next-day" title="Next day">&#9654;</button>
+        </div>
+        <textarea id="day-activities" class="textarea" placeholder="Activities for this day (times, places, tickets, restaurants, notes)..."></textarea>
         <div class="save-bar">
-          <button class="btn primary" id="save-btn">Save</button>
-          <span class="saved-toast" id="saved-toast">Saved ✓</span>
+          <button class="btn primary" id="save-day">Save Day</button>
+          <button class="btn" id="clear-day">Clear Day</button>
         </div>
       </div>
 
-      <div class="tab-panel" data-panel="notes">
-        <textarea class="textarea" id="notes-input">${plan?.notes || ""}</textarea>
+      <div id="tab-stay" class="tab-panel">
+        <div class="tabs budget-subtabs">
+          <button class="tab-btn" data-btab="tab-cheap">Cheap option</button>
+          <button class="tab-btn active" data-btab="tab-medium">Medium option (main hotel)</button>
+          <button class="tab-btn" data-btab="tab-luxury">Luxury option</button>
+        </div>
+
+        <div id="tab-medium" class="tab-panel active">
+          <h4>Main Hotel</h4>
+          <div class="row">
+            <label for="hotel-name">Hotel name (optional):</label>
+            <input id="hotel-name" type="text" value="${(plan.hotel.name||"").replace(/"/g,'&quot;')}" placeholder="e.g., Hotel Central">
+          </div>
+          <div class="row">
+            <label for="currency">Currency:</label>
+            <select id="currency">${currencyOptions}</select>
+          </div>
+          <div class="row">
+            <label for="nightly">Avg price per night:</label>
+            <input id="nightly" type="number" min="0" step="1" value="${plan.hotel.nightly||""}">
+          </div>
+          <div class="row">
+            <label for="nights">Nights:</label>
+            <input id="nights" type="number" min="1" step="1" value="${nightsDefault}">
+          </div>
+          <div class="row">
+            <label>Total (auto):</label>
+            <div id="hotel-total" aria-live="polite" style="font-weight:600;">—</div>
+          </div>
+          <textarea id="hotel-notes" class="textarea" placeholder="Notes (optional)"></textarea>
+          <div class="save-bar">
+            <button class="btn primary" id="save-hotel">Save Stay</button>
+            <button class="btn" id="clear-hotel">Clear</button>
+          </div>
+        </div>
+
+        <div id="tab-cheap" class="tab-panel">
+          <h4>Cheap option</h4>
+          <div class="row"><label>Name:</label><input id="cheap-name" type="text"></div>
+          <div class="row"><label>Currency:</label><select id="cheap-currency">${currencyOptions}</select></div>
+          <div class="row"><label>Price per night:</label><input id="cheap-price" type="number" min="0" step="1"></div>
+          <div class="row"><label>Nights:</label><input id="cheap-nights" type="number" min="1" step="1"></div>
+          <div class="row"><label>Total:</label><div id="cheap-total" style="font-weight:600;">—</div></div>
+          <textarea id="cheap-notes" class="textarea" placeholder="Notes (optional)"></textarea>
+        </div>
+
+        <div id="tab-luxury" class="tab-panel">
+          <h4>Luxury option</h4>
+          <div class="row"><label>Name:</label><input id="luxury-name" type="text"></div>
+          <div class="row"><label>Currency:</label><select id="luxury-currency">${currencyOptions}</select></div>
+          <div class="row"><label>Price per night:</label><input id="luxury-price" type="number" min="0" step="1"></div>
+          <div class="row"><label>Nights:</label><input id="luxury-nights" type="number" min="1" step="1"></div>
+          <div class="row"><label>Total:</label><div id="luxury-total" style="font-weight:600;">—</div></div>
+          <textarea id="luxury-notes" class="textarea" placeholder="Notes (optional)"></textarea>
+        </div>
+
         <div class="save-bar">
-          <button class="btn primary" id="save-notes-btn">Save Notes</button>
+          <button class="btn primary" id="save-budget">Save Hotel Options</button>
+        </div>
+      </div>
+
+      <div id="tab-food" class="tab-panel">
+        <div class="day-nav">
+          <label for="food-day-select">Day:</label>
+          <select id="food-day-select"></select>
+        </div>
+
+        <div class="tabs food-subtabs">
+          <button class="tab-btn active" data-subtab="tab-breakfast">Breakfast</button>
+          <button class="tab-btn" data-subtab="tab-lunch">Lunch</button>
+          <button class="tab-btn" data-subtab="tab-dinner">Dinner</button>
+        </div>
+
+        <div id="tab-breakfast" class="tab-panel active">
+          <div class="row"><label>Dish:</label><input id="breakfast-dish" type="text"><input id="breakfast-dish-desc" type="text" placeholder="Description"></div>
+          <div class="row"><label>Hot drink:</label><input id="breakfast-hot" type="text"><input id="breakfast-hot-desc" type="text" placeholder="Description"></div>
+          <div class="row"><label>Cold drink:</label><input id="breakfast-cold" type="text"><input id="breakfast-cold-desc" type="text" placeholder="Description"></div>
+        </div>
+
+        <div id="tab-lunch" class="tab-panel">
+          <div class="row"><label>Dish:</label><input id="lunch-dish" type="text"><input id="lunch-dish-desc" type="text" placeholder="Description"></div>
+          <div class="row"><label>Hot drink:</label><input id="lunch-hot" type="text"><input id="lunch-hot-desc" type="text" placeholder="Description"></div>
+          <div class="row"><label>Cold drink:</label><input id="lunch-cold" type="text"><input id="lunch-cold-desc" type="text" placeholder="Description"></div>
+        </div>
+
+        <div id="tab-dinner" class="tab-panel">
+          <div class="row"><label>Starter:</label><input id="dinner-starter" type="text"><input id="dinner-starter-desc" type="text" placeholder="Description"></div>
+          <div class="row"><label>Main course:</label><input id="dinner-main" type="text"><input id="dinner-main-desc" type="text" placeholder="Description"></div>
+          <div class="row"><label>Dessert:</label><input id="dinner-dessert" type="text"><input id="dinner-dessert-desc" type="text" placeholder="Description"></div>
+          <div class="row"><label>Alcoholic drink:</label><input id="dinner-alcohol" type="text"><input id="dinner-alcohol-desc" type="text" placeholder="Description"></div>
+          <div class="row"><label>Cold drink:</label><input id="dinner-cold" type="text"><input id="dinner-cold-desc" type="text" placeholder="Description"></div>
+        </div>
+
+        <div class="save-bar">
+          <button class="btn primary" id="save-food">Save Food Diary</button>
+          <button class="btn" id="clear-food">Clear</button>
+        </div>
+
+        <p class="hint">Food diary is saved per destination and includes breakfast, lunch, and dinner entries per day.</p>
+      </div>
+
+      <div id="tab-notes" class="tab-panel">
+        <textarea id="notes-text" class="textarea" placeholder="Anything else to remember (tickets, packing, misc)"></textarea>
+        <div class="save-bar">
+          <button class="btn primary" id="save-notes">Save Notes</button>
+          <button class="btn" id="clear-notes">Clear</button>
+        </div>
+      </div>
+
+      <div id="tab-tips" class="tab-panel">
+        <textarea id="tips-text" class="textarea" placeholder="Write any travel tips, local secrets, or reminders here..."></textarea>
+        <div class="save-bar">
+          <button class="btn primary" id="save-tips">Save Tips</button>
+          <button class="btn" id="clear-tips">Clear</button>
         </div>
       </div>
     </div>
   `;
 }
 
-function bindPopupEvents(popupEl, destName) {
-  // Tabs
-  popupEl.querySelectorAll(".tab-btn").forEach((btn) => {
+// --------------------------
+// Popup handlers (your logic, corrected)
+// --------------------------
+function initPopupHandlers(container, d) {
+  const name = d.name;
+  const toast = container.querySelector(".saved-toast");
+  const plan = loadPlan(name);
+
+  // Main tabs
+  const mainTabBtns = container.querySelectorAll('.tab-btn[data-tab]');
+  mainTabBtns.forEach(btn => {
     btn.addEventListener("click", () => {
-      popupEl.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
-      popupEl.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
+      mainTabBtns.forEach(b => b.classList.remove("active"));
+      container.querySelectorAll(':scope > .tab-panel').forEach(p => p.classList.remove("active"));
       btn.classList.add("active");
-      popupEl
-        .querySelector(`.tab-panel[data-panel="${btn.dataset.tab}"]`)
-        .classList.add("active");
+      const panel = container.querySelector("#" + btn.dataset.tab);
+      if (panel) panel.classList.add("active");
     });
   });
 
-  // Save (Days)
-  popupEl.querySelector("#save-btn")?.addEventListener("click", async () => {
-    const plan = loadLocalPlan(destName) || {};
-    const days = Number(popupEl.querySelector("#days-input")?.value || 1);
-    plan.days = days;
+  // DAYS
+  const daysInput = container.querySelector("#days-input");
+  const applyDaysBtn = container.querySelector("#apply-days");
 
-    saveLocalPlan(destName, plan);
+  const rebuildDaySelector = () => {
+    const newDays = Math.max(1, Number(daysInput?.value || 1));
 
-    try {
-      if (currentUser()) await savePlanToFirebase(destName, plan);
-    } catch (e) {
-      console.warn("Firebase save failed (still saved locally):", e);
+    // activities
+    for (let i = 1; i <= newDays; i++) {
+      if (!(i in plan.activities)) plan.activities[i] = "";
+    }
+    Object.keys(plan.activities).map(k => +k).filter(k => k > newDays).forEach(k => delete plan.activities[k]);
+
+    // day-select
+    const daySelect = container.querySelector("#day-select");
+    if (daySelect) {
+      daySelect.innerHTML = Array.from({ length: newDays }, (_, i) => `<option value="${i + 1}">Day ${i + 1}</option>`).join("");
+      if (!daySelect.value) daySelect.value = "1";
     }
 
-    const toast = popupEl.querySelector("#saved-toast");
-    if (toast) {
-      toast.classList.add("show");
-      setTimeout(() => toast.classList.remove("show"), 1200);
+    // food-day-select
+    const foodDaySelect = container.querySelector("#food-day-select");
+    if (foodDaySelect) {
+      foodDaySelect.innerHTML = Array.from({ length: newDays }, (_, i) => `<option value="${i + 1}">Day ${i + 1}</option>`).join("");
+      if (!foodDaySelect.value) foodDaySelect.value = "1";
     }
+
+    // nights default tweak
+    const nightsEl = container.querySelector("#nights");
+    if (nightsEl && (!plan.hotel.nights || plan.hotel.nights === Math.max(1, plan.days - 1))) {
+      nightsEl.value = String(Math.max(1, newDays - 1));
+    }
+  };
+
+  applyDaysBtn?.addEventListener("click", () => {
+    plan.days = Math.max(1, Number(daysInput?.value || 1));
+    if (!plan.food || typeof plan.food !== "object") plan.food = {};
+    for (let i = 1; i <= plan.days; i++) if (!plan.food[i]) plan.food[i] = cloneFoodDay();
+    rebuildDaySelector();
+    savePlan(name, plan);
+    showSaved(toast);
   });
 
-  // Save (Notes)
-  popupEl.querySelector("#save-notes-btn")?.addEventListener("click", async () => {
-    const plan = loadLocalPlan(destName) || {};
-    plan.notes = popupEl.querySelector("#notes-input")?.value || "";
-    saveLocalPlan(destName, plan);
+  // DAILY PLAN
+  const daySelect = container.querySelector("#day-select");
+  const prevBtn = container.querySelector("#prev-day");
+  const nextBtn = container.querySelector("#next-day");
+  const dayArea = container.querySelector("#day-activities");
 
-    try {
-      if (currentUser()) await savePlanToFirebase(destName, plan);
-    } catch (e) {
-      console.warn("Firebase save failed (still saved locally):", e);
-    }
+  const loadDayText = () => {
+    const day = Number(daySelect?.value || 1);
+    dayArea.value = plan.activities[day] ?? "";
+  };
+  const saveDayText = () => {
+    const day = Number(daySelect?.value || 1);
+    plan.activities[day] = dayArea.value;
+    savePlan(name, plan);
+    showSaved(toast);
+  };
+
+  if (daySelect) {
+    daySelect.addEventListener("change", () => {
+      saveDayText();
+      loadDayText();
+    });
+    prevBtn?.addEventListener("click", () => {
+      const v = Number(daySelect.value || 1);
+      if (v > 1) {
+        saveDayText();
+        daySelect.value = String(v - 1);
+        loadDayText();
+      }
+    });
+    nextBtn?.addEventListener("click", () => {
+      const v = Number(daySelect.value || 1);
+      const max = Math.max(1, Number(daysInput?.value || plan.days || 1));
+      if (v < max) {
+        saveDayText();
+        daySelect.value = String(v + 1);
+        loadDayText();
+      }
+    });
+  }
+
+  container.querySelector("#save-day")?.addEventListener("click", saveDayText);
+  container.querySelector("#clear-day")?.addEventListener("click", () => {
+    dayArea.value = "";
+    saveDayText();
   });
+
+  // STAY & BUDGET
+  const hotelName = container.querySelector("#hotel-name");
+  const currency = container.querySelector("#currency");
+  const nightly = container.querySelector("#nightly");
+  const nights = container.querySelector("#nights");
+  const total = container.querySelector("#hotel-total");
+  const hotelNotes = container.querySelector("#hotel-notes");
+
+  // seed hotel fields
+  if (hotelNotes) hotelNotes.value = plan.hotel.notes || "";
+  if (hotelName) hotelName.value = plan.hotel.name || "";
+  if (currency) currency.value = plan.hotel.currency || "GBP";
+  if (nightly) nightly.value = plan.hotel.nightly || "";
+  if (nights) nights.value = String(plan.hotel.nights || Math.max(1, (plan.days|0)-1 || 1));
+
+  const renderTotal = () => {
+    const n = Number(nightly?.value || 0);
+    const k = Math.max(1, Number(nights?.value || 1));
+    const curr = currency?.value || "GBP";
+    total.textContent = (n > 0 && k > 0) ? `${curr} ${(n * k).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : "—";
+  };
+
+  nightly?.addEventListener("input", renderTotal);
+  nights?.addEventListener("input", renderTotal);
+  currency?.addEventListener("change", renderTotal);
+  renderTotal();
+
+  const saveHotel = () => {
+    plan.hotel.name = hotelName?.value || "";
+    plan.hotel.currency = currency?.value || "GBP";
+    plan.hotel.nightly = nightly?.value || "";
+    plan.hotel.nights = Math.max(1, Number(nights?.value || 1));
+    plan.hotel.notes = hotelNotes?.value || "";
+    savePlan(name, plan);
+    showSaved(toast);
+  };
+
+  container.querySelector("#save-hotel")?.addEventListener("click", saveHotel);
+  container.querySelector("#clear-hotel")?.addEventListener("click", () => {
+    if (hotelName) hotelName.value = "";
+    if (currency) currency.value = "GBP";
+    if (nightly) nightly.value = "";
+    if (nights) nights.value = String(Math.max(1, (plan.days|0)-1 || 1));
+    if (hotelNotes) hotelNotes.value = "";
+    saveHotel();
+    renderTotal();
+  });
+
+  // Budget subtabs
+  const bButtons = container.querySelectorAll(".budget-subtabs .tab-btn");
+  const bPanels = {
+    "tab-cheap": container.querySelector("#tab-cheap"),
+    "tab-medium": container.querySelector("#tab-medium"),
+    "tab-luxury": container.querySelector("#tab-luxury")
+  };
+  bButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      bButtons.forEach(b => b.classList.remove("active"));
+      Object.values(bPanels).forEach(p => p && p.classList.remove("active"));
+      btn.classList.add("active");
+      const panel = bPanels[btn.dataset.btab];
+      if (panel) panel.classList.add("active");
+    });
+  });
+
+  const cheap = plan.budget.cheap;
+  const luxury = plan.budget.luxury;
+
+  const cheapName = container.querySelector("#cheap-name");
+  const cheapCurrency = container.querySelector("#cheap-currency");
+  const cheapPrice = container.querySelector("#cheap-price");
+  const cheapNights = container.querySelector("#cheap-nights");
+  const cheapNotes = container.querySelector("#cheap-notes");
+
+  const luxuryName = container.querySelector("#luxury-name");
+  const luxuryCurrency = container.querySelector("#luxury-currency");
+  const luxuryPrice = container.querySelector("#luxury-price");
+  const luxuryNights = container.querySelector("#luxury-nights");
+  const luxuryNotes = container.querySelector("#luxury-notes");
+
+  // seed cheap/luxury
+  if (cheapName) cheapName.value = cheap.name || "";
+  if (cheapCurrency) cheapCurrency.value = cheap.currency || (plan.hotel.currency || "GBP");
+  if (cheapPrice) cheapPrice.value = cheap.price || "";
+  if (cheapNights) cheapNights.value = cheap.nights || String(plan.hotel.nights || Math.max(1,(plan.days|0)-1||1));
+  if (cheapNotes) cheapNotes.value = cheap.notes || "";
+
+  if (luxuryName) luxuryName.value = luxury.name || "";
+  if (luxuryCurrency) luxuryCurrency.value = luxury.currency || (plan.hotel.currency || "GBP");
+  if (luxuryPrice) luxuryPrice.value = luxury.price || "";
+  if (luxuryNights) luxuryNights.value = luxury.nights || String(plan.hotel.nights || Math.max(1,(plan.days|0)-1||1));
+  if (luxuryNotes) luxuryNotes.value = luxury.notes || "";
+
+  function wireOptionTotal(prefix, totalId) {
+    const priceEl = container.querySelector(`#${prefix}-price`);
+    const nightsEl = container.querySelector(`#${prefix}-nights`);
+    const totalEl = container.querySelector(`#${totalId}`);
+    const currEl = container.querySelector(`#${prefix}-currency`);
+
+    const render = () => {
+      const price = Number(priceEl?.value || 0);
+      const n = Math.max(1, Number(nightsEl?.value || 1));
+      const curr = currEl?.value || "GBP";
+      totalEl.textContent = (price > 0 && n > 0) ? `${curr} ${(price * n).toLocaleString(undefined, { maximumFractionDigits: 0 })}` : "—";
+    };
+
+    priceEl?.addEventListener("input", render);
+    nightsEl?.addEventListener("input", render);
+    currEl?.addEventListener("change", render);
+    render();
+  }
+  wireOptionTotal("cheap", "cheap-total");
+  wireOptionTotal("luxury", "luxury-total");
+
+  container.querySelector("#save-budget")?.addEventListener("click", () => {
+    plan.budget.cheap = {
+      name: cheapName?.value || "",
+      currency: cheapCurrency?.value || (plan.hotel.currency || "GBP"),
+      price: cheapPrice?.value || "",
+      nights: cheapNights?.value || "",
+      notes: cheapNotes?.value || ""
+    };
+    plan.budget.luxury = {
+      name: luxuryName?.value || "",
+      currency: luxuryCurrency?.value || (plan.hotel.currency || "GBP"),
+      price: luxuryPrice?.value || "",
+      nights: luxuryNights?.value || "",
+      notes: luxuryNotes?.value || ""
+    };
+    savePlan(name, plan);
+    showSaved(toast);
+  });
+
+  // FOOD TAB
+  const foodDaySelect = container.querySelector("#food-day-select");
+  const saveFoodBtn = container.querySelector("#save-food");
+  const clearFoodBtn = container.querySelector("#clear-food");
+
+  if (foodDaySelect) {
+    foodDaySelect.innerHTML = Array.from({ length: plan.days }, (_, i) => `<option value="${i + 1}">Day ${i + 1}</option>`).join("");
+    foodDaySelect.value = "1";
+  }
+
+  function ensureFoodDay(day) {
+    if (!plan.food[day] || typeof plan.food[day] !== "object") plan.food[day] = cloneFoodDay();
+    plan.food[day].breakfast = { ...cloneFoodDay().breakfast, ...(plan.food[day].breakfast || {}) };
+    plan.food[day].lunch     = { ...cloneFoodDay().lunch, ...(plan.food[day].lunch || {}) };
+    plan.food[day].dinner    = { ...cloneFoodDay().dinner, ...(plan.food[day].dinner || {}) };
+  }
+
+  const setVal = (sel, v) => {
+    const el = container.querySelector(sel);
+    if (el) el.value = v || "";
+  };
+  const getVal = (sel) => (container.querySelector(sel)?.value ?? "");
+
+  function loadFoodForDay(day) {
+    ensureFoodDay(day);
+    const f = plan.food[day];
+
+    setVal("#breakfast-dish", f.breakfast.dish);
+    setVal("#breakfast-dish-desc", f.breakfast.description);
+    setVal("#breakfast-hot", f.breakfast.hot);
+    setVal("#breakfast-hot-desc", f.breakfast.hotDescription);
+    setVal("#breakfast-cold", f.breakfast.cold);
+    setVal("#breakfast-cold-desc", f.breakfast.coldDescription);
+
+    setVal("#lunch-dish", f.lunch.dish);
+    setVal("#lunch-dish-desc", f.lunch.description);
+    setVal("#lunch-hot", f.lunch.hot);
+    setVal("#lunch-hot-desc", f.lunch.hotDescription);
+    setVal("#lunch-cold", f.lunch.cold);
+    setVal("#lunch-cold-desc", f.lunch.coldDescription);
+
+    setVal("#dinner-starter", f.dinner.starter);
+    setVal("#dinner-starter-desc", f.dinner.starterDescription);
+    setVal("#dinner-main", f.dinner.main);
+    setVal("#dinner-main-desc", f.dinner.mainDescription);
+    setVal("#dinner-dessert", f.dinner.dessert);
+    setVal("#dinner-dessert-desc", f.dinner.dessertDescription);
+    setVal("#dinner-alcohol", f.dinner.alcoholic);
+    setVal("#dinner-alcohol-desc", f.dinner.alcoholDescription);
+    setVal("#dinner-cold", f.dinner.cold);
+    setVal("#dinner-cold-desc", f.dinner.coldDescription);
+  }
+
+  function saveFoodForDay(day) {
+    ensureFoodDay(day);
+    plan.food[day] = {
+      breakfast: {
+        dish: getVal("#breakfast-dish"),
+        description: getVal("#breakfast-dish-desc"),
+        hot: getVal("#breakfast-hot"),
+        hotDescription: getVal("#breakfast-hot-desc"),
+        cold: getVal("#breakfast-cold"),
+        coldDescription: getVal("#breakfast-cold-desc")
+      },
+      lunch: {
+        dish: getVal("#lunch-dish"),
+        description: getVal("#lunch-dish-desc"),
+        hot: getVal("#lunch-hot"),
+        hotDescription: getVal("#lunch-hot-desc"),
+        cold: getVal("#lunch-cold"),
+        coldDescription: getVal("#lunch-cold-desc")
+      },
+      dinner: {
+        starter: getVal("#dinner-starter"),
+        starterDescription: getVal("#dinner-starter-desc"),
+        main: getVal("#dinner-main"),
+        mainDescription: getVal("#dinner-main-desc"),
+        dessert: getVal("#dinner-dessert"),
+        dessertDescription: getVal("#dinner-dessert-desc"),
+        alcoholic: getVal("#dinner-alcohol"),
+        alcoholDescription: getVal("#dinner-alcohol-desc"),
+        cold: getVal("#dinner-cold"),
+        coldDescription: getVal("#dinner-cold-desc")
+      }
+    };
+  }
+
+  let currentFoodDay = Number(foodDaySelect?.value || 1);
+  loadFoodForDay(currentFoodDay);
+
+  foodDaySelect?.addEventListener("change", () => {
+    saveFoodForDay(currentFoodDay);
+    savePlan(name, plan);
+    currentFoodDay = Number(foodDaySelect.value || 1);
+    loadFoodForDay(currentFoodDay);
+    showSaved(toast);
+  });
+
+  saveFoodBtn?.addEventListener("click", () => {
+    saveFoodForDay(currentFoodDay);
+    savePlan(name, plan);
+    showSaved(toast);
+  });
+
+  clearFoodBtn?.addEventListener("click", () => {
+    [
+      "#breakfast-dish","#breakfast-dish-desc","#breakfast-hot","#breakfast-hot-desc","#breakfast-cold","#breakfast-cold-desc",
+      "#lunch-dish","#lunch-dish-desc","#lunch-hot","#lunch-hot-desc","#lunch-cold","#lunch-cold-desc",
+      "#dinner-starter","#dinner-starter-desc","#dinner-main","#dinner-main-desc","#dinner-dessert","#dinner-dessert-desc",
+      "#dinner-alcohol","#dinner-alcohol-desc","#dinner-cold","#dinner-cold-desc"
+    ].forEach(sel => setVal(sel, ""));
+    plan.food[currentFoodDay] = cloneFoodDay();
+    savePlan(name, plan);
+    showSaved(toast);
+  });
+
+  // Food subtabs
+  const subButtons = container.querySelectorAll(".food-subtabs .tab-btn");
+  const subPanels = ["tab-breakfast", "tab-lunch", "tab-dinner"].map(id => container.querySelector("#" + id));
+
+  function activateSubtab(id) {
+    subButtons.forEach(b => b.classList.remove("active"));
+    subPanels.forEach(p => p && p.classList.remove("active"));
+    container.querySelector(`.food-subtabs .tab-btn[data-subtab="${id}"]`)?.classList.add("active");
+    container.querySelector("#" + id)?.classList.add("active");
+  }
+  subButtons.forEach(btn => btn.addEventListener("click", () => activateSubtab(btn.dataset.subtab)));
+
+  // Notes
+  const notesArea = container.querySelector("#notes-text");
+  if (notesArea) notesArea.value = plan.notes || "";
+  container.querySelector("#save-notes")?.addEventListener("click", () => {
+    plan.notes = notesArea?.value || "";
+    savePlan(name, plan);
+    showSaved(toast);
+  });
+  container.querySelector("#clear-notes")?.addEventListener("click", () => {
+    if (notesArea) notesArea.value = "";
+    plan.notes = "";
+    savePlan(name, plan);
+    showSaved(toast);
+  });
+
+  // Tips
+  const tipsArea = container.querySelector("#tips-text");
+  if (tipsArea) tipsArea.value = plan.tips || "";
+  container.querySelector("#save-tips")?.addEventListener("click", () => {
+    plan.tips = tipsArea?.value || "";
+    savePlan(name, plan);
+    showSaved(toast);
+  });
+  container.querySelector("#clear-tips")?.addEventListener("click", () => {
+    if (tipsArea) tipsArea.value = "";
+    plan.tips = "";
+    savePlan(name, plan);
+    showSaved(toast);
+  });
+
+  // Init daily selector
+  if (daySelect) {
+    daySelect.value = "1";
+    loadDayText();
+  }
 }
 
-function renderMap() {
-  ensureMap();
-  markerByName.clear();
+// --------------------------
+// Map setup + Voyager background (your “before”)
+// --------------------------
+const map = L.map("map").setView([48.5, 8], 5);
+const cartoAttr = "&copy; OpenStreetMap contributors, &copy; CARTO";
+L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+  maxZoom: 20,
+  subdomains: "abcd",
+  attribution: cartoAttr
+}).addTo(map);
 
-  // Remove old markers (keep the tile layer)
-  map.eachLayer((layer) => {
-    if (layer instanceof L.Marker) map.removeLayer(layer);
-  });
+// --------------------------
+// Render map + popup hydration
+// --------------------------
+let allMarkers = [];
+let allLayerGroup;
+
+function renderMap() {
+  if (allLayerGroup) map.removeLayer(allLayerGroup);
+  allLayerGroup = L.featureGroup().addTo(map);
+  allMarkers = [];
 
   for (const d of destinations) {
-    const destName = d.name || d.title || d.destination || d;
-    const lat = d.lat ?? d.latitude;
-    const lng = d.lng ?? d.longitude;
-    if (lat == null || lng == null) continue;
+    const icon = d.destination ? destinationIcon(d.destination) : undefined;
+    const marker = L.marker([d.lat, d.lng], icon ? { icon } : undefined);
+    marker.destinationData = d;
 
-    const plan = loadLocalPlan(destName) || {};
-
-    const marker = L.marker([lat, lng], {
-      icon: getIcon(d.destination),
-    }).addTo(map);
-
-    markerByName.set(destName, marker);
+    marker.bindPopup(buildPopup(d), { maxWidth: 600 });
 
     marker.on("popupopen", async () => {
-      // Load-on-open from Firebase (fast + up to date)
-      if (currentUser()) {
-        try {
-          const fb = await loadPlanFromFirebase(destName);
-          if (fb) saveLocalPlan(destName, fb);
-        } catch (e) {
-          console.warn("Popup load from firebase failed:", e);
-        }
-      }
+      await hydratePlanFromFirebaseIfSignedIn(d.name);
+      marker.setPopupContent(buildPopup(d));
 
-      const freshPlan = loadLocalPlan(destName) || {};
-      marker.setPopupContent(buildPopupHTML(destName, freshPlan));
-
-      const popupEl = marker.getPopup()?.getElement()?.querySelector(".popup");
-      if (popupEl) bindPopupEvents(popupEl, destName);
+      requestAnimationFrame(() => {
+        const el = marker.getPopup()?.getElement();
+        const container = el?.querySelector(".popup");
+        if (container) initPopupHandlers(container, d);
+      });
     });
 
-    marker.bindPopup(buildPopupHTML(destName, plan), { maxWidth: 600 });
+    allLayerGroup.addLayer(marker);
+    allMarkers.push(marker);
+  }
+
+  if (allLayerGroup.getLayers().length > 0) {
+    const bounds = allLayerGroup.getBounds();
+    if (bounds.isValid()) map.fitBounds(bounds.pad(0.2));
   }
 }
 
 window.renderMap = renderMap;
+
+// Hydrate all once
+async function hydrateAllPlansOnce() {
+  for (const d of destinations) {
+    await hydratePlanFromFirebaseIfSignedIn(d.name);
+  }
+}
+window.hydrateAllPlansOnce = hydrateAllPlansOnce;
+
+// --------------------------
+// Search/filter + migrate button
+// --------------------------
+document.addEventListener("DOMContentLoaded", () => {
+  const searchInput = document.getElementById("search-input");
+  const regionFilter = document.getElementById("region-filter");
+  const resetBtn = document.getElementById("reset-view");
+  const migrateBtn = document.getElementById("migrate-btn");
+
+  function filterMap() {
+    const query = (searchInput?.value || "").trim().toLowerCase();
+    const region = regionFilter?.value || "all";
+
+    allMarkers.forEach(marker => {
+      const d = marker.destinationData;
+      const nameMatch = d.name.toLowerCase().includes(query);
+      const regionMatch = (region === "all") || d.region === region;
+
+      if (nameMatch && regionMatch) marker.addTo(allLayerGroup);
+      else allLayerGroup.removeLayer(marker);
+    });
+
+    if (allLayerGroup.getLayers().length > 0) {
+      map.fitBounds(allLayerGroup.getBounds().pad(0.2));
+    }
+  }
+
+  searchInput?.addEventListener("input", filterMap);
+  regionFilter?.addEventListener("change", filterMap);
+  resetBtn?.addEventListener("click", () => {
+    if (searchInput) searchInput.value = "";
+    if (regionFilter) regionFilter.value = "all";
+    renderMap();
+  });
+
+  // initial render
+  renderMap();
+
+  // Migration: upload local tripPlan:* docs
+  migrateBtn?.addEventListener("click", async () => {
+    const user = window.firebaseAuth?.currentUser;
+    const db = window.firebaseDB;
+    if (!user || !db) return;
+
+    const statusBox = document.getElementById("migration-status");
+    const topBox = document.getElementById("migration-status-top");
+
+    const writeLine = (msg) => {
+      const line = document.createElement("div");
+      line.textContent = msg;
+      if (statusBox) statusBox.appendChild(line);
+      if (topBox) topBox.appendChild(line.cloneNode(true));
+    };
+
+    if (statusBox) { statusBox.innerHTML = ""; statusBox.style.display = "block"; }
+    if (topBox) { topBox.innerHTML = ""; topBox.style.display = "block"; }
+
+    const keys = Object.keys(localStorage).filter(k => k.startsWith("tripPlan:"));
+    if (keys.length === 0) { writeLine("❌ No local plans found."); return; }
+
+    for (const key of keys) {
+      const name = key.replace("tripPlan:", "");
+      let data;
+      try { data = JSON.parse(localStorage.getItem(key)); }
+      catch { writeLine(`❌ Skipped "${name}" (invalid JSON).`); continue; }
+
+      try {
+        const pruned = prunePlanForStorage(data);
+        pruned.updatedAt = pruned.updatedAt || Date.now();
+
+        const ref = window.doc(db, "users", user.uid, "plans", name);
+        await window.setDoc(ref, { name, data: pruned, updatedAt: pruned.updatedAt }, { merge: true });
+
+        writeLine(`✅ Migrated "${name}" to Firebase.`);
+      } catch (err) {
+        writeLine(`❌ Failed to migrate "${name}": ${err?.message || err}`);
+      }
+    }
+  });
+});

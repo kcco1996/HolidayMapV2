@@ -82,16 +82,23 @@ export async function initAuth(debugLog = console.log) {
     window.dispatchEvent(new CustomEvent("AUTH_STATE", { detail: user || null }));
   });
 }
-
 export async function signIn(debugLog = console.log) {
   debugLog?.("Sign-in clicked");
 
-  if (isIOS()) {
-    debugLog?.("Using redirect (iOS)");
+  // Brave detection (more reliable than !!navigator.brave)
+  const isBrave =
+    (typeof navigator.brave !== "undefined" && typeof navigator.brave.isBrave === "function")
+      ? await navigator.brave.isBrave()
+      : false;
+
+  // Brave & iOS: redirect is most reliable
+  if (isIOS() || isBrave) {
+    debugLog?.("Using redirect (Brave / iOS)");
     await signInWithRedirect(auth, provider);
     return;
   }
 
+  // Other browsers: popup first, fallback to redirect
   try {
     await signInWithPopup(auth, provider);
     debugLog?.("Popup sign-in OK");

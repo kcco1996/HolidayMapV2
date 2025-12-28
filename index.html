@@ -5,6 +5,11 @@
   <title>Kieran’s Holiday Destinations Map</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
+  <!-- ===== Stronger cache hints (Safari + GH Pages) ===== -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+
   <!-- Leaflet CSS -->
   <link rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -96,6 +101,8 @@
       gap: 8px;
       align-items: center;
       font-size: 13px;
+      flex-wrap: wrap;
+      max-width: 92vw;
     }
     #top-bar .btn { padding: 4px 8px; font-size: 13px; cursor: pointer; }
   </style>
@@ -126,6 +133,7 @@
     <button id="sign-out-btn" class="btn" style="display:none;">Sign out</button>
     <span id="user-info"></span>
     <span id="auth-debug" style="font-size:12px;color:#555;"></span>
+    <span id="build-stamp" style="font-size:12px;color:#555;"></span>
     <button id="migrate-btn" class="btn ghost" style="display:none;">Migrate Data to Firebase</button>
   </div>
 
@@ -157,8 +165,14 @@
        ========================= -->
   <script>
     // ===== Cache-bust assets (important for iPhone Safari + GitHub Pages) =====
-    const ASSET_VERSION = "2025-12-28-2";
+    const ASSET_VERSION = "2025-12-28-3"; // <-- bump this anytime you deploy
     const withV = (url) => url ? `${url}?v=${encodeURIComponent(ASSET_VERSION)}` : url;
+
+    // show build/version so you can confirm iPhone is running latest
+    document.addEventListener("DOMContentLoaded", () => {
+      const stamp = document.getElementById("build-stamp");
+      if (stamp) stamp.textContent = `Build: ${ASSET_VERSION}`;
+    });
 
     // ---------- Storage helpers ----------
     function storageKey(name){ return `tripPlan:${name}`; }
@@ -324,7 +338,11 @@
       pendingUploads.set(destName, setTimeout(async () => {
         try {
           const ref = window.doc(db, "users", user.uid, "plans", destName);
-          const payload = { name: destName, data: planObj, updatedAt: planObj.updatedAt || Date.now() };
+          const payload = {
+            name: destName,
+            data: planObj,
+            updatedAt: planObj.updatedAt || Date.now()
+          };
           await window.setDoc(ref, payload, { merge: true });
           lastUploadedHash.set(destName, h);
         } catch (err) {
@@ -340,6 +358,7 @@
       scheduleFirestoreUpload(name, pruned);
     }
 
+    // ✅ FIX: more robust updatedAt resolution + safer merge logic
     async function hydratePlanFromFirebaseIfSignedIn(destName) {
       const auth = window.firebaseAuth;
       const db = window.firebaseDB;
@@ -353,16 +372,17 @@
 
         const remoteDoc = snap.data() || {};
         const remotePlan = remoteDoc.data;
-        const remoteUpdatedAt = remoteDoc.updatedAt || 0;
+        // ✅ updatedAt can be at doc level OR inside data
+        const remoteUpdatedAt = Number(remoteDoc.updatedAt || remotePlan?.updatedAt || 0);
         if (!remotePlan) return;
 
         const localRaw = localStorage.getItem(storageKey(destName));
         let localPlan = null;
         try { localPlan = localRaw ? JSON.parse(localRaw) : null; } catch {}
-        const localUpdatedAt = localPlan?.updatedAt || 0;
+        const localUpdatedAt = Number(localPlan?.updatedAt || 0);
 
         if (!localPlan || remoteUpdatedAt > localUpdatedAt) {
-          const merged = prunePlanForStorage({ ...remotePlan, updatedAt: remoteUpdatedAt });
+          const merged = prunePlanForStorage({ ...remotePlan, updatedAt: remoteUpdatedAt || Date.now() });
           localStorage.setItem(storageKey(destName), JSON.stringify(merged));
           lastUploadedHash.set(destName, hashString(JSON.stringify(merged)));
           console.log(`✅ Hydrated "${destName}" from Firebase (remote newer)`);
@@ -575,7 +595,7 @@
         </div>`;
     }
 
-    // POPUP HANDLERS (unchanged)
+    // POPUP HANDLERS (unchanged except popupopen fix further down)
     function initPopupHandlers(container, d){
       const name = d.name;
       const toast = container.querySelector('.saved-toast');
@@ -672,7 +692,7 @@
       if (hotelName) hotelName.value = plan.hotel.name || "";
       if (currency) currency.value = plan.hotel.currency || "GBP";
       if (nightly) nightly.value = plan.hotel.nightly || "";
-     if (nights) nights.value = plan.hotel.nights || Math.max(1, (plan.days|0)-1 || 1);
+      if (nights) nights.value = plan.hotel.nights || Math.max(1, (plan.days|0)-1 || 1);
 
       const renderTotal = ()=>{
         const n = Number(nightly?.value||0);
@@ -805,7 +825,7 @@
       const clearFoodBtn  = container.querySelector('#clear-food');
 
       if (foodDaySelect) {
-        foodDaySelect.innerHTML = Array.from({length: plan.days}, (_,i)=>`<option value="${i+1}">Day ${i+1}</option>`).join('');
+        foodDaySelect.innerHTML = Array.from({length: plan.days}, (_,i)=>`<option value="${i+1}">Day ${i + 1}</option>`).join('');
         foodDaySelect.value = "1";
       }
 
@@ -2967,23 +2987,14 @@
         marker.destinationData = d;
         marker.bindPopup(buildPopup(d), { maxWidth: 600 });
 
-marker.on("popupopen", async () => {
-  await hydratePlanFromFirebaseIfSignedIn(d.name);
-  marker.setPopupContent(buildPopup(d));
-
-  requestAnimationFrame(() => {
-    const el = marker.getPopup()?.getElement();
-    const container = el?.querySelector(".popup");
-    if (container) initPopupHandlers(container, d);
-  });
-
-          hydratePlanFromFirebaseIfSignedIn(d.name).then(() => {
-            marker.setPopupContent(buildPopup(d));
-            requestAnimationFrame(() => {
-              const el = marker.getPopup()?.getElement();
-              const container = el?.querySelector(".popup");
-              if (container) initPopupHandlers(container, d);
-            });
+        // ✅ FIX: only hydrate ONCE here (you had it duplicated)
+        marker.on("popupopen", async () => {
+          await hydratePlanFromFirebaseIfSignedIn(d.name);
+          marker.setPopupContent(buildPopup(d));
+          requestAnimationFrame(() => {
+            const el = marker.getPopup()?.getElement();
+            const container = el?.querySelector(".popup");
+            if (container) initPopupHandlers(container, d);
           });
         });
 
@@ -3094,9 +3105,6 @@ marker.on("popupopen", async () => {
       const signInBtn = document.getElementById("sign-in-btn");
       const signOutBtn = document.getElementById("sign-out-btn");
 
-      // ✅ Single, correct click handler:
-      // - sets a flag so redirect result isn't "null spam"
-      // - calls your firebaseSignIn helper (popup or redirect depending on device)
       signInBtn?.addEventListener("click", async () => {
         dbg("Sign-in clicked");
         sessionStorage.setItem("AUTH_REDIRECT_STARTED", "1");
@@ -3107,6 +3115,23 @@ marker.on("popupopen", async () => {
       signOutBtn?.addEventListener("click", async () => {
         try { await window.firebaseSignOut(); }
         catch (e) { alert(`Sign-out error: ${e.code || e.message || e}`); }
+      });
+
+      // ✅ Auto-refresh when returning to the tab/app (common iPhone issue)
+      const refreshIfSignedIn = async () => {
+        const user = window.firebaseAuth?.currentUser;
+        if (!user) return;
+        await window.hydrateAllPlansOnce();
+        window.renderMap?.();
+      };
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") refreshIfSignedIn();
+      });
+
+      window.addEventListener("pageshow", (e) => {
+        // also fires when coming back from bfcache on iOS
+        refreshIfSignedIn();
       });
 
       window.firebaseOnAuthStateChanged?.((user) => {
@@ -3149,7 +3174,6 @@ marker.on("popupopen", async () => {
       signOut,
       onAuthStateChanged,
       setPersistence,
-      browserLocalPersistence,
       browserSessionPersistence
     } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
     import {
@@ -3178,10 +3202,8 @@ marker.on("popupopen", async () => {
 
     const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
-    // iOS-safe auth persistence (do NOT await — WebKit oddities)
-    setPersistence(auth, browserLocalPersistence).catch(() => {
-      setPersistence(auth, browserSessionPersistence).catch(()=>{});
-    });
+    // iOS-safe auth persistence
+    await setPersistence(auth, browserSessionPersistence);
 
     // Expose things your non-module code needs
     window.firebaseAuth = auth;
@@ -3197,29 +3219,25 @@ marker.on("popupopen", async () => {
 
     window.firebaseSignOut = async () => { await signOut(auth); };
 
-    // ✅ Central sign-in helper:
-    // - iOS: redirect (DON'T await)
-    // - else: popup, fallback to redirect
     window.firebaseSignIn = async () => {
       try {
         if (isIOS()) {
           sessionStorage.setItem("AUTH_REDIRECT_STARTED", "1");
-          signInWithRedirect(auth, provider); // no await
+          signInWithRedirect(auth, provider);
           return;
         }
         await signInWithPopup(auth, provider);
       } catch (err) {
-        // Fallback to redirect if popup blocked / fails
         try {
           sessionStorage.setItem("AUTH_REDIRECT_STARTED", "1");
-          signInWithRedirect(auth, provider); // no await
+          signInWithRedirect(auth, provider);
         } catch (e2) {
           alert(`Google sign-in failed: ${e2?.code || e2?.message || e2}`);
         }
       }
     };
 
-    // ✅ Redirect result handling (only if redirect was started)
+    // Redirect result handling (only if redirect was started)
     try {
       const started = sessionStorage.getItem("AUTH_REDIRECT_STARTED") === "1";
       if (started) {
@@ -3228,14 +3246,11 @@ marker.on("popupopen", async () => {
       }
     } catch (e) {
       sessionStorage.removeItem("AUTH_REDIRECT_STARTED");
-      // Let the main script show unhandledrejection/debug if needed
       console.warn("Redirect result error:", e?.code || e?.message || e);
     }
 
-    // Provide auth state change handler to non-module script
     window.firebaseOnAuthStateChanged = (cb) => onAuthStateChanged(auth, cb);
 
-    // Call the hook after Firebase is ready
     window.onFirebaseReady?.();
   </script>
 </body>

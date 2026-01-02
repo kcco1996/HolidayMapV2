@@ -227,74 +227,114 @@
     // ✅ This is exactly where it should go:
     window.safeStorage = safeStorage;
 
-    // ---------- Storage helpers ----------
-    function storageKey(name){ return `tripPlan:${name}`; }
+    // ---------- Storage helpers (robust cross-device) ----------
+function normalizeName(s) {
+  return String(s || "").trim().toLowerCase();
+}
 
-    function loadPlan(name){
-      const raw = safeStorage.getItem(storageKey(name));
-      const base = {
-        days: 1,
-        activities: {1:""},
-        notes: "",
-        tips: "",
-        hotel: { name:"", currency:"GBP", nightly:"", nights: 1, notes:"" },
-        budget: {
-          cheap:  { name:"", currency:"GBP", price:"", nights:"", notes:"" },
-          luxury: { name:"", currency:"GBP", price:"", nights:"", notes:"" }
-        },
-        food: {}
-      };
+// Build a lookup from normalized name -> exact destination name
+function buildDestNameLookup() {
+  const map = new Map();
+  for (const d of (window.destinations || destinations || [])) {
+    map.set(normalizeName(d.name), d.name);
+  }
+  return map;
+}
 
-      let plan;
-      try { plan = raw ? JSON.parse(raw) : base; }
-      catch { plan = base; }
+// We'll fill this AFTER destinations[] exists (see section 2)
+let DEST_NAME_LOOKUP = new Map();
 
-      if (!plan.activities) plan.activities = {1:""};
-      if (typeof plan.days !== "number" || plan.days < 1) plan.days = 1;
-      if (typeof plan.notes !== "string") plan.notes = "";
-      if (typeof plan.tips !== "string") plan.tips = "";
+function canonicalDestinationName(inputName) {
+  const n = normalizeName(inputName);
+  return DEST_NAME_LOOKUP.get(n) || String(inputName || "").trim();
+}
 
-      // hotel defaults
-      if (!plan.hotel) plan.hotel = { ...base.hotel, nights: Math.max(1, (plan.days|0)-1 || 1) };
-      if (!("notes" in plan.hotel)) plan.hotel.notes = "";
+function storageKey(name) {
+  // always store under canonical destination name so all devices match
+  return `tripPlan:${canonicalDestinationName(name)}`;
+}
 
-      if (!plan.budget) plan.budget = base.budget;
-      if (!plan.budget.cheap) plan.budget.cheap = base.budget.cheap;
-      if (!plan.budget.luxury) plan.budget.luxury = base.budget.luxury;
+function findExistingPlanKey(name) {
+  const exact = storageKey(name);
+  const exactRaw = safeStorage.getItem(exact);
+  if (exactRaw) return exact;
 
-      // migrate older foodDiary format (if present)
-      if (plan.foodDiary && !plan.food) {
-        plan.food = { 1: {
-          breakfast: { dish:"", hot:"", cold:"", description:"" },
-          lunch:     { dish:"", hot:"", cold:"", description:"" },
-          dinner:    { starter:"", main:"", dessert:"", alcoholic:"", cold:"", description:"" }
-        }};
-        delete plan.foodDiary;
-      }
-      if (!plan.food || typeof plan.food !== "object" || Array.isArray(plan.food)) plan.food = {};
+  // fallback: case-insensitive/trim match for older keys/doc ids
+  const target = normalizeName(name);
+  const keys = (safeStorage.keys?.() || []);
+  for (const k of keys) {
+    if (!k.startsWith("tripPlan:")) continue;
+    const kName = k.slice("tripPlan:".length);
+    if (normalizeName(kName) === target) return k;
+  }
+  return exact; // final fallback
+}
 
-      for (let i=1; i<=plan.days; i++){
-        if (!plan.food[i]) {
-          plan.food[i] = {
-            breakfast: { dish:"", hot:"", cold:"", description:"", hotDescription:"", coldDescription:"" },
-            lunch:     { dish:"", hot:"", cold:"", description:"", hotDescription:"", coldDescription:"" },
-            dinner:    {
-              starter:"", main:"", dessert:"",
-              alcoholic:"", cold:"",
-              starterDescription:"", mainDescription:"", dessertDescription:"",
-              alcoholDescription:"", coldDescription:"",
-              description:""
-            }
-          };
+function loadPlan(name){
+  const key = findExistingPlanKey(name);
+  const raw = safeStorage.getItem(key);
+
+  const base = {
+    days: 1,
+    activities: {1:""},
+    notes: "",
+    tips: "",
+    hotel: { name:"", currency:"GBP", nightly:"", nights: 1, notes:"" },
+    budget: {
+      cheap:  { name:"", currency:"GBP", price:"", nights:"", notes:"" },
+      luxury: { name:"", currency:"GBP", price:"", nights:"", notes:"" }
+    },
+    food: {}
+  };
+
+  let plan;
+  try { plan = raw ? JSON.parse(raw) : base; }
+  catch { plan = base; }
+
+  if (!plan.activities) plan.activities = {1:""};
+  if (typeof plan.days !== "number" || plan.days < 1) plan.days = 1;
+  if (typeof plan.notes !== "string") plan.notes = "";
+  if (typeof plan.tips !== "string") plan.tips = "";
+
+  if (!plan.hotel) plan.hotel = { ...base.hotel, nights: Math.max(1, (plan.days|0)-1 || 1) };
+  if (!("notes" in plan.hotel)) plan.hotel.notes = "";
+
+  if (!plan.budget) plan.budget = base.budget;
+
+  // migrate older foodDiary format (if present)
+  if (plan.foodDiary && !plan.food) {
+    plan.food = { 1: {
+      breakfast: { dish:"", hot:"", cold:"", description:"" },
+      lunch:     { dish:"", hot:"", cold:"", description:"" },
+      dinner:    { starter:"", main:"", dessert:"", alcoholic:"", cold:"", description:"" }
+    }};
+    delete plan.foodDiary;
+  }
+  if (!plan.food || typeof plan.food !== "object" || Array.isArray(plan.food)) plan.food = {};
+
+  for (let i=1; i<=plan.days; i++){
+    if (!plan.food[i]) {
+      plan.food[i] = {
+        breakfast: { dish:"", hot:"", cold:"", description:"", hotDescription:"", coldDescription:"" },
+        lunch:     { dish:"", hot:"", cold:"", description:"", hotDescription:"", coldDescription:"" },
+        dinner:    {
+          starter:"", main:"", dessert:"",
+          alcoholic:"", cold:"",
+          starterDescription:"", mainDescription:"", dessertDescription:"",
+          alcoholDescription:"", coldDescription:"",
+          description:""
         }
-      }
-
-      return plan;
+      };
     }
+  }
 
-    function savePlan(name, data){
-      safeStorage.setItem(storageKey(name), JSON.stringify(data));
-    }
+  return plan;
+}
+
+function savePlan(name, data){
+  safeStorage.setItem(storageKey(name), JSON.stringify(data));
+}
+
 
     function showSaved(toastEl){
       if (!toastEl) return;
@@ -2283,6 +2323,9 @@
 
     ];
 
+    // Build canonical destination name lookup AFTER destinations[] exists
+DEST_NAME_LOOKUP = buildDestNameLookup();
+
      // -------------------------
     // POPUP HTML
     // -------------------------
@@ -2985,19 +3028,23 @@
         try {
           const plansSnapshot = await getDocs(collection(db, "users", user.uid, "plans"));
           plansSnapshot.forEach(docSnap => {
-            const dataObj = docSnap.data() || {};
-            const name = dataObj.name || docSnap.id;
-            const plan = dataObj.data || dataObj;
+  const dataObj = docSnap.data() || {};
 
-            if (name && plan) {
-              try {
-                const storage = window.safeStorage || localStorage;
-                storage.setItem(`tripPlan:${name}`, JSON.stringify(plan));
-              } catch (e) {
-                console.warn("Storage write failed:", e);
-              }
-              console.log(`✅ Loaded ${name} from Firebase`);
-            }
+  // name could be doc id or stored field; normalize to a real destination name
+  const rawName = (dataObj.name || docSnap.id || "");
+  const canonicalName = canonicalDestinationName(rawName);
+
+  // handle older shapes
+  const plan = dataObj.data || dataObj;
+
+  if (canonicalName && plan) {
+    try {
+      safeStorage.setItem(`tripPlan:${canonicalName}`, JSON.stringify(plan));
+    } catch (e) {
+      console.warn("Storage write failed:", e);
+    }
+    console.log(`✅ Loaded ${canonicalName} from Firebase (source "${rawName}")`);
+  }
           });
         } catch (e) {
           console.warn("Firebase load failed:", e);
@@ -3027,9 +3074,8 @@
         statusBox.innerHTML = "";
         statusBox.style.display = "block";
 
-        const storage = window.safeStorage || localStorage;
-        const allKeys = (storage.keys ? storage.keys() : Object.keys(localStorage));
-        const keys = allKeys.filter(k => k.startsWith("tripPlan:"));
+        const storage = window.safeStorage;
+const keys = storage.keys().filter(k => k.startsWith("tripPlan:"));
 
         if (keys.length === 0) {
           statusBox.innerHTML = "❌ No local plans found.";
@@ -3040,7 +3086,7 @@
           const name = key.replace("tripPlan:", "");
           let data;
           try {
-            data = JSON.parse(storage.getItem(key));
+            data = JSON.parse(window.safeStorage.getItem(key));
           } catch {
             data = null;
           }

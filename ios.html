@@ -2614,14 +2614,21 @@ DEST_NAME_LOOKUP = buildDestNameLookup();
       // -------------------------
       // Stay & budget (Medium)
       // -------------------------
-      const hotelName = container.querySelector('#hotel-name');
-      const currency = container.querySelector('#currency');
-      const nightly = container.querySelector('#nightly');
-      const nights = container.querySelector('#nights');
-      const total = container.querySelector('#hotel-total');
-      const hotelNotes = container.querySelector('#hotel-notes');
+   const hotelName = container.querySelector('#hotel-name');
+const currency = container.querySelector('#currency');
+const nightly = container.querySelector('#nightly');
+const nights = container.querySelector('#nights');
+const total = container.querySelector('#hotel-total');
+const hotelNotes = container.querySelector('#hotel-notes');
 
-      if (hotelNotes) hotelNotes.value = plan.hotel.notes || "";
+// ✅ IMPORTANT: populate fields from the *latest* loaded plan
+if (hotelName) hotelName.value = plan.hotel?.name || "";
+if (currency) currency.value = plan.hotel?.currency || "GBP";
+if (nightly) nightly.value = plan.hotel?.nightly || "";
+if (nights)  nights.value  = Math.max(1, Number(plan.hotel?.nights || Math.max(1, (plan.days || 1) - 1)));
+
+if (hotelNotes) hotelNotes.value = plan.hotel?.notes || "";
+
 
       const renderTotal = ()=>{
         const n = Number(nightly?.value||0);

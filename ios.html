@@ -3077,8 +3077,15 @@ container.querySelector('#clear-day')?.addEventListener('click', async () => {
       // Init day 1
       if (daysInput) daysInput.value = plan.days;
 if (daySelect) {
-  daySelect.value = "1";
+  daySelect.innerHTML = "";
+  for (let i = 1; i <= plan.days; i++) {
+    const opt = document.createElement("option");
+    opt.value = String(i);
+    opt.textContent = `📅 Day ${i} Plan`;
+    daySelect.appendChild(opt);
+  }
   currentDay = 1;
+  daySelect.value = "1";
   loadDayText(currentDay);
 }
   }

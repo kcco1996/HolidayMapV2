@@ -2487,6 +2487,33 @@
       const toast = container.querySelector('.saved-toast');
       const plan = loadPlan(name);
 
+      // -------------------------
+// Budget subtabs (Cheap / Medium / Luxury)
+// -------------------------
+const budgetBtns = container.querySelectorAll('.budget-subtabs .tab-btn[data-btab]');
+const budgetPanels = ['tab-cheap','tab-medium','tab-luxury'];
+
+function activateBudgetTab(id){
+  // buttons
+  budgetBtns.forEach(b => b.classList.remove('active'));
+  container.querySelector(`.budget-subtabs .tab-btn[data-btab="${id}"]`)?.classList.add('active');
+
+  // panels
+  budgetPanels.forEach(pid => container.querySelector('#'+pid)?.classList.remove('active'));
+  container.querySelector('#'+id)?.classList.add('active');
+}
+
+budgetBtns.forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    activateBudgetTab(btn.dataset.btab);
+  }, { passive: false });
+});
+
+// Ensure default is Medium when opening
+activateBudgetTab('tab-medium');
+
       // Main tabs (only top-level)
       const mainTabBtns = container.querySelectorAll('.tab-btn[data-tab]');
       mainTabBtns.forEach(btn=>{
@@ -2764,13 +2791,19 @@ window.addEventListener("load", () => {
 
         marker.bindPopup(buildPopup(d), { maxWidth: 600 });
 
-        marker.on('popupopen', (e) => {
-          const el = e.popup.getElement();
-          requestAnimationFrame(() => {
-            const container = el.querySelector('.popup');
-            if (container) initPopupHandlers(container, d);
-          });
-        });
+       marker.on('popupopen', (e) => {
+  const el = e.popup.getElement();
+  requestAnimationFrame(() => {
+    const container = el.querySelector('.popup');
+    if (!container) return;
+
+    // iOS/Leaflet: prevent map from stealing taps/scroll
+    L.DomEvent.disableClickPropagation(container);
+    L.DomEvent.disableScrollPropagation(container);
+
+    initPopupHandlers(container, d);
+  });
+});
 
         marker.destinationData = d;
         allLayerGroup.addLayer(marker);

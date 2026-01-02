@@ -45,13 +45,24 @@
     .destination-icon { background: transparent; border: 0; }
     .destination-icon img { display: block; height: 20px; width: auto; }
 
-    /* iOS FIX — allow tall Leaflet popups to scroll */
-.leaflet-popup-content{
-  max-height:70vh;
-  overflow-y:auto;
-  -webkit-overflow-scrolling:touch;
+/* iOS popup hard fix */
+.leaflet-popup-content {
+  max-height: 80vh;
+  overflow: hidden;   /* outer stays clean */
 }
 
+.popup {
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.popup .tab-content {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  min-height: 0;
+}
     /* Tabs */
     .tabs {
       display: flex; gap: 6px; margin-top: 8px; margin-bottom: 8px; flex-wrap: wrap;

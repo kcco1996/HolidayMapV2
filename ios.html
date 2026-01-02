@@ -112,7 +112,7 @@
     /* Wider popup */
     .leaflet-popup-content { width: 560px !important; }
 
-    /* Migration status box */
+    /* Migration/status box */
     #migration-status{
       display:none;
       position:fixed;
@@ -121,19 +121,30 @@
       background:#fff;
       border:1px solid #ccc;
       padding:10px;
-      max-width:320px;
+      max-width:340px;
       font-size:13px;
       line-height:1.4;
       z-index:1001;
       box-shadow:0 2px 5px rgba(0,0,0,0.1);
       border-radius:8px;
       overflow-y:auto;
-      max-height:50vh;
+      max-height:55vh;
     }
 
     /* iOS: prevent input zoom when font-size < 16px */
     input, select, textarea { font-size: 16px; }
     .btn, .tab-btn, .hint, .row label { font-size: 13px; }
+
+    /* loading hint inside popup */
+    .loading-hint {
+      font-size: 12px;
+      color: #444;
+      background: #f3f4f6;
+      border: 1px solid #e5e7eb;
+      padding: 6px 8px;
+      border-radius: 8px;
+      margin-top: 8px;
+    }
   </style>
 </head>
 
@@ -224,122 +235,246 @@
       };
     })();
 
-    // ✅ This is exactly where it should go:
     window.safeStorage = safeStorage;
 
-    // ---------- Storage helpers (robust cross-device) ----------
-function normalizeName(s) {
-  return String(s || "").trim().toLowerCase();
-}
+    // -------------------------
+    // Large-value storage (chunking) — fixes iOS per-key limits
+    // -------------------------
+    const CHUNK_SIZE = 8000; // UTF-16-ish safe chunk size for iOS localStorage
 
-// Build a lookup from normalized name -> exact destination name
-function buildDestNameLookup() {
-  const map = new Map();
-  for (const d of (window.destinations || destinations || [])) {
-    map.set(normalizeName(d.name), d.name);
-  }
-  return map;
-}
+    function setLargeItem(key, valueStr) {
+      const storage = safeStorage;
+      // delete old chunks
+      const oldCount = Number(storage.getItem(`${key}::__chunks`) || 0);
+      for (let i = 0; i < oldCount; i++) storage.removeItem(`${key}::__chunk:${i}`);
+      storage.removeItem(`${key}::__chunks`);
 
-// We'll fill this AFTER destinations[] exists (see section 2)
-let DEST_NAME_LOOKUP = new Map();
-
-function canonicalDestinationName(inputName) {
-  const n = normalizeName(inputName);
-  return DEST_NAME_LOOKUP.get(n) || String(inputName || "").trim();
-}
-
-function storageKey(name) {
-  // always store under canonical destination name so all devices match
-  return `tripPlan:${canonicalDestinationName(name)}`;
-}
-
-function findExistingPlanKey(name) {
-  const exact = storageKey(name);
-  const exactRaw = safeStorage.getItem(exact);
-  if (exactRaw) return exact;
-
-  // fallback: case-insensitive/trim match for older keys/doc ids
-  const target = normalizeName(name);
-  const keys = (safeStorage.keys?.() || []);
-  for (const k of keys) {
-    if (!k.startsWith("tripPlan:")) continue;
-    const kName = k.slice("tripPlan:".length);
-    if (normalizeName(kName) === target) return k;
-  }
-  return exact; // final fallback
-}
-
-function loadPlan(name){
-  const key = findExistingPlanKey(name);
-  const raw = safeStorage.getItem(key);
-
-  const base = {
-    days: 1,
-    activities: {1:""},
-    notes: "",
-    tips: "",
-    hotel: { name:"", currency:"GBP", nightly:"", nights: 1, notes:"" },
-    budget: {
-      cheap:  { name:"", currency:"GBP", price:"", nights:"", notes:"" },
-      luxury: { name:"", currency:"GBP", price:"", nights:"", notes:"" }
-    },
-    food: {}
-  };
-
-  let plan;
-  try { plan = raw ? JSON.parse(raw) : base; }
-  catch { plan = base; }
-
-  if (!plan.activities) plan.activities = {1:""};
-  if (typeof plan.days !== "number" || plan.days < 1) plan.days = 1;
-  if (typeof plan.notes !== "string") plan.notes = "";
-  if (typeof plan.tips !== "string") plan.tips = "";
-
-  if (!plan.hotel) plan.hotel = { ...base.hotel, nights: Math.max(1, (plan.days|0)-1 || 1) };
-  if (!("notes" in plan.hotel)) plan.hotel.notes = "";
-
-  if (!plan.budget) plan.budget = base.budget;
-
-  // migrate older foodDiary format (if present)
-  if (plan.foodDiary && !plan.food) {
-    plan.food = { 1: {
-      breakfast: { dish:"", hot:"", cold:"", description:"" },
-      lunch:     { dish:"", hot:"", cold:"", description:"" },
-      dinner:    { starter:"", main:"", dessert:"", alcoholic:"", cold:"", description:"" }
-    }};
-    delete plan.foodDiary;
-  }
-  if (!plan.food || typeof plan.food !== "object" || Array.isArray(plan.food)) plan.food = {};
-
-  for (let i=1; i<=plan.days; i++){
-    if (!plan.food[i]) {
-      plan.food[i] = {
-        breakfast: { dish:"", hot:"", cold:"", description:"", hotDescription:"", coldDescription:"" },
-        lunch:     { dish:"", hot:"", cold:"", description:"", hotDescription:"", coldDescription:"" },
-        dinner:    {
-          starter:"", main:"", dessert:"",
-          alcoholic:"", cold:"",
-          starterDescription:"", mainDescription:"", dessertDescription:"",
-          alcoholDescription:"", coldDescription:"",
-          description:""
-        }
-      };
+      // write new chunks
+      const chunks = Math.ceil(valueStr.length / CHUNK_SIZE);
+      storage.setItem(`${key}::__chunks`, String(chunks));
+      for (let i = 0; i < chunks; i++) {
+        const part = valueStr.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+        storage.setItem(`${key}::__chunk:${i}`, part);
+      }
     }
-  }
 
-  return plan;
-}
+    function getLargeItem(key) {
+      const storage = safeStorage;
+      const chunks = Number(storage.getItem(`${key}::__chunks`) || 0);
+      if (!chunks) return null;
+      let out = "";
+      for (let i = 0; i < chunks; i++) {
+        const part = storage.getItem(`${key}::__chunk:${i}`) || "";
+        out += part;
+      }
+      return out || null;
+    }
 
-function savePlan(name, data){
-  safeStorage.setItem(storageKey(name), JSON.stringify(data));
-}
+    function removeLargeItem(key) {
+      const storage = safeStorage;
+      const chunks = Number(storage.getItem(`${key}::__chunks`) || 0);
+      for (let i = 0; i < chunks; i++) storage.removeItem(`${key}::__chunk:${i}`);
+      storage.removeItem(`${key}::__chunks`);
+    }
 
+    // ---------- Storage helpers (robust cross-device) ----------
+    function normalizeName(s) {
+      return String(s || "").trim().toLowerCase();
+    }
 
-    function showSaved(toastEl){
-      if (!toastEl) return;
-      toastEl.classList.add('show');
-      setTimeout(()=>toastEl.classList.remove('show'), 1200);
+    function buildDestNameLookup() {
+      const map = new Map();
+      for (const d of (window.destinations || destinations || [])) {
+        map.set(normalizeName(d.name), d.name);
+      }
+      return map;
+    }
+
+    let DEST_NAME_LOOKUP = new Map();
+
+    function canonicalDestinationName(inputName) {
+      const n = normalizeName(inputName);
+      return DEST_NAME_LOOKUP.get(n) || String(inputName || "").trim();
+    }
+
+    function storageKey(name) {
+      return `tripPlan:${canonicalDestinationName(name)}`;
+    }
+
+    function findExistingPlanKey(name) {
+      const exact = storageKey(name);
+      const exactRaw = getLargeItem(exact);
+      if (exactRaw) return exact;
+
+      const target = normalizeName(name);
+      const keys = (safeStorage.keys?.() || []);
+      for (const k of keys) {
+        // chunked keys are like: tripPlan:Name::__chunks / __chunk:0
+        if (!k.startsWith("tripPlan:")) continue;
+        if (!k.endsWith("::__chunks")) continue;
+
+        const base = k.replace("::__chunks", "");
+        const baseName = base.slice("tripPlan:".length);
+        if (normalizeName(baseName) === target) return base;
+      }
+      return exact;
+    }
+
+    function makeEmptyPlan(days = 1) {
+      const d = Math.max(1, Number(days || 1));
+      const base = {
+        days: d,
+        activities: { 1: "" },
+        notes: "",
+        tips: "",
+        hotel: { name:"", currency:"GBP", nightly:"", nights: Math.max(1, d - 1), notes:"" },
+        budget: {
+          cheap:  { name:"", currency:"GBP", price:"", nights:"", notes:"" },
+          luxury: { name:"", currency:"GBP", price:"", nights:"", notes:"" }
+        },
+        food: {}
+      };
+      for (let i = 1; i <= d; i++) {
+        base.food[i] = {
+          breakfast: { dish:"", hot:"", cold:"", description:"", hotDescription:"", coldDescription:"" },
+          lunch:     { dish:"", hot:"", cold:"", description:"", hotDescription:"", coldDescription:"" },
+          dinner:    {
+            starter:"", main:"", dessert:"",
+            alcoholic:"", cold:"",
+            starterDescription:"", mainDescription:"", dessertDescription:"",
+            alcoholDescription:"", coldDescription:"",
+            description:""
+          }
+        };
+      }
+      return base;
+    }
+
+    function normalizePlanShape(plan) {
+      const base = makeEmptyPlan(plan?.days || 1);
+
+      if (!plan || typeof plan !== "object") return base;
+
+      // basics
+      if (typeof plan.days !== "number" || plan.days < 1) plan.days = 1;
+      if (!plan.activities) plan.activities = {1:""};
+      if (typeof plan.notes !== "string") plan.notes = "";
+      if (typeof plan.tips !== "string") plan.tips = "";
+
+      // hotel
+      if (!plan.hotel) plan.hotel = { ...base.hotel };
+      if (!("notes" in plan.hotel)) plan.hotel.notes = "";
+
+      // budget
+      if (!plan.budget) plan.budget = { ...base.budget };
+      if (!plan.budget.cheap) plan.budget.cheap = { ...base.budget.cheap };
+      if (!plan.budget.luxury) plan.budget.luxury = { ...base.budget.luxury };
+
+      // migrate older foodDiary
+      if (plan.foodDiary && !plan.food) {
+        plan.food = {};
+        delete plan.foodDiary;
+      }
+
+      if (!plan.food || typeof plan.food !== "object" || Array.isArray(plan.food)) plan.food = {};
+
+      // ensure days exist in activities + food
+      for (let i=1; i<=plan.days; i++){
+        if (!(i in plan.activities)) plan.activities[i] = "";
+        if (!plan.food[i]) plan.food[i] = JSON.parse(JSON.stringify(base.food[i]));
+      }
+
+      // trim extras
+      Object.keys(plan.activities).map(k=>+k).filter(k=>k>plan.days).forEach(k=>delete plan.activities[k]);
+      Object.keys(plan.food).map(k=>+k).filter(k=>k>plan.days).forEach(k=>delete plan.food[k]);
+
+      return plan;
+    }
+
+    // LOCAL load/save (chunked)
+    function loadPlanLocal(name){
+      const key = findExistingPlanKey(name);
+      const raw = getLargeItem(key);
+
+      let plan;
+      try { plan = raw ? JSON.parse(raw) : makeEmptyPlan(1); }
+      catch { plan = makeEmptyPlan(1); }
+
+      return normalizePlanShape(plan);
+    }
+
+    function savePlanLocal(name, data){
+      const key = storageKey(name);
+      const plan = normalizePlanShape(data);
+      const str = JSON.stringify(plan);
+      setLargeItem(key, str);
+    }
+
+    function removePlanLocal(name){
+      const key = findExistingPlanKey(name);
+      removeLargeItem(key);
+    }
+
+    // Expose these for Firebase module usage
+    window.canonicalDestinationName = canonicalDestinationName;
+    window.loadPlanLocal = loadPlanLocal;
+    window.savePlanLocal = savePlanLocal;
+
+    // Cloud helpers (wired by module later)
+    async function loadPlanFromFirebaseIfSignedIn(name) {
+      const user = window.firebaseAuth?.currentUser;
+      const db = window.firebaseDB;
+      const getDoc = window.getDoc;
+      const docFn = window.doc;
+
+      // always start with local (fast)
+      let plan = loadPlanLocal(name);
+
+      if (!user || !db || !getDoc || !docFn) {
+        return { plan, from: "local" };
+      }
+
+      try {
+        const snap = await getDoc(docFn(db, "users", user.uid, "plans", name));
+        if (snap.exists()) {
+          const dataObj = snap.data() || {};
+          const cloudPlan = normalizePlanShape(dataObj.data || dataObj);
+          plan = cloudPlan;
+
+          // cache locally (chunked, safe on iOS)
+          savePlanLocal(name, plan);
+
+          // tiny flag (optional)
+          safeStorage.setItem(`hasPlan:${canonicalDestinationName(name)}`, "1");
+
+          return { plan, from: "firebase" };
+        }
+      } catch (e) {
+        console.warn("Firebase plan load failed for", name, e);
+      }
+      return { plan, from: "local" };
+    }
+
+    async function savePlanToFirebaseIfSignedIn(name, plan) {
+      const user = window.firebaseAuth?.currentUser;
+      const db = window.firebaseDB;
+      const setDoc = window.setDoc;
+      const docFn = window.doc;
+
+      if (!user || !db || !setDoc || !docFn) return false;
+
+      try {
+        await setDoc(
+          docFn(db, "users", user.uid, "plans", name),
+          { name, data: plan, updatedAt: Date.now() },
+          { merge: true }
+        );
+        safeStorage.setItem(`hasPlan:${canonicalDestinationName(name)}`, "1");
+        return true;
+      } catch (e) {
+        console.warn("Firebase plan save failed for", name, e);
+        return false;
+      }
     }
 
     // Small helper for custom destination icons (e.g. flags)
@@ -352,6 +487,7 @@ function savePlan(name, data){
         popupAnchor: [0, -18]
       });
     }
+
 
     // === HOLIDAY DESTINATIONS ===
     const destinations = [
@@ -2323,14 +2459,11 @@ function savePlan(name, data){
 
     ];
 
-    // Build canonical destination name lookup AFTER destinations[] exists
-DEST_NAME_LOOKUP = buildDestNameLookup();
-
-     // -------------------------
-    // POPUP HTML
+    // POPUP HTML (sync, no await)
     // -------------------------
     function buildPopup(d) {
-      const plan = loadPlan(d.name);
+      // Use local cache immediately; Firebase refresh happens in initPopupHandlers()
+      const plan = loadPlanLocal(d.name);
       const days = Math.max(1, Number(plan.days || 1));
       const nightsDefault = Math.max(1, Number(plan.hotel?.nights ?? Math.max(1, days - 1)));
 
@@ -2338,7 +2471,7 @@ DEST_NAME_LOOKUP = buildDestNameLookup();
 
       const currencies = ["GBP","EUR","USD","CAD","AUD","NZD","JPY","CNY"];
       const currencyOptions = currencies.map(
-        c => `<option value="${c}" ${plan.hotel.currency === c ? "selected" : ""}>${c}</option>`
+        c => `<option value="${c}" ${(plan.hotel?.currency || "GBP") === c ? "selected" : ""}>${c}</option>`
       ).join("");
 
       return `
@@ -2351,6 +2484,7 @@ DEST_NAME_LOOKUP = buildDestNameLookup();
               <p style="margin:6px 0 0;">
                 <a href="https://maps.google.com/?q=${d.lat},${d.lng}" target="_blank" rel="noopener">Open in Google Maps</a>
               </p>
+              <div class="loading-hint" id="cloud-hint">If signed in, your latest data loads from Firebase when this popup opens.</div>
             </div>
           </div>
 
@@ -2398,7 +2532,7 @@ DEST_NAME_LOOKUP = buildDestNameLookup();
               <h4>Main Hotel</h4>
               <div class="row">
                 <label for="hotel-name">Hotel name (optional):</label>
-                <input id="hotel-name" type="text" value="${(plan.hotel.name||"").replace(/"/g,'&quot;')}" placeholder="e.g., Hotel Central">
+                <input id="hotel-name" type="text" value="${(plan.hotel?.name||"").replace(/"/g,'&quot;')}" placeholder="e.g., Hotel Central">
               </div>
               <div class="row">
                 <label for="currency">Currency:</label>
@@ -2406,7 +2540,7 @@ DEST_NAME_LOOKUP = buildDestNameLookup();
               </div>
               <div class="row">
                 <label for="nightly">Avg price per night:</label>
-                <input id="nightly" type="number" min="0" step="1" value="${plan.hotel.nightly||""}">
+                <input id="nightly" type="number" min="0" step="1" value="${plan.hotel?.nightly||""}">
               </div>
               <div class="row">
                 <label for="nights">Nights:</label>
@@ -2416,7 +2550,7 @@ DEST_NAME_LOOKUP = buildDestNameLookup();
                 <label>Total (auto):</label>
                 <div id="hotel-total" aria-live="polite" style="font-weight:600;">—</div>
               </div>
-              <textarea id="hotel-notes" class="textarea" placeholder="Notes (optional)"></textarea>
+              <textarea id="hotel-notes" class="textarea" placeholder="Notes (optional)">${(plan.hotel?.notes||"").replace(/</g,"&lt;")}</textarea>
               <div class="save-bar">
                 <button class="btn primary" id="save-hotel">Save Stay</button>
                 <button class="btn" id="clear-hotel">Clear</button>
@@ -2507,15 +2641,33 @@ DEST_NAME_LOOKUP = buildDestNameLookup();
     }
 
     // -------------------------
-    // POPUP HANDLERS
+    // POPUP HANDLERS (async: pulls latest from Firebase on open)
     // -------------------------
-    function initPopupHandlers(container, d){
+    async function initPopupHandlers(container, d){
       const name = d.name;
       const toast = container.querySelector('.saved-toast');
-      const plan = loadPlan(name);
+
+      // 1) Load local immediately (fast)
+      let plan = loadPlanLocal(name);
+
+      // 2) Then attempt Firebase refresh (if signed in)
+      const hint = container.querySelector("#cloud-hint");
+      if (hint) hint.textContent = "Loading latest data…";
+      const loaded = await loadPlanFromFirebaseIfSignedIn(name);
+      plan = loaded.plan;
+      if (hint) hint.textContent = loaded.from === "firebase"
+        ? "✅ Loaded latest from Firebase."
+        : "Loaded from local cache (sign in to sync).";
+
+      // helper to show toast
+      function showSaved(){
+        if (!toast) return;
+        toast.classList.add('show');
+        setTimeout(()=>toast.classList.remove('show'), 1200);
+      }
 
       // -------------------------
-      // Budget subtabs (Cheap / Medium / Luxury)
+      // Budget subtabs
       // -------------------------
       const budgetBtns = container.querySelectorAll('.budget-subtabs .tab-btn[data-btab]');
       const budgetPanels = ['tab-cheap','tab-medium','tab-luxury'];
@@ -2535,11 +2687,10 @@ DEST_NAME_LOOKUP = buildDestNameLookup();
           activateBudgetTab(btn.dataset.btab);
         }, { passive: false });
       });
-
       activateBudgetTab('tab-medium');
 
       // -------------------------
-      // Main tabs (top-level only)
+      // Main tabs
       // -------------------------
       const mainTabBtns = container.querySelectorAll('.tab-btn[data-tab]');
       mainTabBtns.forEach(btn=>{
@@ -2564,19 +2715,26 @@ DEST_NAME_LOOKUP = buildDestNameLookup();
         const newDays = Math.max(1, Number(daysInput.value||1));
         for (let i=1; i<=newDays; i++){
           if (!(i in plan.activities)) plan.activities[i] = "";
+          if (!plan.food[i]) plan.food[i] = makeEmptyPlan(newDays).food[i];
         }
         Object.keys(plan.activities).map(k=>+k).filter(k=>k>newDays).forEach(k=>delete plan.activities[k]);
+        Object.keys(plan.food).map(k=>+k).filter(k=>k>newDays).forEach(k=>delete plan.food[k]);
+
         daySelect.innerHTML = Array.from({length:newDays},(_,i)=>`<option value="${i+1}">Day ${i+1}</option>`).join("");
       };
 
-      applyDaysBtn?.addEventListener('click', ()=>{
+      async function persistPlan(){
+        // always save locally (chunked)
+        savePlanLocal(name, plan);
+        // and if signed in, save to Firebase too
+        await savePlanToFirebaseIfSignedIn(name, plan);
+      }
+
+      applyDaysBtn?.addEventListener('click', async ()=>{
         plan.days = Math.max(1, Number(daysInput.value||1));
-        for (let i=1;i<=plan.days;i++){
-          if (!plan.food[i]) plan.food[i] = loadPlan(name).food[i];
-        }
         rebuildDaySelector();
-        savePlan(name, plan);
-        showSaved(toast);
+        await persistPlan();
+        showSaved();
       });
 
       // -------------------------
@@ -2591,44 +2749,43 @@ DEST_NAME_LOOKUP = buildDestNameLookup();
         const day = Number(daySelect?.value||1);
         dayArea.value = plan.activities[day] ?? "";
       }
-      function saveDayText(){
+
+      async function saveDayText(){
         const day = Number(daySelect?.value||1);
         plan.activities[day] = dayArea.value;
-        savePlan(name, plan);
-        showSaved(toast);
+        await persistPlan();
+        showSaved();
       }
 
-      daySelect?.addEventListener('change', ()=>{ saveDayText(); loadDayText(); });
-      prevBtn?.addEventListener('click', ()=>{
+      daySelect?.addEventListener('change', async ()=>{ await saveDayText(); loadDayText(); });
+      prevBtn?.addEventListener('click', async ()=>{
         const v = Number(daySelect.value||1);
-        if (v>1){ saveDayText(); daySelect.value = String(v-1); loadDayText(); }
+        if (v>1){ await saveDayText(); daySelect.value = String(v-1); loadDayText(); }
       });
-      nextBtn?.addEventListener('click', ()=>{
+      nextBtn?.addEventListener('click', async ()=>{
         const v = Number(daySelect.value||1);
-        if (v<plan.days){ saveDayText(); daySelect.value = String(v+1); loadDayText(); }
+        if (v<plan.days){ await saveDayText(); daySelect.value = String(v+1); loadDayText(); }
       });
 
       container.querySelector('#save-day')?.addEventListener('click', saveDayText);
-      container.querySelector('#clear-day')?.addEventListener('click', ()=>{ dayArea.value=""; saveDayText(); });
+      container.querySelector('#clear-day')?.addEventListener('click', async ()=>{ dayArea.value=""; await saveDayText(); });
 
       // -------------------------
       // Stay & budget (Medium)
       // -------------------------
-   const hotelName = container.querySelector('#hotel-name');
-const currency = container.querySelector('#currency');
-const nightly = container.querySelector('#nightly');
-const nights = container.querySelector('#nights');
-const total = container.querySelector('#hotel-total');
-const hotelNotes = container.querySelector('#hotel-notes');
+      const hotelName = container.querySelector('#hotel-name');
+      const currency = container.querySelector('#currency');
+      const nightly = container.querySelector('#nightly');
+      const nights = container.querySelector('#nights');
+      const total = container.querySelector('#hotel-total');
+      const hotelNotes = container.querySelector('#hotel-notes');
 
-// ✅ IMPORTANT: populate fields from the *latest* loaded plan
-if (hotelName) hotelName.value = plan.hotel?.name || "";
-if (currency) currency.value = plan.hotel?.currency || "GBP";
-if (nightly) nightly.value = plan.hotel?.nightly || "";
-if (nights)  nights.value  = Math.max(1, Number(plan.hotel?.nights || Math.max(1, (plan.days || 1) - 1)));
-
-if (hotelNotes) hotelNotes.value = plan.hotel?.notes || "";
-
+      // populate
+      if (hotelName) hotelName.value = plan.hotel?.name || "";
+      if (currency) currency.value = plan.hotel?.currency || "GBP";
+      if (nightly) nightly.value = plan.hotel?.nightly || "";
+      if (nights)  nights.value  = Math.max(1, Number(plan.hotel?.nights || Math.max(1, (plan.days || 1) - 1)));
+      if (hotelNotes) hotelNotes.value = plan.hotel?.notes || "";
 
       const renderTotal = ()=>{
         const n = Number(nightly?.value||0);
@@ -2641,29 +2798,29 @@ if (hotelNotes) hotelNotes.value = plan.hotel?.notes || "";
       currency?.addEventListener('change', renderTotal);
       renderTotal();
 
-      const saveHotel = ()=>{
+      async function saveHotel(){
         plan.hotel.name = hotelName?.value || "";
         plan.hotel.currency = currency?.value || "GBP";
         plan.hotel.nightly = nightly?.value || "";
         plan.hotel.nights = Math.max(1, Number(nights?.value||1));
         plan.hotel.notes = hotelNotes?.value || "";
-        savePlan(name, plan);
-        showSaved(toast);
-      };
+        await persistPlan();
+        showSaved();
+      }
 
       container.querySelector('#save-hotel')?.addEventListener('click', saveHotel);
-      container.querySelector('#clear-hotel')?.addEventListener('click', ()=>{
+      container.querySelector('#clear-hotel')?.addEventListener('click', async ()=>{
         if (hotelName) hotelName.value="";
         if (currency) currency.value="GBP";
         if (nightly) nightly.value="";
         if (nights) nights.value=Math.max(1, (plan.days|0)-1 || 1);
         if (hotelNotes) hotelNotes.value="";
-        saveHotel();
+        await saveHotel();
         renderTotal();
       });
 
       // -------------------------
-      // ✅ Cheap + Luxury budget block (FIXED: now inside initPopupHandlers)
+      // Cheap + Luxury budget
       // -------------------------
       const cheapName = container.querySelector('#cheap-name');
       const cheapCurrency = container.querySelector('#cheap-currency');
@@ -2679,14 +2836,9 @@ if (hotelNotes) hotelNotes.value = plan.hotel?.notes || "";
       const luxuryTotal = container.querySelector('#luxury-total');
       const luxuryNotes = container.querySelector('#luxury-notes');
 
-      if (!plan.budget) {
-        plan.budget = {
-          cheap:  { name:"", currency:"GBP", price:"", nights:"", notes:"" },
-          luxury: { name:"", currency:"GBP", price:"", nights:"", notes:"" }
-        };
-      }
-      if (!plan.budget.cheap) plan.budget.cheap = { name:"", currency:"GBP", price:"", nights:"", notes:"" };
-      if (!plan.budget.luxury) plan.budget.luxury = { name:"", currency:"GBP", price:"", nights:"", notes:"" };
+      if (!plan.budget) plan.budget = makeEmptyPlan(plan.days).budget;
+      if (!plan.budget.cheap) plan.budget.cheap = makeEmptyPlan(plan.days).budget.cheap;
+      if (!plan.budget.luxury) plan.budget.luxury = makeEmptyPlan(plan.days).budget.luxury;
 
       function renderBudgetTotals() {
         if (cheapTotal) {
@@ -2704,14 +2856,12 @@ if (hotelNotes) hotelNotes.value = plan.hotel?.notes || "";
       }
 
       function loadBudgetFields() {
-        // Cheap
         if (cheapName) cheapName.value = plan.budget.cheap?.name || "";
         if (cheapCurrency) cheapCurrency.value = plan.budget.cheap?.currency || "GBP";
         if (cheapPrice) cheapPrice.value = plan.budget.cheap?.price || "";
         if (cheapNights) cheapNights.value = plan.budget.cheap?.nights || Math.max(1, (plan.days|0)-1 || 1);
         if (cheapNotes) cheapNotes.value = plan.budget.cheap?.notes || "";
 
-        // Luxury
         if (luxuryName) luxuryName.value = plan.budget.luxury?.name || "";
         if (luxuryCurrency) luxuryCurrency.value = plan.budget.luxury?.currency || "GBP";
         if (luxuryPrice) luxuryPrice.value = plan.budget.luxury?.price || "";
@@ -2721,7 +2871,7 @@ if (hotelNotes) hotelNotes.value = plan.hotel?.notes || "";
         renderBudgetTotals();
       }
 
-      function saveBudgetFields() {
+      async function saveBudgetFields() {
         plan.budget.cheap = {
           name: cheapName?.value || "",
           currency: cheapCurrency?.value || "GBP",
@@ -2736,8 +2886,8 @@ if (hotelNotes) hotelNotes.value = plan.hotel?.notes || "";
           nights: luxuryNights?.value || "",
           notes: luxuryNotes?.value || ""
         };
-        savePlan(name, plan);
-        showSaved(toast);
+        await persistPlan();
+        showSaved();
       }
 
       [cheapPrice, cheapNights, cheapCurrency, luxuryPrice, luxuryNights, luxuryCurrency].forEach(el => {
@@ -2761,7 +2911,7 @@ if (hotelNotes) hotelNotes.value = plan.hotel?.notes || "";
       const getVal = (sel)=> (container.querySelector(sel)?.value ?? "");
 
       function loadFoodForDay(day){
-        const f = plan.food[day] || loadPlan(name).food[day];
+        const f = plan.food[day] || makeEmptyPlan(plan.days).food[day];
 
         setVal('#breakfast-dish', f.breakfast.dish);
         setVal('#breakfast-dish-desc', f.breakfast.description);
@@ -2826,21 +2976,21 @@ if (hotelNotes) hotelNotes.value = plan.hotel?.notes || "";
       let currentFoodDay = Number(foodDaySelect?.value || 1);
       loadFoodForDay(currentFoodDay);
 
-      foodDaySelect?.addEventListener('change', ()=>{
+      foodDaySelect?.addEventListener('change', async ()=>{
         saveFoodForDay(currentFoodDay);
-        savePlan(name, plan);
+        await persistPlan();
         currentFoodDay = Number(foodDaySelect.value || 1);
         loadFoodForDay(currentFoodDay);
-        showSaved(toast);
+        showSaved();
       });
 
-      container.querySelector('#save-food')?.addEventListener('click', ()=>{
+      container.querySelector('#save-food')?.addEventListener('click', async ()=>{
         saveFoodForDay(currentFoodDay);
-        savePlan(name, plan);
-        showSaved(toast);
+        await persistPlan();
+        showSaved();
       });
 
-      container.querySelector('#clear-food')?.addEventListener('click', ()=>{
+      container.querySelector('#clear-food')?.addEventListener('click', async ()=>{
         [
           '#breakfast-dish','#breakfast-dish-desc','#breakfast-hot','#breakfast-hot-desc','#breakfast-cold','#breakfast-cold-desc',
           '#lunch-dish','#lunch-dish-desc','#lunch-hot','#lunch-hot-desc','#lunch-cold','#lunch-cold-desc',
@@ -2848,9 +2998,9 @@ if (hotelNotes) hotelNotes.value = plan.hotel?.notes || "";
           '#dinner-alcohol','#dinner-alcohol-desc','#dinner-cold','#dinner-cold-desc'
         ].forEach(sel=> setVal(sel,""));
 
-        plan.food[currentFoodDay] = loadPlan(name).food[currentFoodDay];
-        savePlan(name, plan);
-        showSaved(toast);
+        plan.food[currentFoodDay] = makeEmptyPlan(plan.days).food[currentFoodDay];
+        await persistPlan();
+        showSaved();
       });
 
       // Food subtabs
@@ -2866,21 +3016,21 @@ if (hotelNotes) hotelNotes.value = plan.hotel?.notes || "";
       // Notes / Tips
       const notesArea = container.querySelector('#notes-text');
       const tipsArea = container.querySelector('#tips-text');
-      notesArea.value = plan.notes || "";
-      tipsArea.value = plan.tips || "";
+      if (notesArea) notesArea.value = plan.notes || "";
+      if (tipsArea) tipsArea.value = plan.tips || "";
 
-      container.querySelector('#save-notes')?.addEventListener('click', ()=>{
-        plan.notes = notesArea.value; savePlan(name, plan); showSaved(toast);
+      container.querySelector('#save-notes')?.addEventListener('click', async ()=>{
+        plan.notes = notesArea.value; await persistPlan(); showSaved();
       });
-      container.querySelector('#clear-notes')?.addEventListener('click', ()=>{
-        notesArea.value=""; plan.notes=""; savePlan(name, plan); showSaved(toast);
+      container.querySelector('#clear-notes')?.addEventListener('click', async ()=>{
+        notesArea.value=""; plan.notes=""; await persistPlan(); showSaved();
       });
 
-      container.querySelector('#save-tips')?.addEventListener('click', ()=>{
-        plan.tips = tipsArea.value; savePlan(name, plan); showSaved(toast);
+      container.querySelector('#save-tips')?.addEventListener('click', async ()=>{
+        plan.tips = tipsArea.value; await persistPlan(); showSaved();
       });
-      container.querySelector('#clear-tips')?.addEventListener('click', ()=>{
-        tipsArea.value=""; plan.tips=""; savePlan(name, plan); showSaved(toast);
+      container.querySelector('#clear-tips')?.addEventListener('click', async ()=>{
+        tipsArea.value=""; plan.tips=""; await persistPlan(); showSaved();
       });
 
       // Init day 1
@@ -2927,6 +3077,7 @@ if (hotelNotes) hotelNotes.value = plan.hotel?.notes || "";
             L.DomEvent.disableClickPropagation(container);
             L.DomEvent.disableScrollPropagation(container);
 
+            // async init
             initPopupHandlers(container, d);
           });
         });
@@ -2985,7 +3136,7 @@ if (hotelNotes) hotelNotes.value = plan.hotel?.notes || "";
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
-    import { doc, setDoc, collection, getDocs, initializeFirestore } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+    import { doc, setDoc, collection, getDocs, getDoc, initializeFirestore } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCAY-izVSAjouJjL960zS8xs84jaOZQBIo",
@@ -3009,117 +3160,74 @@ if (hotelNotes) hotelNotes.value = plan.hotel?.notes || "";
     window.firebaseAuth = auth;
     window.firebaseProvider = provider;
     window.firebaseDB = db;
+
+    // expose Firestore fns used by non-module code
     window.setDoc = setDoc;
     window.doc = doc;
     window.collection = collection;
     window.getDocs = getDocs;
+    window.getDoc = getDoc;
 
     window.firebaseSignIn = () => signInWithPopup(auth, provider);
     window.firebaseSignOut = () => signOut(auth);
 
-    // Auth UI + load plans then rerender
-   onAuthStateChanged(auth, async (user) => {
-  const signInBtn = document.getElementById("sign-in-btn");
-  const signOutBtn = document.getElementById("sign-out-btn");
-  const userInfo = document.getElementById("user-info");
-  const migrateBtn = document.getElementById("migrate-btn");
-  const statusBox = document.getElementById("migration-status");
+    // Auth UI + build an index (NO writing full plans to localStorage here)
+    onAuthStateChanged(auth, async (user) => {
+      const signInBtn = document.getElementById("sign-in-btn");
+      const signOutBtn = document.getElementById("sign-out-btn");
+      const userInfo = document.getElementById("user-info");
+      const migrateBtn = document.getElementById("migrate-btn");
+      const statusBox = document.getElementById("migration-status");
 
-  function showStatus(html) {
-    if (!statusBox) return;
-    statusBox.style.display = "block";
-    statusBox.innerHTML = html;
-  }
+      function showStatus(html) {
+        if (!statusBox) return;
+        statusBox.style.display = "block";
+        statusBox.innerHTML = html;
+      }
 
-  if (user) {
-    signInBtn.style.display = "none";
-    signOutBtn.style.display = "inline-block";
-    userInfo.textContent = `Signed in as: ${user.displayName}`;
-    migrateBtn.style.display = (user.email === "kcco1996@gmail.com") ? "inline-block" : "none";
+      if (user) {
+        signInBtn.style.display = "none";
+        signOutBtn.style.display = "inline-block";
+        userInfo.textContent = `Signed in as: ${user.displayName}`;
+        migrateBtn.style.display = (user.email === "kcco1996@gmail.com") ? "inline-block" : "none";
 
-    // ✅ Wait a tick so the non-module script has finished (destinations, lookup, etc.)
-    await new Promise(r => setTimeout(r, 50));
-
-    // ✅ Pull from Firestore -> write into local storage using your app’s own savePlan()
-    let loaded = 0;
-    let failed = 0;
-    const debugNames = ["Tokyo", "Warsaw"]; // add any others you want to verify
-
-    try {
-      const plansSnapshot = await getDocs(collection(db, "users", user.uid, "plans"));
-
-      plansSnapshot.forEach((docSnap) => {
+        // pull list of plan docs ONLY (tiny flags), no big localStorage writes
+        let count = 0;
         try {
-          const dataObj = docSnap.data() || {};
+          const snap = await getDocs(collection(db, "users", user.uid, "plans"));
+          snap.forEach((docSnap) => {
+            const id = docSnap.id;
+            const canonical = window.canonicalDestinationName ? window.canonicalDestinationName(id) : id;
+            window.safeStorage.setItem(`hasPlan:${canonical}`, "1");
+            count++;
+          });
 
-          // doc id is usually the destination name you saved under
-          const rawName = (dataObj.name || docSnap.id || "");
-          const canonicalName = window.canonicalDestinationName
-            ? window.canonicalDestinationName(rawName)
-            : rawName;
-
-          // migration shape is { name, data }, so prefer .data
-          const plan = dataObj.data || dataObj;
-
-          if (!canonicalName || !plan) {
-            failed++;
-            return;
-          }
-
-          // ✅ Use your app’s own savePlan() so key format is consistent everywhere
-          if (window.savePlan) {
-            window.savePlan(canonicalName, plan);
-          } else {
-            // fallback if savePlan not found for some reason
-            const storage = window.safeStorage || localStorage;
-            storage.setItem(`tripPlan:${canonicalName}`, JSON.stringify(plan));
-          }
-
-          loaded++;
-        } catch (err) {
-          console.warn("Doc load/write failed:", err);
-          failed++;
+          showStatus(
+            `✅ Firebase index loaded<br>` +
+            `Plans found: <b>${count}</b><br><br>` +
+            `Popups will fetch the full plan from Firebase when opened.`
+          );
+        } catch (e) {
+          console.warn("Firebase index load failed:", e);
+          showStatus(`❌ Firebase index load failed: ${e.message}`);
         }
-      });
 
-      // ✅ Debug: confirm key existence locally AFTER load (especially on iPhone)
-      const storage = window.safeStorage || localStorage;
-      const keyLines = debugNames.map((n) => {
-        const k = `tripPlan:${n}`;
-        const v = storage.getItem(k);
-        return `• ${k}: ${v ? "✅ present (" + v.length + " chars)" : "❌ missing"}`;
-      }).join("<br>");
+        window.renderMap?.();
 
-      showStatus(
-        `✅ Firebase load complete<br>` +
-        `Loaded: <b>${loaded}</b> &nbsp; Failed: <b>${failed}</b><br><br>` +
-        `<b>Local check:</b><br>${keyLines}<br><br>` +
-        `Now close and re-open a popup (Tokyo/Warsaw) to see the data.`
-      );
+      } else {
+        signInBtn.style.display = "inline-block";
+        signOutBtn.style.display = "none";
+        userInfo.textContent = "";
+        migrateBtn.style.display = "none";
 
-    } catch (e) {
-      console.warn("Firebase load failed:", e);
-      showStatus(`❌ Firebase load failed: ${e.message}`);
-    }
+        if (statusBox) {
+          statusBox.style.display = "none";
+          statusBox.innerHTML = "";
+        }
+      }
+    });
 
-    // ✅ Rerender map after Firebase load
-    window.renderMap?.();
-
-  } else {
-    signInBtn.style.display = "inline-block";
-    signOutBtn.style.display = "none";
-    userInfo.textContent = "";
-    migrateBtn.style.display = "none";
-
-    if (statusBox) {
-      statusBox.style.display = "none";
-      statusBox.innerHTML = "";
-    }
-  }
-});
-
-
-    // Migration button (FIXED to use safeStorage too)
+    // Migration button: read local (chunked) -> Firebase
     document.addEventListener("DOMContentLoaded", () => {
       const migrateBtn = document.getElementById("migrate-btn");
       if (!migrateBtn) return;
@@ -3132,32 +3240,34 @@ if (hotelNotes) hotelNotes.value = plan.hotel?.notes || "";
         statusBox.innerHTML = "";
         statusBox.style.display = "block";
 
-        const storage = window.safeStorage;
-const keys = storage.keys().filter(k => k.startsWith("tripPlan:"));
+        // Find base keys via __chunks markers
+        const keys = (window.safeStorage.keys() || [])
+          .filter(k => k.startsWith("tripPlan:") && k.endsWith("::__chunks"))
+          .map(k => k.replace("::__chunks",""));
 
         if (keys.length === 0) {
           statusBox.innerHTML = "❌ No local plans found.";
           return;
         }
 
-        for (const key of keys) {
-          const name = key.replace("tripPlan:", "");
+        for (const baseKey of keys) {
+          const name = baseKey.replace("tripPlan:", "");
           let data;
           try {
-            data = JSON.parse(window.safeStorage.getItem(key));
+            data = window.loadPlanLocal(name);
           } catch {
             data = null;
           }
 
           if (!data) {
             const line = document.createElement("div");
-            line.textContent = `❌ Skipped "${name}" (invalid JSON).`;
+            line.textContent = `❌ Skipped "${name}" (could not load).`;
             statusBox.appendChild(line);
             continue;
           }
 
           try {
-            await setDoc(doc(db, "users", user.uid, "plans", name), { name, data });
+            await setDoc(doc(db, "users", user.uid, "plans", name), { name, data, updatedAt: Date.now() }, { merge: true });
             const line = document.createElement("div");
             line.textContent = `✅ Migrated "${name}" to Firebase.`;
             statusBox.appendChild(line);

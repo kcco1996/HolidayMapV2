@@ -2514,7 +2514,13 @@
               <select id="day-select">${dayOptions}</select>
               <button class="btn ghost" id="next-day" title="Next day">&#9654;</button>
             </div>
-            <textarea id="day-activities" class="textarea" placeholder="Activities for this day..."></textarea>
+           <div id="day-label" style="font-weight:600;margin-bottom:6px;color:#333;">
+</div>
+
+<textarea id="day-activities"
+  rows="8"
+  style="width:100%; font-family: Arial, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size:14px;">
+</textarea>
             <div class="save-bar">
               <button class="btn primary" id="save-day">Save Day</button>
               <button class="btn" id="clear-day">Clear Day</button>
@@ -2742,6 +2748,7 @@
 // -------------------------
 const daySelect = container.querySelector('#day-select');
 const dayArea = container.querySelector('#day-activities');
+const dayLabel = container.querySelector('#day-label');
 const prevBtn = container.querySelector('#prev-day');
 const nextBtn = container.querySelector('#next-day');
 
@@ -2750,6 +2757,10 @@ let currentDay = Number(daySelect?.value || 1);
 function loadDayText(day = currentDay){
   if (!dayArea) return;
   dayArea.value = plan.activities[day] ?? "";
+
+  if (dayLabel) {
+    dayLabel.textContent = `📅 Day ${day} Plan`;
+  }
 }
 
 async function saveDayText(day = currentDay){
@@ -3065,12 +3076,12 @@ container.querySelector('#clear-day')?.addEventListener('click', async () => {
 
       // Init day 1
       if (daysInput) daysInput.value = plan.days;
-     if (daySelect) {
+if (daySelect) {
   daySelect.value = "1";
   currentDay = 1;
   loadDayText(currentDay);
 }
-    }
+  }
 
     // -------------------------
     // MAP SETUP

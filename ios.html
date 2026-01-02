@@ -3018,55 +3018,106 @@ if (hotelNotes) hotelNotes.value = plan.hotel?.notes || "";
     window.firebaseSignOut = () => signOut(auth);
 
     // Auth UI + load plans then rerender
-    onAuthStateChanged(auth, async (user) => {
-      const signInBtn = document.getElementById("sign-in-btn");
-      const signOutBtn = document.getElementById("sign-out-btn");
-      const userInfo = document.getElementById("user-info");
-      const migrateBtn = document.getElementById("migrate-btn");
+   onAuthStateChanged(auth, async (user) => {
+  const signInBtn = document.getElementById("sign-in-btn");
+  const signOutBtn = document.getElementById("sign-out-btn");
+  const userInfo = document.getElementById("user-info");
+  const migrateBtn = document.getElementById("migrate-btn");
+  const statusBox = document.getElementById("migration-status");
 
-      if (user) {
-        signInBtn.style.display = "none";
-        signOutBtn.style.display = "inline-block";
-        userInfo.textContent = `Signed in as: ${user.displayName}`;
-
-        migrateBtn.style.display = (user.email === "kcco1996@gmail.com") ? "inline-block" : "none";
-
-        // Load Firebase trip plans into safeStorage keys
-        try {
-          const plansSnapshot = await getDocs(collection(db, "users", user.uid, "plans"));
-          plansSnapshot.forEach(docSnap => {
-  const dataObj = docSnap.data() || {};
-
-  // name could be doc id or stored field; normalize to a real destination name
-  const rawName = (dataObj.name || docSnap.id || "");
-  const canonicalName = canonicalDestinationName(rawName);
-
-  // handle older shapes
-  const plan = dataObj.data || dataObj;
-
-  if (canonicalName && plan) {
-    try {
-      safeStorage.setItem(`tripPlan:${canonicalName}`, JSON.stringify(plan));
-    } catch (e) {
-      console.warn("Storage write failed:", e);
-    }
-    console.log(`✅ Loaded ${canonicalName} from Firebase (source "${rawName}")`);
+  function showStatus(html) {
+    if (!statusBox) return;
+    statusBox.style.display = "block";
+    statusBox.innerHTML = html;
   }
-          });
-        } catch (e) {
-          console.warn("Firebase load failed:", e);
+
+  if (user) {
+    signInBtn.style.display = "none";
+    signOutBtn.style.display = "inline-block";
+    userInfo.textContent = `Signed in as: ${user.displayName}`;
+    migrateBtn.style.display = (user.email === "kcco1996@gmail.com") ? "inline-block" : "none";
+
+    // ✅ Wait a tick so the non-module script has finished (destinations, lookup, etc.)
+    await new Promise(r => setTimeout(r, 50));
+
+    // ✅ Pull from Firestore -> write into local storage using your app’s own savePlan()
+    let loaded = 0;
+    let failed = 0;
+    const debugNames = ["Tokyo", "Warsaw"]; // add any others you want to verify
+
+    try {
+      const plansSnapshot = await getDocs(collection(db, "users", user.uid, "plans"));
+
+      plansSnapshot.forEach((docSnap) => {
+        try {
+          const dataObj = docSnap.data() || {};
+
+          // doc id is usually the destination name you saved under
+          const rawName = (dataObj.name || docSnap.id || "");
+          const canonicalName = window.canonicalDestinationName
+            ? window.canonicalDestinationName(rawName)
+            : rawName;
+
+          // migration shape is { name, data }, so prefer .data
+          const plan = dataObj.data || dataObj;
+
+          if (!canonicalName || !plan) {
+            failed++;
+            return;
+          }
+
+          // ✅ Use your app’s own savePlan() so key format is consistent everywhere
+          if (window.savePlan) {
+            window.savePlan(canonicalName, plan);
+          } else {
+            // fallback if savePlan not found for some reason
+            const storage = window.safeStorage || localStorage;
+            storage.setItem(`tripPlan:${canonicalName}`, JSON.stringify(plan));
+          }
+
+          loaded++;
+        } catch (err) {
+          console.warn("Doc load/write failed:", err);
+          failed++;
         }
+      });
 
-        // Rerender map after Firebase load
-        window.renderMap?.();
+      // ✅ Debug: confirm key existence locally AFTER load (especially on iPhone)
+      const storage = window.safeStorage || localStorage;
+      const keyLines = debugNames.map((n) => {
+        const k = `tripPlan:${n}`;
+        const v = storage.getItem(k);
+        return `• ${k}: ${v ? "✅ present (" + v.length + " chars)" : "❌ missing"}`;
+      }).join("<br>");
 
-      } else {
-        signInBtn.style.display = "inline-block";
-        signOutBtn.style.display = "none";
-        userInfo.textContent = "";
-        migrateBtn.style.display = "none";
-      }
-    });
+      showStatus(
+        `✅ Firebase load complete<br>` +
+        `Loaded: <b>${loaded}</b> &nbsp; Failed: <b>${failed}</b><br><br>` +
+        `<b>Local check:</b><br>${keyLines}<br><br>` +
+        `Now close and re-open a popup (Tokyo/Warsaw) to see the data.`
+      );
+
+    } catch (e) {
+      console.warn("Firebase load failed:", e);
+      showStatus(`❌ Firebase load failed: ${e.message}`);
+    }
+
+    // ✅ Rerender map after Firebase load
+    window.renderMap?.();
+
+  } else {
+    signInBtn.style.display = "inline-block";
+    signOutBtn.style.display = "none";
+    userInfo.textContent = "";
+    migrateBtn.style.display = "none";
+
+    if (statusBox) {
+      statusBox.style.display = "none";
+      statusBox.innerHTML = "";
+    }
+  }
+});
+
 
     // Migration button (FIXED to use safeStorage too)
     document.addEventListener("DOMContentLoaded", () => {

@@ -2737,38 +2737,68 @@
         showSaved();
       });
 
-      // -------------------------
-      // Daily plan
-      // -------------------------
-      const daySelect = container.querySelector('#day-select');
-      const dayArea = container.querySelector('#day-activities');
-      const prevBtn = container.querySelector('#prev-day');
-      const nextBtn = container.querySelector('#next-day');
+    // -------------------------
+// Daily plan (FIXED day switching)
+// -------------------------
+const daySelect = container.querySelector('#day-select');
+const dayArea = container.querySelector('#day-activities');
+const prevBtn = container.querySelector('#prev-day');
+const nextBtn = container.querySelector('#next-day');
 
-      function loadDayText(){
-        const day = Number(daySelect?.value||1);
-        dayArea.value = plan.activities[day] ?? "";
-      }
+let currentDay = Number(daySelect?.value || 1);
 
-      async function saveDayText(){
-        const day = Number(daySelect?.value||1);
-        plan.activities[day] = dayArea.value;
-        await persistPlan();
-        showSaved();
-      }
+function loadDayText(day = currentDay){
+  if (!dayArea) return;
+  dayArea.value = plan.activities[day] ?? "";
+}
 
-      daySelect?.addEventListener('change', async ()=>{ await saveDayText(); loadDayText(); });
-      prevBtn?.addEventListener('click', async ()=>{
-        const v = Number(daySelect.value||1);
-        if (v>1){ await saveDayText(); daySelect.value = String(v-1); loadDayText(); }
-      });
-      nextBtn?.addEventListener('click', async ()=>{
-        const v = Number(daySelect.value||1);
-        if (v<plan.days){ await saveDayText(); daySelect.value = String(v+1); loadDayText(); }
-      });
+async function saveDayText(day = currentDay){
+  if (!dayArea) return;
+  plan.activities[day] = dayArea.value;
+  await persistPlan();
+  showSaved();
+}
 
-      container.querySelector('#save-day')?.addEventListener('click', saveDayText);
-      container.querySelector('#clear-day')?.addEventListener('click', async ()=>{ dayArea.value=""; await saveDayText(); });
+// When dropdown changes: save OLD day, then load NEW day
+daySelect?.addEventListener('change', async () => {
+  const newDay = Number(daySelect.value || 1);
+  if (newDay === currentDay) return;
+
+  await saveDayText(currentDay);   // save what was typed for the old day
+  currentDay = newDay;             // update
+  loadDayText(currentDay);         // load new day text
+});
+
+// Prev/Next: save current day, then switch, then load
+prevBtn?.addEventListener('click', async () => {
+  if (!daySelect) return;
+  if (currentDay > 1) {
+    await saveDayText(currentDay);
+    currentDay -= 1;
+    daySelect.value = String(currentDay);
+    loadDayText(currentDay);
+  }
+});
+
+nextBtn?.addEventListener('click', async () => {
+  if (!daySelect) return;
+  if (currentDay < plan.days) {
+    await saveDayText(currentDay);
+    currentDay += 1;
+    daySelect.value = String(currentDay);
+    loadDayText(currentDay);
+  }
+});
+
+container.querySelector('#save-day')?.addEventListener('click', async () => {
+  await saveDayText(currentDay);
+});
+
+container.querySelector('#clear-day')?.addEventListener('click', async () => {
+  if (!dayArea) return;
+  dayArea.value = "";
+  await saveDayText(currentDay);
+});
 
       // -------------------------
       // Stay & budget (Medium)
@@ -3035,7 +3065,11 @@
 
       // Init day 1
       if (daysInput) daysInput.value = plan.days;
-      if (daySelect) { daySelect.value = "1"; loadDayText(); }
+     if (daySelect) {
+  daySelect.value = "1";
+  currentDay = 1;
+  loadDayText(currentDay);
+}
     }
 
     // -------------------------

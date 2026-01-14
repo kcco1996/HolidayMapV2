@@ -102,8 +102,10 @@
       padding-top: calc(8px + env(safe-area-inset-top));
     }
 
+
     #controls-bar { top: 10px; left: 10px; right: auto; }
     #top-bar { top: 10px; right: 10px; }
+    
 
     #controls-bar input, #controls-bar select {
       padding:4px 8px; border-radius:6px; border:1px solid #ccc; font-size:13px;
@@ -163,6 +165,11 @@
       <option value="oceania">Oceania</option>
     </select>
     <button id="reset-view" class="btn ghost">Show All</button>
+
+     <span id="icon-counts" style="margin-left:8px; font-weight:600;">
+    🏴 Flags: 0 | ⚫ Dots: 0
+  </span>
+</div>
   </div>
 
   <div id="top-bar">
@@ -3116,6 +3123,29 @@ if (daySelect) {
     let allMarkers = [];
     let allLayerGroup;
 
+    function isBlackDotIconPath(path) {
+  return String(path || "").includes("black-dot.png");
+}
+
+function updateIconCounts() {
+  const el = document.getElementById("icon-counts");
+  if (!el) return;
+
+  let flags = 0;
+  let dots = 0;
+
+  // Count ONLY markers currently visible (in the layer group)
+  const visibleMarkers = allLayerGroup ? allLayerGroup.getLayers() : [];
+
+  for (const m of visibleMarkers) {
+    const d = m.destinationData || {};
+    if (isBlackDotIconPath(d.destination)) dots++;
+    else flags++;
+  }
+
+  el.textContent = `🏴 Flags: ${flags} | ⚫ Dots: ${dots}`;
+}
+
     function renderMap() {
       if (allLayerGroup) map.removeLayer(allLayerGroup);
       allLayerGroup = L.featureGroup().addTo(map);
@@ -3151,6 +3181,8 @@ if (daySelect) {
         if (bounds.isValid()) map.fitBounds(bounds.pad(0.2));
       }
 
+      updateIconCounts();
+      
       setTimeout(() => map.invalidateSize(true), 60);
     }
 
@@ -3176,6 +3208,8 @@ if (daySelect) {
           map.fitBounds(allLayerGroup.getBounds().pad(0.2));
         }
       }
+
+      updateIconCounts();
 
       searchInput.addEventListener("input", filterMap, { passive: true });
       regionFilter.addEventListener("change", filterMap);

@@ -102,9 +102,29 @@
       padding-top: calc(8px + env(safe-area-inset-top));
     }
 
+:root { --controls-h: 0px; --vv-top: 0px; }
 
-    #controls-bar { top: 10px; left: 10px; right: auto; }
-    #top-bar { top: 10px; right: 10px; }
+/* desktop defaults */
+#controls-bar { top: calc(10px + var(--vv-top)); left: 10px; right: auto; }
+#top-bar      { top: calc(10px + var(--vv-top)); right: 10px; }
+
+/* Mobile layout: stack bars and push them down correctly */
+@media (max-width: 640px) {
+  #controls-bar {
+    left: 10px;
+    right: 10px;
+    flex-wrap: wrap;
+    top: calc(20px + var(--vv-top));
+  }
+
+  #top-bar {
+    left: 10px;
+    right: 10px;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    top: calc(10px + var(--vv-top) + var(--controls-h) + 10px);
+  }
+}
 
     :root { --controls-h: 0px; }
 
@@ -189,7 +209,6 @@
     🏴 Flags: 0 | ⚫ Dots: 0
   </span>
 </div>
-  </div>
 
   <div id="top-bar">
     <button id="sign-in-btn" class="btn" onclick="firebaseSignIn()">Sign in with Google</button>
@@ -231,8 +250,16 @@
 function updateBarsLayout() {
   const cb = document.getElementById("controls-bar");
   if (!cb) return;
+
   const h = cb.getBoundingClientRect().height || 0;
   document.documentElement.style.setProperty("--controls-h", `${Math.ceil(h)}px`);
+
+  // iOS Safari: offsetTop pushes fixed UI below the browser’s top chrome
+  const vvTop = (window.visualViewport && typeof window.visualViewport.offsetTop === "number")
+    ? window.visualViewport.offsetTop
+    : 0;
+
+  document.documentElement.style.setProperty("--vv-top", `${Math.ceil(vvTop)}px`);
 }
 
 window.addEventListener("load", updateBarsLayout, { passive: true });

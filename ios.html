@@ -191,11 +191,147 @@
       border-radius: 8px;
       margin-top: 8px;
     }
+
+    /* === Gatwick / Departures board strip (bottom) === */
+.departures-strip{
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+
+  padding: 10px 12px;
+  background: rgba(10, 12, 18, 0.96);
+  border-top: 1px solid rgba(255,255,255,0.10);
+  backdrop-filter: blur(10px);
+}
+
+.departures-strip__inner{
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.departures-strip__label{
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  font-size: 12px;
+  color: rgba(255,255,255,0.75);
+  margin: 0 0 8px 2px;
+}
+
+.departures-strip__grid{
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.departures-strip__grid--6{
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+@media (max-width: 900px){
+  .departures-strip__grid--6{
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px){
+  .departures-strip__grid--6{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.db-cell{
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: rgba(0,0,0,0.28);
+  min-width: 0;
+}
+
+.db-cell__head{
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: rgba(255,255,255,0.65);
+  margin-bottom: 6px;
+}
+
+.db-cell__value{
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-weight: 900;
+  font-size: 18px;
+  letter-spacing: 0.08em;
+  line-height: 1.1;
+  color: #ffd34d; /* departure-board yellow */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Give the map a little breathing room so the strip doesn’t cover controls */
+.leaflet-bottom.leaflet-left,
+.leaflet-bottom.leaflet-right{
+  margin-bottom: 86px;
+}
+
+/* Mobile */
+@media (max-width: 640px){
+  .departures-strip__grid{
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .db-cell__value{
+    font-size: 16px;
+  }
+}
+
   </style>
 </head>
 
 <body>
   <div id="map"></div>
+
+  <body>
+  <div id="map"></div>
+
+  <footer class="departures-strip" aria-label="Next trip departures board">
+  <div class="departures-strip__inner">
+    <div class="departures-strip__label">NEXT TRIP</div>
+
+    <div class="departures-strip__grid departures-strip__grid--6" role="group" aria-label="Departure details">
+      <div class="db-cell">
+        <div class="db-cell__head">OUT DATE</div>
+        <div class="db-cell__value" id="nextTripOutDate">—</div>
+      </div>
+
+      <div class="db-cell">
+        <div class="db-cell__head">OUT TIME</div>
+        <div class="db-cell__value" id="nextTripOutTime">—</div>
+      </div>
+
+      <div class="db-cell">
+        <div class="db-cell__head">RETURN DATE</div>
+        <div class="db-cell__value" id="nextTripReturnDate">—</div>
+      </div>
+
+      <div class="db-cell">
+        <div class="db-cell__head">RETURN TIME</div>
+        <div class="db-cell__value" id="nextTripReturnTime">—</div>
+      </div>
+
+      <div class="db-cell">
+        <div class="db-cell__head">OPERATOR</div>
+        <div class="db-cell__value" id="nextTripOperator">—</div>
+      </div>
+
+      <div class="db-cell">
+        <div class="db-cell__head">FLIGHT</div>
+        <div class="db-cell__value" id="nextTripFlight">—</div>
+      </div>
+    </div>
+  </div>
+</footer>
+
+
 
   <div id="controls-bar">
     <input type="text" id="search-input" placeholder="Search destination..." />
@@ -563,6 +699,36 @@ if (window.visualViewport) {
         popupAnchor: [0, -18]
       });
     }
+
+    // === Next Trip Departures Strip (manual for now) ===
+function setNextTripBoard({
+  outDate, outTime,
+  returnDate, returnTime,
+  operator, flightCode
+}) {
+  const set = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val || "—";
+  };
+
+  set("nextTripOutDate", outDate);
+  set("nextTripOutTime", outTime);
+  set("nextTripReturnDate", returnDate);
+  set("nextTripReturnTime", returnTime);
+  set("nextTripOperator", operator);
+  set("nextTripFlight", flightCode);
+}
+
+// Example values
+setNextTripBoard({
+  outDate: "-",
+  outTime: "-",
+  returnDate: "-",
+  returnTime: "-",
+  operator: "-",
+  flightCode: "-"
+});
+
 
 
     // === HOLIDAY DESTINATIONS ===

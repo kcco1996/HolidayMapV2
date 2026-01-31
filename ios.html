@@ -294,6 +294,23 @@
       .departures-strip__toggle{ font-size: 11px; padding: 5px 9px; }
       .db-cell__value{ font-size: 16px; }
     }
+
+    #top-toast{
+  display:none;
+  max-width: 360px;
+  background:#ffffff;
+  border:1px solid #cbd5e1;
+  padding:10px 12px;
+  font-size:13px;
+  line-height:1.35;
+  border-radius:10px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.15);
+}
+
+#top-toast.show{
+  display:block;
+}
+
   </style>
 </head>
 
@@ -340,10 +357,11 @@
     <button id="sign-in-btn" class="btn" onclick="firebaseSignIn()">Sign in with Google</button>
     <button id="sign-out-btn" class="btn" onclick="firebaseSignOut()" style="display:none;">Sign out</button>
     <span id="user-info"></span>
-    <button id="migrate-btn" class="btn ghost" style="display:none;">Migrate Data to Firebase</button>
+    <div id="migrate-wrap" style="display:none; flex-direction:column; gap:6px; align-items:flex-start;">
+  <button id="migrate-btn" class="btn ghost">Migrate Data to Firebase</button>
+  <div id="top-toast" aria-live="polite"></div>
+</div>
   </div>
-
-  <div id="migration-status"></div>
 
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
@@ -2650,7 +2668,7 @@
 
     ];
 
-      // POPUP HTML
+          // POPUP HTML
     function buildPopup(d) {
       const plan = loadPlanLocal(d.name);
       const days = Math.max(1, Number(plan.days || 1));
@@ -2867,10 +2885,9 @@
       }
       budgetBtns.forEach(btn => {
         btn.addEventListener('click', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
+          e.preventDefault(); e.stopPropagation();
           activateBudgetTab(btn.dataset.btab);
-        }, { passive: false });
+        }, { passive:false });
       });
       activateBudgetTab('tab-medium');
 
@@ -2893,12 +2910,14 @@
         const daySelect = container.querySelector('#day-select');
         if (!daySelect) return;
         const newDays = Math.max(1, Number(daysInput.value||1));
+
         for (let i=1; i<=newDays; i++){
           if (!(i in plan.activities)) plan.activities[i] = "";
           if (!plan.food[i]) plan.food[i] = makeEmptyPlan(newDays).food[i];
         }
         Object.keys(plan.activities).map(k=>+k).filter(k=>k>newDays).forEach(k=>delete plan.activities[k]);
         Object.keys(plan.food).map(k=>+k).filter(k=>k>newDays).forEach(k=>delete plan.food[k]);
+
         daySelect.innerHTML = Array.from({length:newDays},(_,i)=>`<option value="${i+1}">Day ${i+1}</option>`).join("");
       };
 
@@ -2965,7 +2984,10 @@
       });
 
       container.querySelector('#save-day')?.addEventListener('click', async () => saveDayText(currentDay));
-      container.querySelector('#clear-day')?.addEventListener('click', async () => { if(dayArea){ dayArea.value=""; } await saveDayText(currentDay); });
+      container.querySelector('#clear-day')?.addEventListener('click', async () => {
+        if(dayArea){ dayArea.value=""; }
+        await saveDayText(currentDay);
+      });
 
       // Stay & budget (medium)
       const hotelName = container.querySelector('#hotel-name');
@@ -3223,25 +3245,26 @@
 
       // Init day 1
       if (daysInput) daysInput.value = plan.days;
-      if (daySelect) {
-        daySelect.innerHTML = "";
+      const ds = container.querySelector('#day-select');
+      if (ds) {
+        ds.innerHTML = "";
         for (let i = 1; i <= plan.days; i++) {
           const opt = document.createElement("option");
           opt.value = String(i);
           opt.textContent = `📅 Day ${i} Plan`;
-          daySelect.appendChild(opt);
+          ds.appendChild(opt);
         }
         currentDay = 1;
-        daySelect.value = "1";
+        ds.value = "1";
         loadDayText(currentDay);
       }
     }
 
     // -------------------------
-    // MAP SETUP  ✅ (MAP CREATED BEFORE DEPARTURES INIT)
+    // MAP SETUP  ✅
     // -------------------------
     const map = L.map("map", { zoomControl: true }).setView([48.5, 8], 5);
-    window.map = map; // ✅ safe now (map exists)
+    window.map = map;
 
     window.addEventListener("load", () => {
       setTimeout(() => map.invalidateSize(true), 150);
@@ -3315,7 +3338,7 @@
 
     window.renderMap = renderMap;
 
-    // ✅ Departures collapse init (MOVED HERE: after map exists)
+    // ✅ Departures collapse init (after map exists)
     (function initDeparturesCollapse(){
       const strip = document.getElementById("departuresStrip");
       const btn = document.getElementById("departuresToggle");
@@ -3327,7 +3350,6 @@
         strip.classList.toggle("is-collapsed", collapsed);
         btn.setAttribute("aria-expanded", String(!collapsed));
         btn.textContent = collapsed ? "SHOW" : "HIDE";
-
         document.documentElement.style.setProperty("--strip-space", collapsed ? "10px" : "86px");
 
         setTimeout(() => {
@@ -3342,7 +3364,7 @@
         const nowCollapsed = !strip.classList.contains("is-collapsed");
         applyState(nowCollapsed);
         window.safeStorage?.setItem(KEY, nowCollapsed ? "1" : "0");
-      }, { passive: true });
+      }, { passive:true });
     })();
 
     // Controls (search/filter)
@@ -3359,6 +3381,7 @@
           const d = marker.destinationData;
           const nameMatch = d.name.toLowerCase().includes(query);
           const regionMatch = (region === "all") || d.region === region;
+
           if (nameMatch && regionMatch) marker.addTo(allLayerGroup);
           else allLayerGroup.removeLayer(marker);
         });
@@ -3366,11 +3389,10 @@
         if (allLayerGroup.getLayers().length > 0) {
           map.fitBounds(allLayerGroup.getBounds().pad(0.2));
         }
-
         updateIconCounts();
       }
 
-      searchInput.addEventListener("input", filterMap, { passive: true });
+      searchInput.addEventListener("input", filterMap, { passive:true });
       regionFilter.addEventListener("change", filterMap);
       resetBtn.addEventListener("click", () => {
         searchInput.value = "";
@@ -3420,32 +3442,36 @@
     window.firebaseSignIn = () => signInWithPopup(auth, provider);
     window.firebaseSignOut = () => signOut(auth);
 
+    // ✅ Global toast (available everywhere)
+    window.showStatus = (html, duration = 3000) => {
+      const toast = document.getElementById("top-toast");
+      if (!toast) return;
+
+      toast.innerHTML = html;
+      toast.classList.add("show");
+
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(() => {
+        toast.classList.remove("show");
+        toast.innerHTML = "";
+      }, duration);
+    };
+
     onAuthStateChanged(auth, async (user) => {
       const signInBtn = document.getElementById("sign-in-btn");
       const signOutBtn = document.getElementById("sign-out-btn");
       const userInfo = document.getElementById("user-info");
-      const migrateBtn = document.getElementById("migrate-btn");
-      const statusBox = document.getElementById("migration-status");
-
-  function showStatus(html, duration = 3000) { // default 3 seconds
-  if (!statusBox) return;
-
-  statusBox.innerHTML = html;
-  statusBox.classList.add("show");
-
-  // Auto-hide after duration
-  setTimeout(() => {
-    statusBox.classList.remove("show");
-  }, duration);
-}
+      const migrateWrap = document.getElementById("migrate-wrap");
 
       if (user) {
         signInBtn.style.display = "none";
         signOutBtn.style.display = "inline-block";
         userInfo.textContent = `Signed in as: ${user.displayName}`;
-        migrateBtn.style.display = (user.email === "kcco1996@gmail.com") ? "inline-block" : "none";
 
-        updateBarsLayout();
+        const canMigrate = (user.email === "kcco1996@gmail.com");
+        if (migrateWrap) migrateWrap.style.display = canMigrate ? "flex" : "none";
+
+        window.updateBarsLayout?.();
 
         let count = 0;
         try {
@@ -3457,29 +3483,25 @@
             count++;
           });
 
-          showStatus(
+          window.showStatus?.(
             `✅ Firebase index loaded<br>` +
             `Plans found: <b>${count}</b><br><br>` +
-            `Popups will fetch the full plan from Firebase when opened.`
+            `Popups will fetch the full plan from Firebase when opened.`,
+            6000
           );
         } catch (e) {
           console.warn("Firebase index load failed:", e);
-          showStatus(`❌ Firebase index load failed: ${e.message}`);
+          window.showStatus?.(`❌ Firebase index load failed: ${e.message}`, 8000);
         }
 
         window.renderMap?.();
+
       } else {
         signInBtn.style.display = "inline-block";
         signOutBtn.style.display = "none";
         userInfo.textContent = "";
-        migrateBtn.style.display = "none";
-
-        updateBarsLayout();
-
-        if (statusBox) {
-          statusBox.style.display = "none";
-          statusBox.innerHTML = "";
-        }
+        if (migrateWrap) migrateWrap.style.display = "none";
+        window.updateBarsLayout?.();
       }
     });
 
@@ -3492,15 +3514,14 @@
         const user = auth.currentUser;
         if (!user) return;
 
-        const statusBox = document.getElementById("migration-status");
-       showStatus("⏳ Starting migration…", 10000);
+        window.showStatus?.("⏳ Starting migration…", 10000);
 
         const keys = (window.safeStorage.keys() || [])
           .filter(k => k.startsWith("tripPlan:") && k.endsWith("::__chunks"))
           .map(k => k.replace("::__chunks",""));
 
         if (keys.length === 0) {
-          statusBox.innerHTML = "❌ No local plans found.";
+          window.showStatus?.("❌ No local plans found.", 8000);
           return;
         }
 
@@ -3514,23 +3535,19 @@
           }
 
           if (!data) {
-            const line = document.createElement("div");
-            line.textContent = `❌ Skipped "${name}" (could not load).`;
-            showStatus(line.textContent, 10000);
+            window.showStatus?.(`❌ Skipped "${name}" (could not load).`, 8000);
             continue;
           }
 
           try {
             await setDoc(doc(db, "users", user.uid, "plans", name), { name, data, updatedAt: Date.now() }, { merge: true });
-            const line = document.createElement("div");
-            line.textContent = `✅ Migrated "${name}" to Firebase.`;
-            showStatus(line.textContent, 10000);
+            window.showStatus?.(`✅ Migrated "${name}" to Firebase.`, 5000);
           } catch (err) {
-            const line = document.createElement("div");
-            line.textContent = `❌ Failed to migrate "${name}": ${err.message}`;
-            showStatus(line.textContent, 10000);
+            window.showStatus?.(`❌ Failed to migrate "${name}": ${err.message}`, 10000);
           }
         }
+
+        window.showStatus?.("✅ Migration complete.", 6000);
       });
     });
   </script>

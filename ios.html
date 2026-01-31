@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <title>Kieran’s Holiday Destinations Map (iOS Edition)</title>
 
-    <!-- App Icons -->
+  <!-- App Icons -->
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="assets/app-icon.png">
   <meta name="theme-color" content="#2563eb">
@@ -23,7 +23,7 @@
   <style>
     html, body { height: 100%; margin: 0; padding: 0; }
 
-    :root { --vh: 1vh; }
+    :root { --vh: 1vh; --controls-h: 0px; --vv-top: 0px; --strip-space: 86px; }
 
     body {
       overscroll-behavior: none;
@@ -92,7 +92,7 @@
     }
     .saved-toast.show{ display:block; }
 
-    /* Top bars (iOS-safe-area aware) */
+    /* Top bars */
     #controls-bar, #top-bar {
       position: fixed;
       z-index: 1000;
@@ -107,49 +107,27 @@
       padding-top: calc(8px + env(safe-area-inset-top));
     }
 
-:root { --controls-h: 0px; --vv-top: 0px; }
+    /* desktop defaults */
+    #controls-bar { top: calc(10px + var(--vv-top)); left: 10px; right: auto; }
+    #top-bar      { top: calc(10px + var(--vv-top)); right: 10px; }
 
-/* desktop defaults */
-#controls-bar { top: calc(10px + var(--vv-top)); left: 10px; right: auto; }
-#top-bar      { top: calc(10px + var(--vv-top)); right: 10px; }
+    /* Mobile layout: stack bars and push them down correctly */
+    @media (max-width: 640px) {
+      #controls-bar {
+        left: 10px;
+        right: 10px;
+        flex-wrap: wrap;
+        top: calc(20px + var(--vv-top));
+      }
 
-/* Mobile layout: stack bars and push them down correctly */
-@media (max-width: 640px) {
-  #controls-bar {
-    left: 10px;
-    right: 10px;
-    flex-wrap: wrap;
-    top: calc(20px + var(--vv-top));
-  }
-
-  #top-bar {
-    left: 10px;
-    right: 10px;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    top: calc(10px + var(--vv-top) + var(--controls-h) + 10px);
-  }
-}
-
-    :root { --controls-h: 0px; }
-
-/* Mobile layout: stack bars */
-@media (max-width: 640px) {
-  #controls-bar {
-    left: 10px;
-    right: 10px;          /* full width */
-    flex-wrap: wrap;      /* allow wrapping */
-  }
-
-  #top-bar {
-    left: 10px;
-    right: 10px;          /* full width */
-    top: calc(10px + var(--controls-h) + 8px); /* sit underneath controls */
-    justify-content: space-between;
-    flex-wrap: wrap;
-  }
-}
-    
+      #top-bar {
+        left: 10px;
+        right: 10px;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        top: calc(10px + var(--vv-top) + var(--controls-h) + 10px);
+      }
+    }
 
     #controls-bar input, #controls-bar select {
       padding:4px 8px; border-radius:6px; border:1px solid #ccc; font-size:13px;
@@ -193,233 +171,142 @@
     }
 
     /* === Gatwick / Departures board strip (bottom) === */
-.departures-strip{
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 9999;
+    .departures-strip{
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 9999;
 
-  padding: 10px 12px;
-  background: rgba(10, 12, 18, 0.96);
-  border-top: 1px solid rgba(255,255,255,0.10);
-  backdrop-filter: blur(10px);
-}
+      padding: 10px 12px;
+      background: rgba(10, 12, 18, 0.96);
+      border-top: 1px solid rgba(255,255,255,0.10);
+      backdrop-filter: blur(10px);
 
-.departures-strip__inner{
-  max-width: 1200px;
-  margin: 0 auto;
-}
+      transform: translateY(0);
+      transition: transform 220ms ease;
+      padding-bottom: calc(10px + env(safe-area-inset-bottom));
+    }
 
-.departures-strip__label{
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  font-size: 12px;
-  color: rgba(255,255,255,0.75);
-  margin: 0 0 8px 2px;
-}
+    .departures-strip__inner{ max-width: 1200px; margin: 0 auto; }
+    .departures-strip__label{
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      font-size: 12px;
+      color: rgba(255,255,255,0.75);
+      margin: 0 0 8px 2px;
+    }
 
-.departures-strip__grid{
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
-}
+    .departures-strip__grid{
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .departures-strip__grid--6{ grid-template-columns: repeat(6, minmax(0, 1fr)); }
 
-.departures-strip__grid--6{
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-}
+    @media (max-width: 900px){
+      .departures-strip__grid--6{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (max-width: 640px){
+      .departures-strip__grid--6{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
 
-.departures-strip.is-collapsed{
-  transform: translateY(calc(100% - 52px));
-}
+    .departures-strip__bar{
+      display:flex;
+      align-items:center;
+      justify-content: space-between;
+      gap: 10px;
 
-@media (max-width: 900px){
-  .departures-strip__grid--6{
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
+      position: sticky;
+      top: 0;
+      z-index: 2;
 
-@media (max-width: 640px){
-  .departures-strip__grid--6{
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
+      background: rgba(10,12,18,0.98);
+      padding-bottom: 8px;
+      margin-bottom: 10px;
+    }
 
-/* === Collapsible Departures Strip === */
-.departures-strip{
-  transform: translateY(0);
-  transition: transform 220ms ease;
-  padding-bottom: calc(10px + env(safe-area-inset-bottom));
-}
+    .departures-strip__toggle{
+      appearance: none;
+      -webkit-appearance: none;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(0,0,0,0.35);
+      color: rgba(255,255,255,0.85);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font: 700 12px/1 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      letter-spacing: 0.10em;
+      cursor: pointer;
+    }
 
-/* Handle / header row */
-.departures-strip__bar{
-  display:flex;
-  align-items:center;
-  justify-content: space-between;
-  gap: 10px;
+    .departures-strip__toggle:active{ transform: translateY(1px); }
 
-  position: sticky;
-  top: 0;
-  z-index: 2;
+    /* Collapsed state */
+    .departures-strip.is-collapsed{
+      transform: translateY(calc(100% - 52px));
+    }
 
-  background: rgba(10,12,18,0.98);
-  padding-bottom: 8px;
-  margin-bottom: 10px;
-}
+    .leaflet-bottom.leaflet-left,
+    .leaflet-bottom.leaflet-right{
+      margin-bottom: var(--strip-space);
+    }
 
-@media (max-width: 640px){
-  .departures-strip__inner{
-    padding-top: 4px;
-  }
+    .db-cell{
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 10px;
+      padding: 8px 10px;
+      background: rgba(0,0,0,0.28);
+      min-width: 0;
+    }
 
-  .departures-strip__toggle{
-    font-size: 11px;
-    padding: 5px 9px;
-  }
-}
+    .db-cell__head{
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      color: rgba(255,255,255,0.65);
+      margin-bottom: 6px;
+    }
 
-.departures-strip__toggle{
-  appearance: none;
-  -webkit-appearance: none;
-  border: 1px solid rgba(255,255,255,0.18);
-  background: rgba(0,0,0,0.35);
-  color: rgba(255,255,255,0.85);
-  border-radius: 999px;
-  padding: 6px 10px;
-  font: 700 12px/1 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-  letter-spacing: 0.10em;
-  cursor: pointer;
-}
+    .db-cell__value{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-weight: 900;
+      font-size: 18px;
+      letter-spacing: 0.08em;
+      line-height: 1.1;
+      color: #ffd34d;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
 
-.departures-strip__toggle:active{
-  transform: translateY(1px);
-}
-
-/* Collapsed state: slide almost fully off-screen leaving a small grab area */
-.departures-strip.is-collapsed{
-  transform: translateY(calc(100% - 52px));
-}
-
-:root { --strip-space: 86px; }
-
-.leaflet-bottom.leaflet-left,
-.leaflet-bottom.leaflet-right{
-  margin-bottom: var(--strip-space);
-}
-
-/* Default (expanded) breathing room */
-.leaflet-bottom.leaflet-left,
-.leaflet-bottom.leaflet-right{
-  margin-bottom: 86px;
-}
-
-/* If you want a slightly smaller strip on mobile */
-@media (max-width: 640px){
-  .departures-strip{
-    padding: 8px 10px;
-    padding-bottom: calc(8px + env(safe-area-inset-bottom));
-  }
-  .departures-strip.is-collapsed{
-    transform: translateY(calc(100% - 48px));
-  }
-}
-
-
-.db-cell{
-  border: 1px solid rgba(255,255,255,0.10);
-  border-radius: 10px;
-  padding: 8px 10px;
-  background: rgba(0,0,0,0.28);
-  min-width: 0;
-}
-
-.db-cell__head{
-  font-size: 11px;
-  letter-spacing: 0.18em;
-  color: rgba(255,255,255,0.65);
-  margin-bottom: 6px;
-}
-
-.db-cell__value{
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-weight: 900;
-  font-size: 18px;
-  letter-spacing: 0.08em;
-  line-height: 1.1;
-  color: #ffd34d; /* departure-board yellow */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Give the map a little breathing room so the strip doesn’t cover controls */
-.leaflet-bottom.leaflet-left,
-.leaflet-bottom.leaflet-right{
-  margin-bottom: 86px;
-}
-
-/* Mobile */
-@media (max-width: 640px){
-  .departures-strip__grid{
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .db-cell__value{
-    font-size: 16px;
-  }
-}
-
+    @media (max-width: 640px){
+      .departures-strip{ padding: 8px 10px; padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+      .departures-strip.is-collapsed{ transform: translateY(calc(100% - 48px)); }
+      .departures-strip__toggle{ font-size: 11px; padding: 5px 9px; }
+      .db-cell__value{ font-size: 16px; }
+    }
   </style>
 </head>
 
 <body>
   <div id="map"></div>
 
-<footer class="departures-strip" id="departuresStrip" aria-label="Next trip departures board">
-  <div class="departures-strip__inner">
-
-    <div class="departures-strip__bar">
-      <div class="departures-strip__label" style="margin:0;">NEXT TRIP</div>
-      <button class="departures-strip__toggle" id="departuresToggle" type="button" aria-expanded="true">
-        HIDE
-      </button>
-    </div>
-
-    <div class="departures-strip__grid departures-strip__grid--6" role="group" aria-label="Departure details">
-      <div class="db-cell">
-        <div class="db-cell__head">OUT DATE</div>
-        <div class="db-cell__value" id="nextTripOutDate">—</div>
+  <footer class="departures-strip" id="departuresStrip" aria-label="Next trip departures board">
+    <div class="departures-strip__inner">
+      <div class="departures-strip__bar">
+        <div class="departures-strip__label" style="margin:0;">NEXT TRIP</div>
+        <button class="departures-strip__toggle" id="departuresToggle" type="button" aria-expanded="true">HIDE</button>
       </div>
 
-      <div class="db-cell">
-        <div class="db-cell__head">OUT TIME</div>
-        <div class="db-cell__value" id="nextTripOutTime">—</div>
-      </div>
-
-      <div class="db-cell">
-        <div class="db-cell__head">RETURN DATE</div>
-        <div class="db-cell__value" id="nextTripReturnDate">—</div>
-      </div>
-
-      <div class="db-cell">
-        <div class="db-cell__head">RETURN TIME</div>
-        <div class="db-cell__value" id="nextTripReturnTime">—</div>
-      </div>
-
-      <div class="db-cell">
-        <div class="db-cell__head">OPERATOR</div>
-        <div class="db-cell__value" id="nextTripOperator">—</div>
-      </div>
-
-      <div class="db-cell">
-        <div class="db-cell__head">FLIGHT</div>
-        <div class="db-cell__value" id="nextTripFlight">—</div>
+      <div class="departures-strip__grid departures-strip__grid--6" role="group" aria-label="Departure details">
+        <div class="db-cell"><div class="db-cell__head">OUT DATE</div><div class="db-cell__value" id="nextTripOutDate">—</div></div>
+        <div class="db-cell"><div class="db-cell__head">OUT TIME</div><div class="db-cell__value" id="nextTripOutTime">—</div></div>
+        <div class="db-cell"><div class="db-cell__head">RETURN DATE</div><div class="db-cell__value" id="nextTripReturnDate">—</div></div>
+        <div class="db-cell"><div class="db-cell__head">RETURN TIME</div><div class="db-cell__value" id="nextTripReturnTime">—</div></div>
+        <div class="db-cell"><div class="db-cell__head">OPERATOR</div><div class="db-cell__value" id="nextTripOperator">—</div></div>
+        <div class="db-cell"><div class="db-cell__head">FLIGHT</div><div class="db-cell__value" id="nextTripFlight">—</div></div>
       </div>
     </div>
-  </div>
-</footer>
-
-
+  </footer>
 
   <div id="controls-bar">
     <input type="text" id="search-input" placeholder="Search destination..." />
@@ -434,10 +321,10 @@
     </select>
     <button id="reset-view" class="btn ghost">Show All</button>
 
-     <span id="icon-counts" style="margin-left:8px; font-weight:600;">
-    🏴 Flags: 0 | ⚫ Dots: 0
-  </span>
-</div>
+    <span id="icon-counts" style="margin-left:8px; font-weight:600;">
+      🏴 Flags: 0 | ⚫ Dots: 0
+    </span>
+  </div>
 
   <div id="top-bar">
     <button id="sign-in-btn" class="btn" onclick="firebaseSignIn()">Sign in with Google</button>
@@ -474,30 +361,28 @@
     }
 
     // -------------------------
-// Top-bar stacking helper (mobile)
-// -------------------------
-function updateBarsLayout() {
-  const cb = document.getElementById("controls-bar");
-  if (!cb) return;
+    // Top-bar stacking helper (mobile)
+    // -------------------------
+    function updateBarsLayout() {
+      const cb = document.getElementById("controls-bar");
+      if (!cb) return;
 
-  const h = cb.getBoundingClientRect().height || 0;
-  document.documentElement.style.setProperty("--controls-h", `${Math.ceil(h)}px`);
+      const h = cb.getBoundingClientRect().height || 0;
+      document.documentElement.style.setProperty("--controls-h", `${Math.ceil(h)}px`);
 
-  // iOS Safari: offsetTop pushes fixed UI below the browser’s top chrome
-  const vvTop = (window.visualViewport && typeof window.visualViewport.offsetTop === "number")
-    ? window.visualViewport.offsetTop
-    : 0;
+      const vvTop = (window.visualViewport && typeof window.visualViewport.offsetTop === "number")
+        ? window.visualViewport.offsetTop
+        : 0;
 
-  document.documentElement.style.setProperty("--vv-top", `${Math.ceil(vvTop)}px`);
-}
+      document.documentElement.style.setProperty("--vv-top", `${Math.ceil(vvTop)}px`);
+    }
 
-window.addEventListener("load", updateBarsLayout, { passive: true });
-window.addEventListener("resize", updateBarsLayout, { passive: true });
-
-if (window.visualViewport) {
-  window.visualViewport.addEventListener("resize", updateBarsLayout, { passive: true });
-  window.visualViewport.addEventListener("scroll", updateBarsLayout, { passive: true });
-}
+    window.addEventListener("load", updateBarsLayout, { passive: true });
+    window.addEventListener("resize", updateBarsLayout, { passive: true });
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", updateBarsLayout, { passive: true });
+      window.visualViewport.addEventListener("scroll", updateBarsLayout, { passive: true });
+    }
 
     // -------------------------
     // iOS-safe storage wrapper
@@ -538,18 +423,16 @@ if (window.visualViewport) {
     window.safeStorage = safeStorage;
 
     // -------------------------
-    // Large-value storage (chunking) — fixes iOS per-key limits
+    // Large-value storage (chunking)
     // -------------------------
-    const CHUNK_SIZE = 8000; // UTF-16-ish safe chunk size for iOS localStorage
+    const CHUNK_SIZE = 8000;
 
     function setLargeItem(key, valueStr) {
       const storage = safeStorage;
-      // delete old chunks
       const oldCount = Number(storage.getItem(`${key}::__chunks`) || 0);
       for (let i = 0; i < oldCount; i++) storage.removeItem(`${key}::__chunk:${i}`);
       storage.removeItem(`${key}::__chunks`);
 
-      // write new chunks
       const chunks = Math.ceil(valueStr.length / CHUNK_SIZE);
       storage.setItem(`${key}::__chunks`, String(chunks));
       for (let i = 0; i < chunks; i++) {
@@ -563,10 +446,7 @@ if (window.visualViewport) {
       const chunks = Number(storage.getItem(`${key}::__chunks`) || 0);
       if (!chunks) return null;
       let out = "";
-      for (let i = 0; i < chunks; i++) {
-        const part = storage.getItem(`${key}::__chunk:${i}`) || "";
-        out += part;
-      }
+      for (let i = 0; i < chunks; i++) out += (storage.getItem(`${key}::__chunk:${i}`) || "");
       return out || null;
     }
 
@@ -577,29 +457,14 @@ if (window.visualViewport) {
       storage.removeItem(`${key}::__chunks`);
     }
 
-    // ---------- Storage helpers (robust cross-device) ----------
-    function normalizeName(s) {
-      return String(s || "").trim().toLowerCase();
-    }
-
-    function buildDestNameLookup() {
-      const map = new Map();
-      for (const d of (window.destinations || destinations || [])) {
-        map.set(normalizeName(d.name), d.name);
-      }
-      return map;
-    }
+    function normalizeName(s) { return String(s || "").trim().toLowerCase(); }
 
     let DEST_NAME_LOOKUP = new Map();
-
     function canonicalDestinationName(inputName) {
       const n = normalizeName(inputName);
       return DEST_NAME_LOOKUP.get(n) || String(inputName || "").trim();
     }
-
-    function storageKey(name) {
-      return `tripPlan:${canonicalDestinationName(name)}`;
-    }
+    function storageKey(name) { return `tripPlan:${canonicalDestinationName(name)}`; }
 
     function findExistingPlanKey(name) {
       const exact = storageKey(name);
@@ -609,7 +474,6 @@ if (window.visualViewport) {
       const target = normalizeName(name);
       const keys = (safeStorage.keys?.() || []);
       for (const k of keys) {
-        // chunked keys are like: tripPlan:Name::__chunks / __chunk:0
         if (!k.startsWith("tripPlan:")) continue;
         if (!k.endsWith("::__chunks")) continue;
 
@@ -652,46 +516,34 @@ if (window.visualViewport) {
 
     function normalizePlanShape(plan) {
       const base = makeEmptyPlan(plan?.days || 1);
-
       if (!plan || typeof plan !== "object") return base;
 
-      // basics
       if (typeof plan.days !== "number" || plan.days < 1) plan.days = 1;
       if (!plan.activities) plan.activities = {1:""};
       if (typeof plan.notes !== "string") plan.notes = "";
       if (typeof plan.tips !== "string") plan.tips = "";
 
-      // hotel
       if (!plan.hotel) plan.hotel = { ...base.hotel };
       if (!("notes" in plan.hotel)) plan.hotel.notes = "";
 
-      // budget
       if (!plan.budget) plan.budget = { ...base.budget };
       if (!plan.budget.cheap) plan.budget.cheap = { ...base.budget.cheap };
       if (!plan.budget.luxury) plan.budget.luxury = { ...base.budget.luxury };
 
-      // migrate older foodDiary
-      if (plan.foodDiary && !plan.food) {
-        plan.food = {};
-        delete plan.foodDiary;
-      }
-
+      if (plan.foodDiary && !plan.food) { plan.food = {}; delete plan.foodDiary; }
       if (!plan.food || typeof plan.food !== "object" || Array.isArray(plan.food)) plan.food = {};
 
-      // ensure days exist in activities + food
       for (let i=1; i<=plan.days; i++){
         if (!(i in plan.activities)) plan.activities[i] = "";
         if (!plan.food[i]) plan.food[i] = JSON.parse(JSON.stringify(base.food[i]));
       }
 
-      // trim extras
       Object.keys(plan.activities).map(k=>+k).filter(k=>k>plan.days).forEach(k=>delete plan.activities[k]);
       Object.keys(plan.food).map(k=>+k).filter(k=>k>plan.days).forEach(k=>delete plan.food[k]);
 
       return plan;
     }
 
-    // LOCAL load/save (chunked)
     function loadPlanLocal(name){
       const key = findExistingPlanKey(name);
       const raw = getLargeItem(key);
@@ -706,33 +558,22 @@ if (window.visualViewport) {
     function savePlanLocal(name, data){
       const key = storageKey(name);
       const plan = normalizePlanShape(data);
-      const str = JSON.stringify(plan);
-      setLargeItem(key, str);
+      setLargeItem(key, JSON.stringify(plan));
     }
 
-    function removePlanLocal(name){
-      const key = findExistingPlanKey(name);
-      removeLargeItem(key);
-    }
-
-    // Expose these for Firebase module usage
     window.canonicalDestinationName = canonicalDestinationName;
     window.loadPlanLocal = loadPlanLocal;
     window.savePlanLocal = savePlanLocal;
 
-    // Cloud helpers (wired by module later)
     async function loadPlanFromFirebaseIfSignedIn(name) {
       const user = window.firebaseAuth?.currentUser;
       const db = window.firebaseDB;
       const getDoc = window.getDoc;
       const docFn = window.doc;
 
-      // always start with local (fast)
       let plan = loadPlanLocal(name);
 
-      if (!user || !db || !getDoc || !docFn) {
-        return { plan, from: "local" };
-      }
+      if (!user || !db || !getDoc || !docFn) return { plan, from: "local" };
 
       try {
         const snap = await getDoc(docFn(db, "users", user.uid, "plans", name));
@@ -740,13 +581,8 @@ if (window.visualViewport) {
           const dataObj = snap.data() || {};
           const cloudPlan = normalizePlanShape(dataObj.data || dataObj);
           plan = cloudPlan;
-
-          // cache locally (chunked, safe on iOS)
           savePlanLocal(name, plan);
-
-          // tiny flag (optional)
           safeStorage.setItem(`hasPlan:${canonicalDestinationName(name)}`, "1");
-
           return { plan, from: "firebase" };
         }
       } catch (e) {
@@ -777,7 +613,6 @@ if (window.visualViewport) {
       }
     }
 
-    // Small helper for custom destination icons (e.g. flags)
     function destinationIcon(url) {
       return L.divIcon({
         html: `<img src="${url}" alt="">`,
@@ -788,70 +623,28 @@ if (window.visualViewport) {
       });
     }
 
-    // === Next Trip Departures Strip (manual for now) ===
-function setNextTripBoard({
-  outDate, outTime,
-  returnDate, returnTime,
-  operator, flightCode
-}) {
-  const set = (id, val) => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = val || "—";
-  };
+    // === Next Trip Departures Strip ===
+    function setNextTripBoard({ outDate, outTime, returnDate, returnTime, operator, flightCode }) {
+      const set = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = val || "—";
+      };
+      set("nextTripOutDate", outDate);
+      set("nextTripOutTime", outTime);
+      set("nextTripReturnDate", returnDate);
+      set("nextTripReturnTime", returnTime);
+      set("nextTripOperator", operator);
+      set("nextTripFlight", flightCode);
+    }
 
-  set("nextTripOutDate", outDate);
-  set("nextTripOutTime", outTime);
-  set("nextTripReturnDate", returnDate);
-  set("nextTripReturnTime", returnTime);
-  set("nextTripOperator", operator);
-  set("nextTripFlight", flightCode);
-}
-
-// Example values
-setNextTripBoard({
-  outDate: "-",
-  outTime: "-",
-  returnDate: "-",
-  returnTime: "-",
-  operator: "-",
-  flightCode: "-"
-});
-
-// === Collapsible Departures Strip ===
-(function initDeparturesCollapse(){
-  const strip = document.getElementById("departuresStrip");
-  const btn = document.getElementById("departuresToggle");
-  if (!strip || !btn) return;
-
-  const KEY = "departuresCollapsed";
-
-function applyState(collapsed){
-  strip.classList.toggle("is-collapsed", collapsed);
-  btn.setAttribute("aria-expanded", String(!collapsed));
-  btn.textContent = collapsed ? "SHOW" : "HIDE";
-
-  document.documentElement.style.setProperty(
-    "--strip-space",
-    collapsed ? "10px" : "86px"
-  );
-
-  setTimeout(() => {
-    try { window.map?.invalidateSize(true); } catch {}
-  }, 260);
-}
-window.map = map;
-
-  // restore last state
-  const saved = (window.safeStorage?.getItem(KEY) === "1");
-  applyState(saved);
-
-  btn.addEventListener("click", () => {
-    const nowCollapsed = !strip.classList.contains("is-collapsed");
-    applyState(nowCollapsed);
-    window.safeStorage?.setItem(KEY, nowCollapsed ? "1" : "0");
-  }, { passive: true });
-})();
-
+    setNextTripBoard({
+      outDate: "-",
+      outTime: "-",
+      returnDate: "-",
+      returnTime: "-",
+      operator: "-",
+      flightCode: "-"
+    });
 
     // === HOLIDAY DESTINATIONS ===
     const destinations = [
@@ -2847,16 +2640,13 @@ window.map = map;
 
     ];
 
-    // POPUP HTML (sync, no await)
-    // -------------------------
+      // POPUP HTML
     function buildPopup(d) {
-      // Use local cache immediately; Firebase refresh happens in initPopupHandlers()
       const plan = loadPlanLocal(d.name);
       const days = Math.max(1, Number(plan.days || 1));
       const nightsDefault = Math.max(1, Number(plan.hotel?.nights ?? Math.max(1, days - 1)));
 
       const dayOptions = Array.from({ length: days }, (_, i) => `<option value="${i + 1}">Day ${i + 1}</option>`).join("");
-
       const currencies = ["GBP","EUR","USD","CAD","AUD","NZD","JPY","CNY"];
       const currencyOptions = currencies.map(
         c => `<option value="${c}" ${(plan.hotel?.currency || "GBP") === c ? "selected" : ""}>${c}</option>`
@@ -2902,13 +2692,12 @@ window.map = map;
               <select id="day-select">${dayOptions}</select>
               <button class="btn ghost" id="next-day" title="Next day">&#9654;</button>
             </div>
-           <div id="day-label" style="font-weight:600;margin-bottom:6px;color:#333;">
-</div>
+            <div id="day-label" style="font-weight:600;margin-bottom:6px;color:#333;"></div>
 
-<textarea id="day-activities"
-  rows="8"
-  style="width:100%; font-family: Arial, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size:14px;">
-</textarea>
+            <textarea id="day-activities"
+              rows="8"
+              style="width:100%; font-family: Arial, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size:14px;"></textarea>
+
             <div class="save-bar">
               <button class="btn primary" id="save-day">Save Day</button>
               <button class="btn" id="clear-day">Clear Day</button>
@@ -3035,16 +2824,14 @@ window.map = map;
     }
 
     // -------------------------
-    // POPUP HANDLERS (async: pulls latest from Firebase on open)
+    // POPUP HANDLERS (async)
     // -------------------------
     async function initPopupHandlers(container, d){
       const name = d.name;
       const toast = container.querySelector('.saved-toast');
 
-      // 1) Load local immediately (fast)
       let plan = loadPlanLocal(name);
 
-      // 2) Then attempt Firebase refresh (if signed in)
       const hint = container.querySelector("#cloud-hint");
       if (hint) hint.textContent = "Loading latest data…";
       const loaded = await loadPlanFromFirebaseIfSignedIn(name);
@@ -3053,27 +2840,21 @@ window.map = map;
         ? "✅ Loaded latest from Firebase."
         : "Loaded from local cache (sign in to sync).";
 
-      // helper to show toast
       function showSaved(){
         if (!toast) return;
         toast.classList.add('show');
         setTimeout(()=>toast.classList.remove('show'), 1200);
       }
 
-      // -------------------------
       // Budget subtabs
-      // -------------------------
       const budgetBtns = container.querySelectorAll('.budget-subtabs .tab-btn[data-btab]');
       const budgetPanels = ['tab-cheap','tab-medium','tab-luxury'];
-
       function activateBudgetTab(id){
         budgetBtns.forEach(b => b.classList.remove('active'));
         container.querySelector(`.budget-subtabs .tab-btn[data-btab="${id}"]`)?.classList.add('active');
-
         budgetPanels.forEach(pid => container.querySelector('#'+pid)?.classList.remove('active'));
         container.querySelector('#'+id)?.classList.add('active');
       }
-
       budgetBtns.forEach(btn => {
         btn.addEventListener('click', (e) => {
           e.preventDefault();
@@ -3083,9 +2864,7 @@ window.map = map;
       });
       activateBudgetTab('tab-medium');
 
-      // -------------------------
       // Main tabs
-      // -------------------------
       const mainTabBtns = container.querySelectorAll('.tab-btn[data-tab]');
       mainTabBtns.forEach(btn=>{
         btn.addEventListener('click', ()=>{
@@ -3097,9 +2876,6 @@ window.map = map;
         });
       });
 
-      // -------------------------
-      // Days
-      // -------------------------
       const daysInput = container.querySelector('#days-input');
       const applyDaysBtn = container.querySelector('#apply-days');
 
@@ -3113,14 +2889,11 @@ window.map = map;
         }
         Object.keys(plan.activities).map(k=>+k).filter(k=>k>newDays).forEach(k=>delete plan.activities[k]);
         Object.keys(plan.food).map(k=>+k).filter(k=>k>newDays).forEach(k=>delete plan.food[k]);
-
         daySelect.innerHTML = Array.from({length:newDays},(_,i)=>`<option value="${i+1}">Day ${i+1}</option>`).join("");
       };
 
       async function persistPlan(){
-        // always save locally (chunked)
         savePlanLocal(name, plan);
-        // and if signed in, save to Firebase too
         await savePlanToFirebaseIfSignedIn(name, plan);
       }
 
@@ -3131,77 +2904,60 @@ window.map = map;
         showSaved();
       });
 
-    // -------------------------
-// Daily plan (FIXED day switching)
-// -------------------------
-const daySelect = container.querySelector('#day-select');
-const dayArea = container.querySelector('#day-activities');
-const dayLabel = container.querySelector('#day-label');
-const prevBtn = container.querySelector('#prev-day');
-const nextBtn = container.querySelector('#next-day');
+      // Daily plan
+      const daySelect = container.querySelector('#day-select');
+      const dayArea = container.querySelector('#day-activities');
+      const dayLabel = container.querySelector('#day-label');
+      const prevBtn = container.querySelector('#prev-day');
+      const nextBtn = container.querySelector('#next-day');
 
-let currentDay = Number(daySelect?.value || 1);
+      let currentDay = Number(daySelect?.value || 1);
 
-function loadDayText(day = currentDay){
-  if (!dayArea) return;
-  dayArea.value = plan.activities[day] ?? "";
+      function loadDayText(day = currentDay){
+        if (!dayArea) return;
+        dayArea.value = plan.activities[day] ?? "";
+        if (dayLabel) dayLabel.textContent = `📅 Day ${day} Plan`;
+      }
 
-  if (dayLabel) {
-    dayLabel.textContent = `📅 Day ${day} Plan`;
-  }
-}
+      async function saveDayText(day = currentDay){
+        if (!dayArea) return;
+        plan.activities[day] = dayArea.value;
+        await persistPlan();
+        showSaved();
+      }
 
-async function saveDayText(day = currentDay){
-  if (!dayArea) return;
-  plan.activities[day] = dayArea.value;
-  await persistPlan();
-  showSaved();
-}
+      daySelect?.addEventListener('change', async () => {
+        const newDay = Number(daySelect.value || 1);
+        if (newDay === currentDay) return;
+        await saveDayText(currentDay);
+        currentDay = newDay;
+        loadDayText(currentDay);
+      });
 
-// When dropdown changes: save OLD day, then load NEW day
-daySelect?.addEventListener('change', async () => {
-  const newDay = Number(daySelect.value || 1);
-  if (newDay === currentDay) return;
+      prevBtn?.addEventListener('click', async () => {
+        if (!daySelect) return;
+        if (currentDay > 1) {
+          await saveDayText(currentDay);
+          currentDay -= 1;
+          daySelect.value = String(currentDay);
+          loadDayText(currentDay);
+        }
+      });
 
-  await saveDayText(currentDay);   // save what was typed for the old day
-  currentDay = newDay;             // update
-  loadDayText(currentDay);         // load new day text
-});
+      nextBtn?.addEventListener('click', async () => {
+        if (!daySelect) return;
+        if (currentDay < plan.days) {
+          await saveDayText(currentDay);
+          currentDay += 1;
+          daySelect.value = String(currentDay);
+          loadDayText(currentDay);
+        }
+      });
 
-// Prev/Next: save current day, then switch, then load
-prevBtn?.addEventListener('click', async () => {
-  if (!daySelect) return;
-  if (currentDay > 1) {
-    await saveDayText(currentDay);
-    currentDay -= 1;
-    daySelect.value = String(currentDay);
-    loadDayText(currentDay);
-  }
-});
+      container.querySelector('#save-day')?.addEventListener('click', async () => saveDayText(currentDay));
+      container.querySelector('#clear-day')?.addEventListener('click', async () => { if(dayArea){ dayArea.value=""; } await saveDayText(currentDay); });
 
-nextBtn?.addEventListener('click', async () => {
-  if (!daySelect) return;
-  if (currentDay < plan.days) {
-    await saveDayText(currentDay);
-    currentDay += 1;
-    daySelect.value = String(currentDay);
-    loadDayText(currentDay);
-  }
-});
-
-container.querySelector('#save-day')?.addEventListener('click', async () => {
-  await saveDayText(currentDay);
-});
-
-container.querySelector('#clear-day')?.addEventListener('click', async () => {
-  if (!dayArea) return;
-  dayArea.value = "";
-  await saveDayText(currentDay);
-});
-
-      // -------------------------
-      // Stay & budget (Medium)
-      // -------------------------
+      // Stay & budget (medium)
       const hotelName = container.querySelector('#hotel-name');
       const currency = container.querySelector('#currency');
       const nightly = container.querySelector('#nightly');
@@ -3209,7 +2965,6 @@ container.querySelector('#clear-day')?.addEventListener('click', async () => {
       const total = container.querySelector('#hotel-total');
       const hotelNotes = container.querySelector('#hotel-notes');
 
-      // populate
       if (hotelName) hotelName.value = plan.hotel?.name || "";
       if (currency) currency.value = plan.hotel?.currency || "GBP";
       if (nightly) nightly.value = plan.hotel?.nightly || "";
@@ -3220,7 +2975,7 @@ container.querySelector('#clear-day')?.addEventListener('click', async () => {
         const n = Number(nightly?.value||0);
         const k = Math.max(1, Number(nights?.value||1));
         const curr = currency?.value || "GBP";
-        total.textContent = (n>0 && k>0) ? `${curr} ${(n*k).toLocaleString(undefined,{maximumFractionDigits:0})}` : "—";
+        if (total) total.textContent = (n>0 && k>0) ? `${curr} ${(n*k).toLocaleString(undefined,{maximumFractionDigits:0})}` : "—";
       };
       nightly?.addEventListener('input', renderTotal);
       nights?.addEventListener('input', renderTotal);
@@ -3248,9 +3003,7 @@ container.querySelector('#clear-day')?.addEventListener('click', async () => {
         renderTotal();
       });
 
-      // -------------------------
-      // Cheap + Luxury budget
-      // -------------------------
+      // Budget fields
       const cheapName = container.querySelector('#cheap-name');
       const cheapCurrency = container.querySelector('#cheap-currency');
       const cheapPrice = container.querySelector('#cheap-price');
@@ -3327,9 +3080,7 @@ container.querySelector('#clear-day')?.addEventListener('click', async () => {
       loadBudgetFields();
       container.querySelector('#save-budget')?.addEventListener('click', saveBudgetFields);
 
-      // -------------------------
       // Food per day
-      // -------------------------
       const foodDaySelect = container.querySelector('#food-day-select');
       if (foodDaySelect) {
         foodDaySelect.innerHTML = Array.from({length: plan.days}, (_,i)=>`<option value="${i+1}">Day ${i+1}</option>`).join('');
@@ -3432,7 +3183,6 @@ container.querySelector('#clear-day')?.addEventListener('click', async () => {
         showSaved();
       });
 
-      // Food subtabs
       const subButtons = container.querySelectorAll('.food-subtabs .tab-btn');
       function activateSubtab(id){
         subButtons.forEach(b=>b.classList.remove('active'));
@@ -3442,7 +3192,6 @@ container.querySelector('#clear-day')?.addEventListener('click', async () => {
       }
       subButtons.forEach(btn=> btn.addEventListener('click', ()=> activateSubtab(btn.dataset.subtab)));
 
-      // Notes / Tips
       const notesArea = container.querySelector('#notes-text');
       const tipsArea = container.querySelector('#tips-text');
       if (notesArea) notesArea.value = plan.notes || "";
@@ -3464,24 +3213,25 @@ container.querySelector('#clear-day')?.addEventListener('click', async () => {
 
       // Init day 1
       if (daysInput) daysInput.value = plan.days;
-if (daySelect) {
-  daySelect.innerHTML = "";
-  for (let i = 1; i <= plan.days; i++) {
-    const opt = document.createElement("option");
-    opt.value = String(i);
-    opt.textContent = `📅 Day ${i} Plan`;
-    daySelect.appendChild(opt);
-  }
-  currentDay = 1;
-  daySelect.value = "1";
-  loadDayText(currentDay);
-}
-  }
+      if (daySelect) {
+        daySelect.innerHTML = "";
+        for (let i = 1; i <= plan.days; i++) {
+          const opt = document.createElement("option");
+          opt.value = String(i);
+          opt.textContent = `📅 Day ${i} Plan`;
+          daySelect.appendChild(opt);
+        }
+        currentDay = 1;
+        daySelect.value = "1";
+        loadDayText(currentDay);
+      }
+    }
 
     // -------------------------
-    // MAP SETUP
+    // MAP SETUP  ✅ (MAP CREATED BEFORE DEPARTURES INIT)
     // -------------------------
     const map = L.map("map", { zoomControl: true }).setView([48.5, 8], 5);
+    window.map = map; // ✅ safe now (map exists)
 
     window.addEventListener("load", () => {
       setTimeout(() => map.invalidateSize(true), 150);
@@ -3497,28 +3247,23 @@ if (daySelect) {
     let allMarkers = [];
     let allLayerGroup;
 
-    function isBlackDotIconPath(path) {
-  return String(path || "").includes("black-dot.png");
-}
+    function isBlackDotIconPath(path) { return String(path || "").includes("black-dot.png"); }
 
-function updateIconCounts() {
-  const el = document.getElementById("icon-counts");
-  if (!el) return;
+    function updateIconCounts() {
+      const el = document.getElementById("icon-counts");
+      if (!el) return;
 
-  let flags = 0;
-  let dots = 0;
+      let flags = 0;
+      let dots = 0;
 
-  // Count ONLY markers currently visible (in the layer group)
-  const visibleMarkers = allLayerGroup ? allLayerGroup.getLayers() : [];
-
-  for (const m of visibleMarkers) {
-    const d = m.destinationData || {};
-    if (isBlackDotIconPath(d.destination)) dots++;
-    else flags++;
-  }
-
-  el.textContent = `🏴 Flags: ${flags} | ⚫ Dots: ${dots}`;
-}
+      const visibleMarkers = allLayerGroup ? allLayerGroup.getLayers() : [];
+      for (const m of visibleMarkers) {
+        const d = m.destinationData || {};
+        if (isBlackDotIconPath(d.destination)) dots++;
+        else flags++;
+      }
+      el.textContent = `🏴 Flags: ${flags} | ⚫ Dots: ${dots}`;
+    }
 
     function renderMap() {
       if (allLayerGroup) map.removeLayer(allLayerGroup);
@@ -3540,7 +3285,6 @@ function updateIconCounts() {
             L.DomEvent.disableClickPropagation(container);
             L.DomEvent.disableScrollPropagation(container);
 
-            // async init
             initPopupHandlers(container, d);
           });
         });
@@ -3556,9 +3300,40 @@ function updateIconCounts() {
       }
 
       updateIconCounts();
-      
       setTimeout(() => map.invalidateSize(true), 60);
     }
+
+    window.renderMap = renderMap;
+
+    // ✅ Departures collapse init (MOVED HERE: after map exists)
+    (function initDeparturesCollapse(){
+      const strip = document.getElementById("departuresStrip");
+      const btn = document.getElementById("departuresToggle");
+      if (!strip || !btn) return;
+
+      const KEY = "departuresCollapsed";
+
+      function applyState(collapsed){
+        strip.classList.toggle("is-collapsed", collapsed);
+        btn.setAttribute("aria-expanded", String(!collapsed));
+        btn.textContent = collapsed ? "SHOW" : "HIDE";
+
+        document.documentElement.style.setProperty("--strip-space", collapsed ? "10px" : "86px");
+
+        setTimeout(() => {
+          try { window.map?.invalidateSize(true); } catch {}
+        }, 260);
+      }
+
+      const saved = (window.safeStorage?.getItem(KEY) === "1");
+      applyState(saved);
+
+      btn.addEventListener("click", () => {
+        const nowCollapsed = !strip.classList.contains("is-collapsed");
+        applyState(nowCollapsed);
+        window.safeStorage?.setItem(KEY, nowCollapsed ? "1" : "0");
+      }, { passive: true });
+    })();
 
     // Controls (search/filter)
     document.addEventListener("DOMContentLoaded", () => {
@@ -3581,9 +3356,9 @@ function updateIconCounts() {
         if (allLayerGroup.getLayers().length > 0) {
           map.fitBounds(allLayerGroup.getBounds().pad(0.2));
         }
-      }
 
-      updateIconCounts();
+        updateIconCounts();
+      }
 
       searchInput.addEventListener("input", filterMap, { passive: true });
       regionFilter.addEventListener("change", filterMap);
@@ -3595,8 +3370,6 @@ function updateIconCounts() {
 
       renderMap();
     });
-
-    window.renderMap = renderMap;
   </script>
 
   <!-- Firebase SDKs -->
@@ -3628,7 +3401,6 @@ function updateIconCounts() {
     window.firebaseProvider = provider;
     window.firebaseDB = db;
 
-    // expose Firestore fns used by non-module code
     window.setDoc = setDoc;
     window.doc = doc;
     window.collection = collection;
@@ -3638,7 +3410,6 @@ function updateIconCounts() {
     window.firebaseSignIn = () => signInWithPopup(auth, provider);
     window.firebaseSignOut = () => signOut(auth);
 
-    // Auth UI + build an index (NO writing full plans to localStorage here)
     onAuthStateChanged(auth, async (user) => {
       const signInBtn = document.getElementById("sign-in-btn");
       const signOutBtn = document.getElementById("sign-out-btn");
@@ -3660,7 +3431,6 @@ function updateIconCounts() {
 
         updateBarsLayout();
 
-        // pull list of plan docs ONLY (tiny flags), no big localStorage writes
         let count = 0;
         try {
           const snap = await getDocs(collection(db, "users", user.uid, "plans"));
@@ -3682,7 +3452,6 @@ function updateIconCounts() {
         }
 
         window.renderMap?.();
-
       } else {
         signInBtn.style.display = "inline-block";
         signOutBtn.style.display = "none";
@@ -3711,7 +3480,6 @@ function updateIconCounts() {
         statusBox.innerHTML = "";
         statusBox.style.display = "block";
 
-        // Find base keys via __chunks markers
         const keys = (window.safeStorage.keys() || [])
           .filter(k => k.startsWith("tripPlan:") && k.endsWith("::__chunks"))
           .map(k => k.replace("::__chunks",""));

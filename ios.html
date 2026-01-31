@@ -229,6 +229,10 @@
   grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
+.departures-strip.is-collapsed{
+  transform: translateY(calc(100% - 52px));
+}
+
 @media (max-width: 900px){
   .departures-strip__grid--6{
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -297,10 +301,11 @@
   transform: translateY(calc(100% - 52px));
 }
 
-/* When collapsed, reduce the map bottom margin */
-.departures-strip.is-collapsed ~ .leaflet-bottom.leaflet-left,
-.departures-strip.is-collapsed ~ .leaflet-bottom.leaflet-right{
-  margin-bottom: 10px;
+:root { --strip-space: 86px; }
+
+.leaflet-bottom.leaflet-left,
+.leaflet-bottom.leaflet-right{
+  margin-bottom: var(--strip-space);
 }
 
 /* Default (expanded) breathing room */
@@ -368,9 +373,6 @@
 </head>
 
 <body>
-  <div id="map"></div>
-
-  <body>
   <div id="map"></div>
 
 <footer class="departures-strip" id="departuresStrip" aria-label="Next trip departures board">
@@ -823,16 +825,21 @@ setNextTripBoard({
 
   const KEY = "departuresCollapsed";
 
-  function applyState(collapsed){
-    strip.classList.toggle("is-collapsed", collapsed);
-    btn.setAttribute("aria-expanded", String(!collapsed));
-    btn.textContent = collapsed ? "SHOW" : "HIDE";
+function applyState(collapsed){
+  strip.classList.toggle("is-collapsed", collapsed);
+  btn.setAttribute("aria-expanded", String(!collapsed));
+  btn.textContent = collapsed ? "SHOW" : "HIDE";
 
-    // Let Leaflet reflow after animation so controls/popup positioning feel right
-    setTimeout(() => {
-      try { window.map?.invalidateSize(true); } catch {}
-    }, 260);
-  }
+  document.documentElement.style.setProperty(
+    "--strip-space",
+    collapsed ? "10px" : "86px"
+  );
+
+  setTimeout(() => {
+    try { window.map?.invalidateSize(true); } catch {}
+  }, 260);
+}
+window.map = map;
 
   // restore last state
   const saved = (window.safeStorage?.getItem(KEY) === "1");

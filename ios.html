@@ -241,6 +241,68 @@
   }
 }
 
+/* === Collapsible Departures Strip === */
+.departures-strip{
+  transform: translateY(0);
+  transition: transform 220ms ease;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom));
+}
+
+/* Handle / header row */
+.departures-strip__bar{
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.departures-strip__toggle{
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid rgba(255,255,255,0.18);
+  background: rgba(0,0,0,0.35);
+  color: rgba(255,255,255,0.85);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font: 700 12px/1 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  letter-spacing: 0.10em;
+  cursor: pointer;
+}
+
+.departures-strip__toggle:active{
+  transform: translateY(1px);
+}
+
+/* Collapsed state: slide almost fully off-screen leaving a small grab area */
+.departures-strip.is-collapsed{
+  transform: translateY(calc(100% - 52px));
+}
+
+/* When collapsed, reduce the map bottom margin */
+.departures-strip.is-collapsed ~ .leaflet-bottom.leaflet-left,
+.departures-strip.is-collapsed ~ .leaflet-bottom.leaflet-right{
+  margin-bottom: 10px;
+}
+
+/* Default (expanded) breathing room */
+.leaflet-bottom.leaflet-left,
+.leaflet-bottom.leaflet-right{
+  margin-bottom: 86px;
+}
+
+/* If you want a slightly smaller strip on mobile */
+@media (max-width: 640px){
+  .departures-strip{
+    padding: 8px 10px;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom));
+  }
+  .departures-strip.is-collapsed{
+    transform: translateY(calc(100% - 48px));
+  }
+}
+
+
 .db-cell{
   border: 1px solid rgba(255,255,255,0.10);
   border-radius: 10px;
@@ -293,9 +355,15 @@
   <body>
   <div id="map"></div>
 
-  <footer class="departures-strip" aria-label="Next trip departures board">
+<footer class="departures-strip" id="departuresStrip" aria-label="Next trip departures board">
   <div class="departures-strip__inner">
-    <div class="departures-strip__label">NEXT TRIP</div>
+
+    <div class="departures-strip__bar">
+      <div class="departures-strip__label" style="margin:0;">NEXT TRIP</div>
+      <button class="departures-strip__toggle" id="departuresToggle" type="button" aria-expanded="true">
+        HIDE
+      </button>
+    </div>
 
     <div class="departures-strip__grid departures-strip__grid--6" role="group" aria-label="Departure details">
       <div class="db-cell">
@@ -729,6 +797,35 @@ setNextTripBoard({
   flightCode: "-"
 });
 
+// === Collapsible Departures Strip ===
+(function initDeparturesCollapse(){
+  const strip = document.getElementById("departuresStrip");
+  const btn = document.getElementById("departuresToggle");
+  if (!strip || !btn) return;
+
+  const KEY = "departuresCollapsed";
+
+  function applyState(collapsed){
+    strip.classList.toggle("is-collapsed", collapsed);
+    btn.setAttribute("aria-expanded", String(!collapsed));
+    btn.textContent = collapsed ? "SHOW" : "HIDE";
+
+    // Let Leaflet reflow after animation so controls/popup positioning feel right
+    setTimeout(() => {
+      try { window.map?.invalidateSize(true); } catch {}
+    }, 260);
+  }
+
+  // restore last state
+  const saved = (window.safeStorage?.getItem(KEY) === "1");
+  applyState(saved);
+
+  btn.addEventListener("click", () => {
+    const nowCollapsed = !strip.classList.contains("is-collapsed");
+    applyState(nowCollapsed);
+    window.safeStorage?.setItem(KEY, nowCollapsed ? "1" : "0");
+  }, { passive: true });
+})();
 
 
     // === HOLIDAY DESTINATIONS ===

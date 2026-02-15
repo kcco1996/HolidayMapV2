@@ -532,6 +532,7 @@
     flightCode: "",
     journey: { outDuration: "", returnDuration: "" },
     layoverDuration: "",
+    layoverDestination: "",
     notes: ""
   },
 
@@ -579,6 +580,7 @@ if (!plan.flights.journey) plan.flights.journey = { outDuration:"", returnDurati
 if (!("outDuration" in plan.flights.journey)) plan.flights.journey.outDuration = "";
 if (!("returnDuration" in plan.flights.journey)) plan.flights.journey.returnDuration = "";
 if (!("layoverDuration" in plan.flights)) plan.flights.layoverDuration = "";
+if (!("layoverDestination" in plan.flights)) plan.flights.layoverDestination = "";
 if (!("notes" in plan.flights)) plan.flights.notes = "";
 
       if (plan.foodDiary && !plan.food) { plan.food = {}; delete plan.foodDiary; }
@@ -2856,6 +2858,10 @@ if (!("notes" in plan.flights)) plan.flights.notes = "";
     <input id="journey-ret" type="text" placeholder="e.g., 12h 55m">
   </div>
   <div class="row">
+  <label>Layover destination:</label>
+  <input id="layover-destination" type="text" placeholder="e.g., Hong Kong (HKG)">
+</div>
+  <div class="row">
     <label>Layover duration:</label>
     <input id="layover-duration" type="text" placeholder="e.g., 2h 10m">
   </div>
@@ -3198,6 +3204,7 @@ const fCode = container.querySelector("#flight-code");
 
 const jOut = container.querySelector("#journey-out");
 const jRet = container.querySelector("#journey-ret");
+const layoverDest = container.querySelector("#layover-destination");
 const layoverDur = container.querySelector("#layover-duration");
 const fNotes = container.querySelector("#flight-notes");
 
@@ -3225,6 +3232,7 @@ async function saveFlightsUI(){
   if (!plan.flights.out) plan.flights.out = { date:"", time:"" };
   if (!plan.flights.ret) plan.flights.ret = { date:"", time:"" };
   if (!plan.flights.journey) plan.flights.journey = { outDuration:"", returnDuration:"" };
+    if (layoverDest) layoverDest.value = fl.layoverDestination || "";
 
   plan.flights.out.date = fOutDate?.value || "";
   plan.flights.out.time = fOutTime?.value || "";
@@ -3236,6 +3244,7 @@ async function saveFlightsUI(){
 
   plan.flights.journey.outDuration = jOut?.value || "";
   plan.flights.journey.returnDuration = jRet?.value || "";
+  plan.flights.layoverDestination = layoverDest?.value || "";
   plan.flights.layoverDuration = layoverDur?.value || "";
 
   plan.flights.notes = fNotes?.value || "";
@@ -3256,6 +3265,7 @@ async function clearFlightsUI(){
   if (jOut) jOut.value = "";
   if (jRet) jRet.value = "";
   if (layoverDur) layoverDur.value = "";
+  if (layoverDest) layoverDest.value = "";
   if (fNotes) fNotes.value = "";
 
   plan.flights = makeEmptyPlan(plan.days).flights;

@@ -525,17 +525,18 @@
     luxury: { name:"", currency:"GBP", price:"", nights:"", notes:"" }
   },
 
-  flights: {
-    out: { date: "", time: "" },
-    ret: { date: "", time: "" },
-    operator: "",
-    flightCode: "",
-    journey: { outDuration: "", returnDuration: "" },
-    layoverDuration: "",
-    layoverDestination: "",
-    notes: ""
-  },
-
+flights: {
+  from: "",
+  to: "",
+  out: { date: "", time: "" },
+  ret: { date: "", time: "" },
+  operator: "",
+  flightCode: "",
+  journey: { outDuration: "", returnDuration: "" },
+  layoverDuration: "",
+  layoverDestination: "",
+  notes: ""
+},
   food: {}
 };
       for (let i = 1; i <= d; i++) {
@@ -571,17 +572,27 @@
       if (!plan.budget.luxury) plan.budget.luxury = { ...base.budget.luxury };
 
       // Flights
-if (!plan.flights) plan.flights = JSON.parse(JSON.stringify(base.flights));
-if (!plan.flights.out) plan.flights.out = { date:"", time:"" };
-if (!plan.flights.ret) plan.flights.ret = { date:"", time:"" };
-if (!("operator" in plan.flights)) plan.flights.operator = "";
-if (!("flightCode" in plan.flights)) plan.flights.flightCode = "";
-if (!plan.flights.journey) plan.flights.journey = { outDuration:"", returnDuration:"" };
-if (!("outDuration" in plan.flights.journey)) plan.flights.journey.outDuration = "";
-if (!("returnDuration" in plan.flights.journey)) plan.flights.journey.returnDuration = "";
-if (!("layoverDuration" in plan.flights)) plan.flights.layoverDuration = "";
-if (!("layoverDestination" in plan.flights)) plan.flights.layoverDestination = "";
-if (!("notes" in plan.flights)) plan.flights.notes = "";
+if (!plan.flights) {
+  plan.flights = makeEmptyPlan(plan.days).flights;
+} else {
+  if (!("from" in plan.flights)) plan.flights.from = "";
+  if (!("to" in plan.flights)) plan.flights.to = "";
+
+  if (!plan.flights.out) plan.flights.out = { date: "", time: "" };
+  if (!plan.flights.ret) plan.flights.ret = { date: "", time: "" };
+
+  if (!("operator" in plan.flights)) plan.flights.operator = "";
+  if (!("flightCode" in plan.flights)) plan.flights.flightCode = "";
+
+  if (!plan.flights.journey) plan.flights.journey = { outDuration: "", returnDuration: "" };
+  if (!("outDuration" in plan.flights.journey)) plan.flights.journey.outDuration = "";
+  if (!("returnDuration" in plan.flights.journey)) plan.flights.journey.returnDuration = "";
+
+  if (!("layoverDuration" in plan.flights)) plan.flights.layoverDuration = "";
+  if (!("layoverDestination" in plan.flights)) plan.flights.layoverDestination = "";
+
+  if (!("notes" in plan.flights)) plan.flights.notes = "";
+}
 
       if (plan.foodDiary && !plan.food) { plan.food = {}; delete plan.foodDiary; }
       if (!plan.food || typeof plan.food !== "object" || Array.isArray(plan.food)) plan.food = {};
@@ -2819,62 +2830,79 @@ if (!("notes" in plan.flights)) plan.flights.notes = "";
             </div>
           </div>
 
-          <div id="tab-flights" class="tab-panel">
-  <h4>Flights</h4>
+         <div id="tab-flights" class="tab-panel">
+  <h4 style="margin: 6px 0 10px;">Flights</h4>
 
   <div class="row">
-    <label>Out date:</label>
-    <input id="flight-out-date" type="text" placeholder="e.g., 27/02/2026">
-  </div>
-  <div class="row">
-    <label>Out time:</label>
-    <input id="flight-out-time" type="text" placeholder="e.g., 22:05">
+    <label>From:</label>
+    <input id="flight-from" type="text" placeholder="e.g., London (LGW/LHR)">
   </div>
 
   <div class="row">
-    <label>Return date:</label>
-    <input id="flight-ret-date" type="text" placeholder="e.g., 07/03/2026">
-  </div>
-  <div class="row">
-    <label>Return time:</label>
-    <input id="flight-ret-time" type="text" placeholder="e.g., 19:30">
+    <label>To:</label>
+    <input id="flight-to" type="text" placeholder="e.g., Hanoi (HAN)">
   </div>
 
   <div class="row">
     <label>Operator:</label>
     <input id="flight-operator" type="text" placeholder="e.g., Cathay Pacific">
   </div>
+
   <div class="row">
     <label>Flight code:</label>
     <input id="flight-code" type="text" placeholder="e.g., CX254">
   </div>
 
   <div class="row">
-    <label>Journey time (out):</label>
-    <input id="journey-out" type="text" placeholder="e.g., 13h 45m">
+    <label>Outbound date:</label>
+    <input id="out-date" type="text" placeholder="DD/MM/YYYY">
   </div>
+
   <div class="row">
-    <label>Journey time (return):</label>
-    <input id="journey-ret" type="text" placeholder="e.g., 12h 55m">
+    <label>Outbound time:</label>
+    <input id="out-time" type="text" placeholder="HH:MM">
   </div>
+
   <div class="row">
-  <label>Layover destination:</label>
-  <input id="layover-destination" type="text" placeholder="e.g., Hong Kong (HKG)">
-</div>
+    <label>Return date:</label>
+    <input id="ret-date" type="text" placeholder="DD/MM/YYYY">
+  </div>
+
+  <div class="row">
+    <label>Return time:</label>
+    <input id="ret-time" type="text" placeholder="HH:MM">
+  </div>
+
+  <div class="row">
+    <label>Out journey time:</label>
+    <input id="out-duration" type="text" placeholder="e.g., 12h 40m">
+  </div>
+
+  <div class="row">
+    <label>Return journey time:</label>
+    <input id="ret-duration" type="text" placeholder="e.g., 13h 10m">
+  </div>
+
+  <div class="row">
+    <label>Layover destination:</label>
+    <input id="layover-destination" type="text" placeholder="e.g., Hong Kong (HKG)">
+  </div>
+
   <div class="row">
     <label>Layover duration:</label>
     <input id="layover-duration" type="text" placeholder="e.g., 2h 10m">
   </div>
 
-  <textarea id="flight-notes" class="textarea" placeholder="Notes (optional)"></textarea>
+  <textarea id="flight-notes" class="textarea" placeholder="Flight notes (optional)"></textarea>
 
   <div class="save-bar">
     <button class="btn primary" id="save-flights">Save Flights</button>
     <button class="btn" id="clear-flights">Clear</button>
   </div>
 
-  <p class="hint">Tip: “Journey time” is total travel time. “Layover duration” is time between flights (if applicable).</p>
+  <p class="hint">Saved per destination and syncs to Firebase when signed in.</p>
 </div>
+
 
 
           <div id="tab-food" class="tab-panel">
@@ -3193,90 +3221,119 @@ if (!("notes" in plan.flights)) plan.flights.notes = "";
       container.querySelector('#save-budget')?.addEventListener('click', saveBudgetFields);
 
       // -------------------------
-// Flights
+// Flights (load/save/clear)
 // -------------------------
-const fOutDate = container.querySelector("#flight-out-date");
-const fOutTime = container.querySelector("#flight-out-time");
-const fRetDate = container.querySelector("#flight-ret-date");
-const fRetTime = container.querySelector("#flight-ret-time");
-const fOperator = container.querySelector("#flight-operator");
-const fCode = container.querySelector("#flight-code");
+if (!plan.flights) plan.flights = makeEmptyPlan(plan.days).flights;
 
-const jOut = container.querySelector("#journey-out");
-const jRet = container.querySelector("#journey-ret");
+const flightFrom = container.querySelector("#flight-from");
+const flightTo = container.querySelector("#flight-to");
+const flightOperator = container.querySelector("#flight-operator");
+const flightCode = container.querySelector("#flight-code");
+
+const outDate = container.querySelector("#out-date");
+const outTime = container.querySelector("#out-time");
+const retDate = container.querySelector("#ret-date");
+const retTime = container.querySelector("#ret-time");
+
+const outDur = container.querySelector("#out-duration");
+const retDur = container.querySelector("#ret-duration");
 const layoverDest = container.querySelector("#layover-destination");
 const layoverDur = container.querySelector("#layover-duration");
-const fNotes = container.querySelector("#flight-notes");
 
-function loadFlightsUI(){
-  const fl = plan.flights || {};
-  const j = fl.journey || {};
+const flightNotes = container.querySelector("#flight-notes");
 
-  if (fOutDate) fOutDate.value = fl.out?.date || "";
-  if (fOutTime) fOutTime.value = fl.out?.time || "";
-  if (fRetDate) fRetDate.value = fl.ret?.date || "";
-  if (fRetTime) fRetTime.value = fl.ret?.time || "";
+function loadFlightsUI() {
+  const fl = plan.flights || makeEmptyPlan(plan.days).flights;
 
-  if (fOperator) fOperator.value = fl.operator || "";
-  if (fCode) fCode.value = fl.flightCode || "";
+  if (flightFrom) flightFrom.value = fl.from || "";
+  if (flightTo) flightTo.value = fl.to || "";
+  if (flightOperator) flightOperator.value = fl.operator || "";
+  if (flightCode) flightCode.value = fl.flightCode || "";
 
-  if (jOut) jOut.value = j.outDuration || "";
-  if (jRet) jRet.value = j.returnDuration || "";
+  if (outDate) outDate.value = fl.out?.date || "";
+  if (outTime) outTime.value = fl.out?.time || "";
+  if (retDate) retDate.value = fl.ret?.date || "";
+  if (retTime) retTime.value = fl.ret?.time || "";
+
+  if (outDur) outDur.value = fl.journey?.outDuration || "";
+  if (retDur) retDur.value = fl.journey?.returnDuration || "";
+
+  if (layoverDest) layoverDest.value = fl.layoverDestination || "";
   if (layoverDur) layoverDur.value = fl.layoverDuration || "";
 
-  if (fNotes) fNotes.value = fl.notes || "";
+  if (flightNotes) flightNotes.value = fl.notes || "";
 }
 
-async function saveFlightsUI(){
-  if (!plan.flights) plan.flights = makeEmptyPlan(plan.days).flights;
-  if (!plan.flights.out) plan.flights.out = { date:"", time:"" };
-  if (!plan.flights.ret) plan.flights.ret = { date:"", time:"" };
-  if (!plan.flights.journey) plan.flights.journey = { outDuration:"", returnDuration:"" };
-    if (layoverDest) layoverDest.value = fl.layoverDestination || "";
+async function saveFlightsUI() {
+  plan.flights = plan.flights || makeEmptyPlan(plan.days).flights;
 
-  plan.flights.out.date = fOutDate?.value || "";
-  plan.flights.out.time = fOutTime?.value || "";
-  plan.flights.ret.date = fRetDate?.value || "";
-  plan.flights.ret.time = fRetTime?.value || "";
+  plan.flights.from = flightFrom?.value || "";
+  plan.flights.to = flightTo?.value || "";
+  plan.flights.operator = flightOperator?.value || "";
+  plan.flights.flightCode = flightCode?.value || "";
 
-  plan.flights.operator = fOperator?.value || "";
-  plan.flights.flightCode = fCode?.value || "";
+  plan.flights.out = {
+    date: outDate?.value || "",
+    time: outTime?.value || ""
+  };
 
-  plan.flights.journey.outDuration = jOut?.value || "";
-  plan.flights.journey.returnDuration = jRet?.value || "";
+  plan.flights.ret = {
+    date: retDate?.value || "",
+    time: retTime?.value || ""
+  };
+
+  plan.flights.journey = {
+    outDuration: outDur?.value || "",
+    returnDuration: retDur?.value || ""
+  };
+
   plan.flights.layoverDestination = layoverDest?.value || "";
   plan.flights.layoverDuration = layoverDur?.value || "";
 
-  plan.flights.notes = fNotes?.value || "";
+  plan.flights.notes = flightNotes?.value || "";
 
   await persistPlan();
   showSaved();
 }
 
-async function clearFlightsUI(){
-  if (fOutDate) fOutDate.value = "";
-  if (fOutTime) fOutTime.value = "";
-  if (fRetDate) fRetDate.value = "";
-  if (fRetTime) fRetTime.value = "";
+async function clearFlightsUI() {
+  if (flightFrom) flightFrom.value = "";
+  if (flightTo) flightTo.value = "";
+  if (flightOperator) flightOperator.value = "";
+  if (flightCode) flightCode.value = "";
 
-  if (fOperator) fOperator.value = "";
-  if (fCode) fCode.value = "";
+  if (outDate) outDate.value = "";
+  if (outTime) outTime.value = "";
+  if (retDate) retDate.value = "";
+  if (retTime) retTime.value = "";
 
-  if (jOut) jOut.value = "";
-  if (jRet) jRet.value = "";
-  if (layoverDur) layoverDur.value = "";
+  if (outDur) outDur.value = "";
+  if (retDur) retDur.value = "";
+
   if (layoverDest) layoverDest.value = "";
-  if (fNotes) fNotes.value = "";
+  if (layoverDur) layoverDur.value = "";
+
+  if (flightNotes) flightNotes.value = "";
 
   plan.flights = makeEmptyPlan(plan.days).flights;
   await persistPlan();
   showSaved();
 }
 
-container.querySelector("#save-flights")?.addEventListener("click", saveFlightsUI);
-container.querySelector("#clear-flights")?.addEventListener("click", clearFlightsUI);
+// IMPORTANT: bind listeners after elements exist
+container.querySelector("#save-flights")?.addEventListener("click", async (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  await saveFlightsUI();
+});
 
-// Load initial values
+container.querySelector("#clear-flights")?.addEventListener("click", async (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  await clearFlightsUI();
+});
+
+// Load the UI when popup opens
 loadFlightsUI();
 
 

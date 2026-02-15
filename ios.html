@@ -514,18 +514,29 @@
 
     function makeEmptyPlan(days = 1) {
       const d = Math.max(1, Number(days || 1));
-      const base = {
-        days: d,
-        activities: { 1: "" },
-        notes: "",
-        tips: "",
-        hotel: { name:"", currency:"GBP", nightly:"", nights: Math.max(1, d - 1), notes:"" },
-        budget: {
-          cheap:  { name:"", currency:"GBP", price:"", nights:"", notes:"" },
-          luxury: { name:"", currency:"GBP", price:"", nights:"", notes:"" }
-        },
-        food: {}
-      };
+     const base = {
+  days: d,
+  activities: { 1: "" },
+  notes: "",
+  tips: "",
+  hotel: { name:"", currency:"GBP", nightly:"", nights: Math.max(1, d - 1), notes:"" },
+  budget: {
+    cheap:  { name:"", currency:"GBP", price:"", nights:"", notes:"" },
+    luxury: { name:"", currency:"GBP", price:"", nights:"", notes:"" }
+  },
+
+  flights: {
+    out: { date: "", time: "" },
+    ret: { date: "", time: "" },
+    operator: "",
+    flightCode: "",
+    journey: { outDuration: "", returnDuration: "" },
+    layoverDuration: "",
+    notes: ""
+  },
+
+  food: {}
+};
       for (let i = 1; i <= d; i++) {
         base.food[i] = {
           breakfast: { dish:"", hot:"", cold:"", description:"", hotDescription:"", coldDescription:"" },
@@ -557,6 +568,18 @@
       if (!plan.budget) plan.budget = { ...base.budget };
       if (!plan.budget.cheap) plan.budget.cheap = { ...base.budget.cheap };
       if (!plan.budget.luxury) plan.budget.luxury = { ...base.budget.luxury };
+
+      // Flights
+if (!plan.flights) plan.flights = JSON.parse(JSON.stringify(base.flights));
+if (!plan.flights.out) plan.flights.out = { date:"", time:"" };
+if (!plan.flights.ret) plan.flights.ret = { date:"", time:"" };
+if (!("operator" in plan.flights)) plan.flights.operator = "";
+if (!("flightCode" in plan.flights)) plan.flights.flightCode = "";
+if (!plan.flights.journey) plan.flights.journey = { outDuration:"", returnDuration:"" };
+if (!("outDuration" in plan.flights.journey)) plan.flights.journey.outDuration = "";
+if (!("returnDuration" in plan.flights.journey)) plan.flights.journey.returnDuration = "";
+if (!("layoverDuration" in plan.flights)) plan.flights.layoverDuration = "";
+if (!("notes" in plan.flights)) plan.flights.notes = "";
 
       if (plan.foodDiary && !plan.food) { plan.food = {}; delete plan.foodDiary; }
       if (!plan.food || typeof plan.food !== "object" || Array.isArray(plan.food)) plan.food = {};
@@ -2698,6 +2721,7 @@
             <button class="tab-btn active" data-tab="tab-days">Days</button>
             <button class="tab-btn" data-tab="tab-daily">Daily Plan</button>
             <button class="tab-btn" data-tab="tab-stay">Stay & Budget</button>
+            <button class="tab-btn" data-tab="tab-flights">Flights</button>
             <button class="tab-btn" data-tab="tab-food">Food</button>
             <button class="tab-btn" data-tab="tab-notes">Notes</button>
             <button class="tab-btn" data-tab="tab-tips">Tips</button>
@@ -2792,6 +2816,60 @@
               <button class="btn primary" id="save-budget">Save Hotel Options</button>
             </div>
           </div>
+
+          <div id="tab-flights" class="tab-panel">
+  <h4>Flights</h4>
+
+  <div class="row">
+    <label>Out date:</label>
+    <input id="flight-out-date" type="text" placeholder="e.g., 27/02/2026">
+  </div>
+  <div class="row">
+    <label>Out time:</label>
+    <input id="flight-out-time" type="text" placeholder="e.g., 22:05">
+  </div>
+
+  <div class="row">
+    <label>Return date:</label>
+    <input id="flight-ret-date" type="text" placeholder="e.g., 07/03/2026">
+  </div>
+  <div class="row">
+    <label>Return time:</label>
+    <input id="flight-ret-time" type="text" placeholder="e.g., 19:30">
+  </div>
+
+  <div class="row">
+    <label>Operator:</label>
+    <input id="flight-operator" type="text" placeholder="e.g., Cathay Pacific">
+  </div>
+  <div class="row">
+    <label>Flight code:</label>
+    <input id="flight-code" type="text" placeholder="e.g., CX254">
+  </div>
+
+  <div class="row">
+    <label>Journey time (out):</label>
+    <input id="journey-out" type="text" placeholder="e.g., 13h 45m">
+  </div>
+  <div class="row">
+    <label>Journey time (return):</label>
+    <input id="journey-ret" type="text" placeholder="e.g., 12h 55m">
+  </div>
+  <div class="row">
+    <label>Layover duration:</label>
+    <input id="layover-duration" type="text" placeholder="e.g., 2h 10m">
+  </div>
+
+  <textarea id="flight-notes" class="textarea" placeholder="Notes (optional)"></textarea>
+
+  <div class="save-bar">
+    <button class="btn primary" id="save-flights">Save Flights</button>
+    <button class="btn" id="clear-flights">Clear</button>
+  </div>
+
+  <p class="hint">Tip: “Journey time” is total travel time. “Layover duration” is time between flights (if applicable).</p>
+</div>
+
 
           <div id="tab-food" class="tab-panel">
             <div class="day-nav">
@@ -3107,6 +3185,91 @@
 
       loadBudgetFields();
       container.querySelector('#save-budget')?.addEventListener('click', saveBudgetFields);
+
+      // -------------------------
+// Flights
+// -------------------------
+const fOutDate = container.querySelector("#flight-out-date");
+const fOutTime = container.querySelector("#flight-out-time");
+const fRetDate = container.querySelector("#flight-ret-date");
+const fRetTime = container.querySelector("#flight-ret-time");
+const fOperator = container.querySelector("#flight-operator");
+const fCode = container.querySelector("#flight-code");
+
+const jOut = container.querySelector("#journey-out");
+const jRet = container.querySelector("#journey-ret");
+const layoverDur = container.querySelector("#layover-duration");
+const fNotes = container.querySelector("#flight-notes");
+
+function loadFlightsUI(){
+  const fl = plan.flights || {};
+  const j = fl.journey || {};
+
+  if (fOutDate) fOutDate.value = fl.out?.date || "";
+  if (fOutTime) fOutTime.value = fl.out?.time || "";
+  if (fRetDate) fRetDate.value = fl.ret?.date || "";
+  if (fRetTime) fRetTime.value = fl.ret?.time || "";
+
+  if (fOperator) fOperator.value = fl.operator || "";
+  if (fCode) fCode.value = fl.flightCode || "";
+
+  if (jOut) jOut.value = j.outDuration || "";
+  if (jRet) jRet.value = j.returnDuration || "";
+  if (layoverDur) layoverDur.value = fl.layoverDuration || "";
+
+  if (fNotes) fNotes.value = fl.notes || "";
+}
+
+async function saveFlightsUI(){
+  if (!plan.flights) plan.flights = makeEmptyPlan(plan.days).flights;
+  if (!plan.flights.out) plan.flights.out = { date:"", time:"" };
+  if (!plan.flights.ret) plan.flights.ret = { date:"", time:"" };
+  if (!plan.flights.journey) plan.flights.journey = { outDuration:"", returnDuration:"" };
+
+  plan.flights.out.date = fOutDate?.value || "";
+  plan.flights.out.time = fOutTime?.value || "";
+  plan.flights.ret.date = fRetDate?.value || "";
+  plan.flights.ret.time = fRetTime?.value || "";
+
+  plan.flights.operator = fOperator?.value || "";
+  plan.flights.flightCode = fCode?.value || "";
+
+  plan.flights.journey.outDuration = jOut?.value || "";
+  plan.flights.journey.returnDuration = jRet?.value || "";
+  plan.flights.layoverDuration = layoverDur?.value || "";
+
+  plan.flights.notes = fNotes?.value || "";
+
+  await persistPlan();
+  showSaved();
+}
+
+async function clearFlightsUI(){
+  if (fOutDate) fOutDate.value = "";
+  if (fOutTime) fOutTime.value = "";
+  if (fRetDate) fRetDate.value = "";
+  if (fRetTime) fRetTime.value = "";
+
+  if (fOperator) fOperator.value = "";
+  if (fCode) fCode.value = "";
+
+  if (jOut) jOut.value = "";
+  if (jRet) jRet.value = "";
+  if (layoverDur) layoverDur.value = "";
+  if (fNotes) fNotes.value = "";
+
+  plan.flights = makeEmptyPlan(plan.days).flights;
+  await persistPlan();
+  showSaved();
+}
+
+container.querySelector("#save-flights")?.addEventListener("click", saveFlightsUI);
+container.querySelector("#clear-flights")?.addEventListener("click", clearFlightsUI);
+
+// Load initial values
+loadFlightsUI();
+
+
 
       // Food per day
       const foodDaySelect = container.querySelector('#food-day-select');

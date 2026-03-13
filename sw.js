@@ -1,33 +1,10 @@
 const CACHE_NAME = "holiday-map-v1";
+
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./manifest.webmanifest",
-  "./favicon.png",
-  "./assets/app-icon.png",
-  "./assets/black-dot.png",
-  "./assets/usa-flag.png",
-  "./assets/poland-flag.png",
-  "./assets/germany-flag.png",
-  "./assets/england-flag.png",
-  "./assets/wales-flag.png",
-  "./assets/scotland-flag.png",
-  "./assets/ireland-flag.png",
-  "./assets/france-flag.png",
-  "./assets/italy-flag.png",
-  "./assets/greece-flag.png",
-  "./assets/spain-flag.png",
-  "./assets/portugal-flag.png",
-  "./assets/cyprus-flag.png",
-  "./assets/turkey-flag.png",
-  "./assets/morocco-flag.png",
-  "./assets/china-flag.png",
-  "./assets/vietnam-flag.png",
-  "./assets/thailand-flag.png",
-  "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css",
-  "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  "./manifest.webmanifest"
 ];
-
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL))

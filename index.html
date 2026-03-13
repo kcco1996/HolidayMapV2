@@ -2952,10 +2952,37 @@
 
       DEST_NAME_LOOKUP = new Map(destinations.map(d => [normalizeName(d.name), d.name]));
 
-    async function translateText(text, targetLang) {
-      if (!text || !text.trim()) return "";
-      return `[${targetLang}] ${text}`;
-    }
+  async function translateText(text, targetLang, sourceLang = "en") {
+  if (!text || !text.trim()) return "";
+
+  // Don't translate if source and target are the same
+  if (sourceLang === targetLang) return text;
+
+  const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sourceLang}|${targetLang}`;
+
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error("Translation request failed");
+  }
+
+  const data = await response.json();
+
+  const translated = data?.responseData?.translatedText;
+  if (!translated) {
+    throw new Error("No translation returned");
+  }
+
+  return translated;
+}
+
+function getLanguageLabel(code) {
+  const labels = {
+    en: "English",
+    fr: "French",
+    es: "Spanish"
+  };
+  return labels[code] || code.toUpperCase();
+}
 
     function buildPopup(d) {
       const plan = loadPlanLocal(d.name);
@@ -2982,7 +3009,7 @@
                 <a href="https://maps.google.com/?q=${d.lat},${d.lng}" target="_blank" rel="noopener">Open in Google Maps</a>
               </p>
               <div class="loading-hint" id="cloud-hint">If signed in, your latest data loads from Firebase when this popup opens.</div>
-              ${d.language ? `<div class="translation-badge">Local language: ${d.language.toUpperCase()}</div>` : ""}
+              ${d.language ? `<div class="translation-badge">Local language: ${getLanguageLabel(d.language)}</div>` : ""}
             </div>
           </div>
 
@@ -3324,23 +3351,23 @@
         await saveDayText(currentDay);
       });
 
-      container.querySelector('#translate-day')?.addEventListener('click', async () => {
-        try {
-          const sourceText = plan.activities[currentDay] || dayArea?.value || "";
-          if (!sourceText.trim()) return;
+container.querySelector('#translate-day')?.addEventListener('click', async () => {
+  try {
+    const sourceText = plan.activities[currentDay] || dayArea?.value || "";
+    if (!sourceText.trim()) return;
 
-          const translated = await translateText(sourceText, targetLang);
-          plan.translations.daily[currentDay] = translated;
-          plan.translations.language = targetLang;
+    const translated = await translateText(sourceText, targetLang, "en");
+    plan.translations.daily[currentDay] = translated;
+    plan.translations.language = targetLang;
 
-          await persistPlan();
-          if (dayArea) dayArea.value = translated;
-          showSaved();
-        } catch (err) {
-          console.warn("Day translation failed:", err);
-          alert("Translation failed.");
-        }
-      });
+    await persistPlan();
+    if (dayArea) dayArea.value = translated;
+    showSaved();
+  } catch (err) {
+    console.warn("Day translation failed:", err);
+    alert("Translation failed.");
+  }
+});
 
       container.querySelector('#show-original-day')?.addEventListener('click', () => {
         if (dayArea) dayArea.value = plan.activities[currentDay] || "";
@@ -3696,23 +3723,23 @@
         showSaved();
       });
 
-      container.querySelector('#translate-notes')?.addEventListener('click', async () => {
-        try {
-          const sourceText = plan.notes || notesArea?.value || "";
-          if (!sourceText.trim()) return;
+ container.querySelector('#translate-notes')?.addEventListener('click', async () => {
+  try {
+    const sourceText = plan.notes || notesArea?.value || "";
+    if (!sourceText.trim()) return;
 
-          const translated = await translateText(sourceText, targetLang);
-          plan.translations.notes = translated;
-          plan.translations.language = targetLang;
+    const translated = await translateText(sourceText, targetLang, "en");
+    plan.translations.notes = translated;
+    plan.translations.language = targetLang;
 
-          await persistPlan();
-          if (notesArea) notesArea.value = translated;
-          showSaved();
-        } catch (err) {
-          console.warn("Notes translation failed:", err);
-          alert("Translation failed.");
-        }
-      });
+    await persistPlan();
+    if (notesArea) notesArea.value = translated;
+    showSaved();
+  } catch (err) {
+    console.warn("Notes translation failed:", err);
+    alert("Translation failed.");
+  }
+});
 
       container.querySelector('#show-original-notes')?.addEventListener('click', () => {
         if (notesArea) notesArea.value = plan.notes || "";
@@ -3735,23 +3762,23 @@
         showSaved();
       });
 
-      container.querySelector('#translate-tips')?.addEventListener('click', async () => {
-        try {
-          const sourceText = plan.tips || tipsArea?.value || "";
-          if (!sourceText.trim()) return;
+container.querySelector('#translate-tips')?.addEventListener('click', async () => {
+  try {
+    const sourceText = plan.tips || tipsArea?.value || "";
+    if (!sourceText.trim()) return;
 
-          const translated = await translateText(sourceText, targetLang);
-          plan.translations.tips = translated;
-          plan.translations.language = targetLang;
+    const translated = await translateText(sourceText, targetLang, "en");
+    plan.translations.tips = translated;
+    plan.translations.language = targetLang;
 
-          await persistPlan();
-          if (tipsArea) tipsArea.value = translated;
-          showSaved();
-        } catch (err) {
-          console.warn("Tips translation failed:", err);
-          alert("Translation failed.");
-        }
-      });
+    await persistPlan();
+    if (tipsArea) tipsArea.value = translated;
+    showSaved();
+  } catch (err) {
+    console.warn("Tips translation failed:", err);
+    alert("Translation failed.");
+  }
+});
 
       container.querySelector('#show-original-tips')?.addEventListener('click', () => {
         if (tipsArea) tipsArea.value = plan.tips || "";

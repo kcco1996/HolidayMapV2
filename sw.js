@@ -1,4 +1,4 @@
-const CACHE_NAME = "holiday-map-v2";
+const CACHE_NAME = "holiday-map-v3";
 
 const APP_SHELL = [
   "./",

@@ -3208,7 +3208,7 @@ async function translateText(text, targetLang, sourceLang = "en") {
   const results = [];
 
   for (const chunk of chunks) {
-    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunk)}&langpair=${sourceLang}|${targetLang}`;
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunk)}&langpair=${sourceLang}|${targetLang}&de=kcco1996@gmail.com`;
 
     const response = await fetch(url);
     if (!response.ok) {

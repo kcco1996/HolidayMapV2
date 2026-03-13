@@ -14,6 +14,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
 
+  <!-- PWA -->
   <link rel="manifest" href="manifest.webmanifest">
 
   <!-- Leaflet CSS -->
@@ -25,7 +26,12 @@
   <style>
     html, body { height: 100%; margin: 0; padding: 0; }
 
-    :root { --vh: 1vh; --controls-h: 0px; --vv-top: 0px; --strip-space: 86px; }
+    :root {
+      --vh: 1vh;
+      --controls-h: 0px;
+      --vv-top: 0px;
+      --strip-space: 86px;
+    }
 
     body {
       overscroll-behavior: none;
@@ -43,277 +49,333 @@
       touch-action: pan-x pan-y;
     }
 
-    /* Popups */
     .popup .header { display:flex; align-items:center; gap:10px; }
     .popup .header img { width:40px; height:40px; object-fit:contain; }
     .popup .title { line-height:1.3; }
 
     .destination-icon { background: transparent; border: 0; }
-    .destination-icon img { display: block; height: 20px; width: auto; }
+    .destination-icon img { display:block; height:20px; width:auto; }
 
-    /* iOS popup hard fix */
-    .leaflet-popup-content { max-height: 80vh; overflow: hidden; }
-    .popup { max-height: 80vh; display: flex; flex-direction: column; }
-    .popup .tab-content { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; min-height: 0; }
+    .leaflet-popup-content { max-height: 80vh; overflow: hidden; width: 560px !important; }
+    .popup { max-height: 80vh; display:flex; flex-direction:column; }
+    .popup .tab-content { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; min-height:0; }
 
-    /* Tabs */
-    .tabs { display: flex; gap: 6px; margin-top: 8px; margin-bottom: 8px; flex-wrap: wrap; }
-    .tab-btn {
-      border: 1px solid #ccc; background: #f6f6f6; padding: 4px 8px; border-radius: 6px;
-      cursor: pointer; font-size: 13px;
+    .tabs {
+      display:flex;
+      gap:6px;
+      margin-top:8px;
+      margin-bottom:8px;
+      flex-wrap:wrap;
     }
-    .tab-btn.active { background: #e7f0ff; border-color:#8db6ff; }
+
+    .tab-btn {
+      border:1px solid #ccc;
+      background:#f6f6f6;
+      padding:4px 8px;
+      border-radius:6px;
+      cursor:pointer;
+      font-size:13px;
+    }
+
+    .tab-btn.active { background:#e7f0ff; border-color:#8db6ff; }
+
     .tab-panel { display:none; }
     .tab-panel.active { display:block; }
 
-    .row { display:flex; align-items:center; gap:8px; margin: 6px 0; }
-    .row label { font-size: 13px; min-width: 130px; }
-    .row input[type="number"], .row input[type="text"], .row select { padding: 4px; }
+    .row { display:flex; align-items:center; gap:8px; margin:6px 0; }
+    .row label { font-size:13px; min-width:130px; }
+    .row input[type="number"],
+    .row input[type="text"],
+    .row select { padding:4px; }
 
-    .hint { font-size: 12px; color:#666; margin-top:4px; }
-    .save-bar { display:flex; gap:8px; margin-top:8px; }
-    .btn {
-      border:1px solid #bbb; background:#fff; padding:6px 10px; border-radius:6px; cursor:pointer; font-size:13px;
+    .hint { font-size:12px; color:#666; margin-top:4px; }
+
+    .save-bar {
+      display:flex;
+      gap:8px;
+      margin-top:8px;
+      flex-wrap:wrap;
     }
-    .btn.primary { background:#2563eb; color:#fff; border-color:#2563eb; }
+
+    .btn {
+      border:1px solid #bbb;
+      background:#fff;
+      padding:6px 10px;
+      border-radius:6px;
+      cursor:pointer;
+      font-size:13px;
+    }
+
+    .btn.primary {
+      background:#2563eb;
+      color:#fff;
+      border-color:#2563eb;
+    }
+
     .btn.ghost { background:#f6f6f6; }
     .btn:disabled { opacity:0.6; cursor:not-allowed; }
 
     .textarea{
-      width:100%; height:140px; padding:8px; border:1px solid #ccc; border-radius:6px;
-      resize:vertical; font:13px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      width:100%;
+      height:140px;
+      padding:8px;
+      border:1px solid #ccc;
+      border-radius:6px;
+      resize:vertical;
+      font:13px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     }
 
-    .day-nav{ display:flex; align-items:center; gap:8px; margin:8px 0; flex-wrap:wrap; }
-    .day-nav .btn{ padding:4px 8px; }
-    .day-nav select{ padding:4px 8px; }
+    .day-nav { display:flex; align-items:center; gap:8px; margin:8px 0; flex-wrap:wrap; }
+    .day-nav .btn { padding:4px 8px; }
+    .day-nav select { padding:4px 8px; }
 
     .saved-toast{
-      font-size:12px; color:#065f46; background:#ecfdf5; border:1px solid #a7f3d0;
-      padding:4px 8px; border-radius:6px; display:none; margin-left:auto;
+      font-size:12px;
+      color:#065f46;
+      background:#ecfdf5;
+      border:1px solid #a7f3d0;
+      padding:4px 8px;
+      border-radius:6px;
+      display:none;
+      margin-left:auto;
     }
-    .saved-toast.show{ display:block; }
 
-    /* Top bars */
+    .saved-toast.show { display:block; }
+
     #controls-bar, #top-bar {
-      position: fixed;
-      z-index: 1000;
-      background: rgba(255,255,255,0.95);
-      border: 1px solid #ccc;
-      padding: 8px 12px;
-      border-radius: 8px;
+      position:fixed;
+      z-index:1000;
+      background:rgba(255,255,255,0.95);
+      border:1px solid #ccc;
+      padding:8px 12px;
+      border-radius:8px;
       display:flex;
       gap:8px;
       align-items:center;
       font-size:13px;
-      padding-top: calc(8px + env(safe-area-inset-top));
+      padding-top:calc(8px + env(safe-area-inset-top));
     }
-    
 
-    /* desktop defaults */
-    #controls-bar { top: calc(10px + var(--vv-top)); left: 10px; right: auto; }
-    #top-bar      { top: calc(10px + var(--vv-top)); right: 10px; }
+    #controls-bar { top:calc(10px + var(--vv-top)); left:10px; right:auto; }
+    #top-bar { top:calc(10px + var(--vv-top)); right:10px; }
 
-    /* Mobile layout: stack bars and push them down correctly */
     @media (max-width: 640px) {
       #controls-bar {
-        left: 10px;
-        right: 10px;
-        flex-wrap: wrap;
-        top: calc(20px + var(--vv-top));
+        left:10px;
+        right:10px;
+        flex-wrap:wrap;
+        top:calc(20px + var(--vv-top));
       }
 
       #top-bar {
-        left: 10px;
-        right: 10px;
-        flex-wrap: wrap;
-        justify-content: space-between;
-        top: calc(10px + var(--vv-top) + var(--controls-h) + 10px);
+        left:10px;
+        right:10px;
+        flex-wrap:wrap;
+        justify-content:space-between;
+        top:calc(10px + var(--vv-top) + var(--controls-h) + 10px);
       }
     }
 
-    #controls-bar input, #controls-bar select {
-      padding:4px 8px; border-radius:6px; border:1px solid #ccc; font-size:13px;
+    #controls-bar input,
+    #controls-bar select {
+      padding:4px 8px;
+      border-radius:6px;
+      border:1px solid #ccc;
+      font-size:13px;
     }
 
-    /* Wider popup */
-    .leaflet-popup-content { width: 560px !important; }
+    #migration-status{
+      display:none;
+      position:fixed;
+      top:calc(10px + var(--vv-top) + var(--controls-h) + 60px);
+      right:10px;
+      left:auto;
+      background:#ffffff;
+      border:1px solid #cbd5e1;
+      padding:10px 14px;
+      max-width:340px;
+      font-size:13px;
+      line-height:1.4;
+      z-index:1001;
+      box-shadow:0 4px 12px rgba(0,0,0,0.15);
+      border-radius:10px;
+      opacity:0;
+      transform:translateY(-10px);
+      transition:opacity 0.3s ease, transform 0.3s ease;
+    }
 
-    /* Migration/status box */
-   #migration-status{
-  display:none;
-  position:fixed;
+    #migration-status.show{
+      display:block;
+      opacity:1;
+      transform:translateY(0);
+    }
 
-  top: calc(10px + var(--vv-top) + var(--controls-h) + 60px);
-  right: 10px;
-  left: auto;
+    input, select, textarea { font-size:16px; }
+    .btn, .tab-btn, .hint, .row label { font-size:13px; }
 
-  background:#ffffff;
-  border:1px solid #cbd5e1;
-  padding:10px 14px;
-  max-width:340px;
-  font-size:13px;
-  line-height:1.4;
-  z-index:1001;
-  box-shadow:0 4px 12px rgba(0,0,0,0.15);
-  border-radius:10px;
-  opacity:0;
-  transform: translateY(-10px);
-  transition: opacity 0.3s ease, transform 0.3s ease;
-}
-
-#migration-status.show{
-  display:block;
-  opacity:1;
-  transform: translateY(0);
-}
-
-    /* iOS: prevent input zoom when font-size < 16px */
-    input, select, textarea { font-size: 16px; }
-    .btn, .tab-btn, .hint, .row label { font-size: 13px; }
-
-    /* loading hint inside popup */
     .loading-hint {
-      font-size: 12px;
-      color: #444;
-      background: #f3f4f6;
-      border: 1px solid #e5e7eb;
-      padding: 6px 8px;
-      border-radius: 8px;
-      margin-top: 8px;
+      font-size:12px;
+      color:#444;
+      background:#f3f4f6;
+      border:1px solid #e5e7eb;
+      padding:6px 8px;
+      border-radius:8px;
+      margin-top:8px;
     }
 
-    /* === Gatwick / Departures board strip (bottom) === */
+    .translation-badge {
+      display:inline-block;
+      margin-top:6px;
+      padding:4px 8px;
+      border-radius:999px;
+      background:#eff6ff;
+      border:1px solid #bfdbfe;
+      color:#1d4ed8;
+      font-size:12px;
+      font-weight:600;
+    }
+
     .departures-strip{
-      position: fixed;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      z-index: 9999;
-
-      padding: 10px 12px;
-      background: rgba(10, 12, 18, 0.96);
-      border-top: 1px solid rgba(255,255,255,0.10);
-      backdrop-filter: blur(10px);
-
-      transform: translateY(0);
-      transition: transform 220ms ease;
-      padding-bottom: calc(10px + env(safe-area-inset-bottom));
+      position:fixed;
+      left:0;
+      right:0;
+      bottom:0;
+      z-index:9999;
+      padding:10px 12px;
+      background:rgba(10, 12, 18, 0.96);
+      border-top:1px solid rgba(255,255,255,0.10);
+      backdrop-filter:blur(10px);
+      transform:translateY(0);
+      transition:transform 220ms ease;
+      padding-bottom:calc(10px + env(safe-area-inset-bottom));
     }
 
-    .departures-strip__inner{ max-width: 1200px; margin: 0 auto; }
+    .departures-strip__inner{ max-width:1200px; margin:0 auto; }
+
     .departures-strip__label{
-      font-weight: 800;
-      letter-spacing: 0.14em;
-      font-size: 12px;
-      color: rgba(255,255,255,0.75);
-      margin: 0 0 8px 2px;
+      font-weight:800;
+      letter-spacing:0.14em;
+      font-size:12px;
+      color:rgba(255,255,255,0.75);
+      margin:0 0 8px 2px;
     }
 
     .departures-strip__grid{
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 10px;
+      display:grid;
+      grid-template-columns:repeat(4, minmax(0, 1fr));
+      gap:10px;
     }
-    .departures-strip__grid--6{ grid-template-columns: repeat(6, minmax(0, 1fr)); }
+
+    .departures-strip__grid--6{ grid-template-columns:repeat(6, minmax(0, 1fr)); }
 
     @media (max-width: 900px){
-      .departures-strip__grid--6{ grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .departures-strip__grid--6{ grid-template-columns:repeat(3, minmax(0, 1fr)); }
     }
+
     @media (max-width: 640px){
-      .departures-strip__grid--6{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .departures-strip__grid--6{ grid-template-columns:repeat(2, minmax(0, 1fr)); }
     }
 
     .departures-strip__bar{
       display:flex;
       align-items:center;
-      justify-content: space-between;
-      gap: 10px;
-
-      position: sticky;
-      top: 0;
-      z-index: 2;
-
-      background: rgba(10,12,18,0.98);
-      padding-bottom: 8px;
-      margin-bottom: 10px;
+      justify-content:space-between;
+      gap:10px;
+      position:sticky;
+      top:0;
+      z-index:2;
+      background:rgba(10,12,18,0.98);
+      padding-bottom:8px;
+      margin-bottom:10px;
     }
 
     .departures-strip__toggle{
-      appearance: none;
-      -webkit-appearance: none;
-      border: 1px solid rgba(255,255,255,0.18);
-      background: rgba(0,0,0,0.35);
-      color: rgba(255,255,255,0.85);
-      border-radius: 999px;
-      padding: 6px 10px;
-      font: 700 12px/1 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      letter-spacing: 0.10em;
-      cursor: pointer;
+      appearance:none;
+      -webkit-appearance:none;
+      border:1px solid rgba(255,255,255,0.18);
+      background:rgba(0,0,0,0.35);
+      color:rgba(255,255,255,0.85);
+      border-radius:999px;
+      padding:6px 10px;
+      font:700 12px/1 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      letter-spacing:0.10em;
+      cursor:pointer;
     }
 
-    .departures-strip__toggle:active{ transform: translateY(1px); }
+    .departures-strip__toggle:active{ transform:translateY(1px); }
 
-    /* Collapsed state */
     .departures-strip.is-collapsed{
-      transform: translateY(calc(100% - 52px));
+      transform:translateY(calc(100% - 52px));
     }
 
     .leaflet-bottom.leaflet-left,
     .leaflet-bottom.leaflet-right{
-      margin-bottom: var(--strip-space);
+      margin-bottom:var(--strip-space);
     }
 
     .db-cell{
-      border: 1px solid rgba(255,255,255,0.10);
-      border-radius: 10px;
-      padding: 8px 10px;
-      background: rgba(0,0,0,0.28);
-      min-width: 0;
+      border:1px solid rgba(255,255,255,0.10);
+      border-radius:10px;
+      padding:8px 10px;
+      background:rgba(0,0,0,0.28);
+      min-width:0;
     }
 
     .db-cell__head{
-      font-size: 11px;
-      letter-spacing: 0.18em;
-      color: rgba(255,255,255,0.65);
-      margin-bottom: 6px;
+      font-size:11px;
+      letter-spacing:0.18em;
+      color:rgba(255,255,255,0.65);
+      margin-bottom:6px;
     }
 
     .db-cell__value{
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      font-weight: 900;
-      font-size: 18px;
-      letter-spacing: 0.08em;
-      line-height: 1.1;
-      color: #ffd34d;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-weight:900;
+      font-size:18px;
+      letter-spacing:0.08em;
+      line-height:1.1;
+      color:#ffd34d;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
     }
 
     @media (max-width: 640px){
-      .departures-strip{ padding: 8px 10px; padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
-      .departures-strip.is-collapsed{ transform: translateY(calc(100% - 48px)); }
-      .departures-strip__toggle{ font-size: 11px; padding: 5px 9px; }
-      .db-cell__value{ font-size: 16px; }
+      .departures-strip{ padding:8px 10px; padding-bottom:calc(8px + env(safe-area-inset-bottom)); }
+      .departures-strip.is-collapsed{ transform:translateY(calc(100% - 48px)); }
+      .departures-strip__toggle{ font-size:11px; padding:5px 9px; }
+      .db-cell__value{ font-size:16px; }
     }
 
     #top-toast{
-  display:none;
-  max-width: 360px;
-  background:#ffffff;
-  border:1px solid #cbd5e1;
-  padding:10px 12px;
-  font-size:13px;
-  line-height:1.35;
-  border-radius:10px;
-  box-shadow:0 4px 12px rgba(0,0,0,0.15);
-}
+      display:none;
+      max-width:360px;
+      background:#ffffff;
+      border:1px solid #cbd5e1;
+      padding:10px 12px;
+      font-size:13px;
+      line-height:1.35;
+      border-radius:10px;
+      box-shadow:0 4px 12px rgba(0,0,0,0.15);
+    }
 
-#top-toast.show{
-  display:block;
-}
+    #top-toast.show{ display:block; }
 
+    #offline-banner{
+      display:none;
+      position:fixed;
+      left:10px;
+      right:10px;
+      bottom:100px;
+      z-index:10000;
+      background:#fff7ed;
+      border:1px solid #fdba74;
+      color:#9a3412;
+      padding:10px 12px;
+      border-radius:10px;
+      font-size:13px;
+      box-shadow:0 4px 12px rgba(0,0,0,0.12);
+    }
   </style>
 </head>
 
@@ -357,15 +419,19 @@
   </div>
 
   <div id="migration-status" aria-live="polite"></div>
-  
+
   <div id="top-bar">
     <button id="sign-in-btn" class="btn" onclick="firebaseSignIn()">Sign in with Google</button>
     <button id="sign-out-btn" class="btn" onclick="firebaseSignOut()" style="display:none;">Sign out</button>
     <span id="user-info"></span>
     <div id="migrate-wrap" style="display:none; flex-direction:column; gap:6px; align-items:flex-start;">
-  <button id="migrate-btn" class="btn ghost">Migrate Data to Firebase</button>
-  <div id="top-toast" aria-live="polite"></div>
-</div>
+      <button id="migrate-btn" class="btn ghost">Migrate Data to Firebase</button>
+      <div id="top-toast" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <div id="offline-banner">
+    You’re offline. Saved plans still work, but new map areas and live Firebase sync may be limited.
   </div>
 
   <!-- Leaflet JS -->
@@ -374,18 +440,16 @@
           crossorigin=""></script>
 
   <script>
-    // -------------------------
-    // iOS viewport height fix
-    // -------------------------
     function setVh() {
       const h =
-        (window.visualViewport && window.visualViewport.height) ?
-          window.visualViewport.height :
-          window.innerHeight;
+        (window.visualViewport && window.visualViewport.height)
+          ? window.visualViewport.height
+          : window.innerHeight;
 
       const safeH = Math.max(320, h);
       document.documentElement.style.setProperty('--vh', `${safeH * 0.01}px`);
     }
+
     setVh();
     window.addEventListener('resize', setVh, { passive: true });
     if (window.visualViewport) {
@@ -393,9 +457,6 @@
       window.visualViewport.addEventListener('scroll', setVh, { passive: true });
     }
 
-    // -------------------------
-    // Top-bar stacking helper (mobile)
-    // -------------------------
     function updateBarsLayout() {
       const cb = document.getElementById("controls-bar");
       if (!cb) return;
@@ -417,13 +478,9 @@
       window.visualViewport.addEventListener("scroll", updateBarsLayout, { passive: true });
     }
 
-
-
-    // -------------------------
-    // iOS-safe storage wrapper
-    // -------------------------
     const safeStorage = (() => {
       let mem = {};
+
       function canUseLocalStorage() {
         try {
           const k = "__test__";
@@ -434,7 +491,9 @@
           return false;
         }
       }
+
       const ok = canUseLocalStorage();
+
       return {
         getItem(key) {
           try { return ok ? localStorage.getItem(key) : (mem[key] ?? null); }
@@ -457,19 +516,20 @@
 
     window.safeStorage = safeStorage;
 
-    // -------------------------
-    // Large-value storage (chunking)
-    // -------------------------
     const CHUNK_SIZE = 8000;
 
     function setLargeItem(key, valueStr) {
       const storage = safeStorage;
       const oldCount = Number(storage.getItem(`${key}::__chunks`) || 0);
-      for (let i = 0; i < oldCount; i++) storage.removeItem(`${key}::__chunk:${i}`);
+
+      for (let i = 0; i < oldCount; i++) {
+        storage.removeItem(`${key}::__chunk:${i}`);
+      }
       storage.removeItem(`${key}::__chunks`);
 
       const chunks = Math.ceil(valueStr.length / CHUNK_SIZE);
       storage.setItem(`${key}::__chunks`, String(chunks));
+
       for (let i = 0; i < chunks; i++) {
         const part = valueStr.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
         storage.setItem(`${key}::__chunk:${i}`, part);
@@ -480,26 +540,28 @@
       const storage = safeStorage;
       const chunks = Number(storage.getItem(`${key}::__chunks`) || 0);
       if (!chunks) return null;
+
       let out = "";
-      for (let i = 0; i < chunks; i++) out += (storage.getItem(`${key}::__chunk:${i}`) || "");
+      for (let i = 0; i < chunks; i++) {
+        out += (storage.getItem(`${key}::__chunk:${i}`) || "");
+      }
       return out || null;
     }
 
-    function removeLargeItem(key) {
-      const storage = safeStorage;
-      const chunks = Number(storage.getItem(`${key}::__chunks`) || 0);
-      for (let i = 0; i < chunks; i++) storage.removeItem(`${key}::__chunk:${i}`);
-      storage.removeItem(`${key}::__chunks`);
+    function normalizeName(s) {
+      return String(s || "").trim().toLowerCase();
     }
 
-    function normalizeName(s) { return String(s || "").trim().toLowerCase(); }
-
     let DEST_NAME_LOOKUP = new Map();
+
     function canonicalDestinationName(inputName) {
       const n = normalizeName(inputName);
       return DEST_NAME_LOOKUP.get(n) || String(inputName || "").trim();
     }
-    function storageKey(name) { return `tripPlan:${canonicalDestinationName(name)}`; }
+
+    function storageKey(name) {
+      return `tripPlan:${canonicalDestinationName(name)}`;
+    }
 
     function findExistingPlanKey(name) {
       const exact = storageKey(name);
@@ -521,31 +583,43 @@
 
     function makeEmptyPlan(days = 1) {
       const d = Math.max(1, Number(days || 1));
-     const base = {
-  days: d,
-  activities: { 1: "" },
-  notes: "",
-  tips: "",
-  hotel: { name:"", currency:"GBP", nightly:"", nights: Math.max(1, d - 1), notes:"" },
-  budget: {
-    cheap:  { name:"", currency:"GBP", price:"", nights:"", notes:"" },
-    luxury: { name:"", currency:"GBP", price:"", nights:"", notes:"" }
-  },
+      const base = {
+        days: d,
+        activities: { 1: "" },
+        notes: "",
+        tips: "",
+        translations: {
+          language: "",
+          daily: {},
+          notes: "",
+          tips: ""
+        },
+        hotel: {
+          name: "",
+          currency: "GBP",
+          nightly: "",
+          nights: Math.max(1, d - 1),
+          notes: ""
+        },
+        budget: {
+          cheap:  { name:"", currency:"GBP", price:"", nights:"", notes:"" },
+          luxury: { name:"", currency:"GBP", price:"", nights:"", notes:"" }
+        },
+        flights: {
+          from: "",
+          to: "",
+          out: { date: "", time: "" },
+          ret: { date: "", time: "" },
+          operator: "",
+          flightCode: "",
+          journey: { outDuration: "", returnDuration: "" },
+          layoverDuration: "",
+          layoverDestination: "",
+          notes: ""
+        },
+        food: {}
+      };
 
-flights: {
-  from: "",
-  to: "",
-  out: { date: "", time: "" },
-  ret: { date: "", time: "" },
-  operator: "",
-  flightCode: "",
-  journey: { outDuration: "", returnDuration: "" },
-  layoverDuration: "",
-  layoverDestination: "",
-  notes: ""
-},
-  food: {}
-};
       for (let i = 1; i <= d; i++) {
         base.food[i] = {
           breakfast: { dish:"", hot:"", cold:"", description:"", hotDescription:"", coldDescription:"" },
@@ -559,6 +633,7 @@ flights: {
           }
         };
       }
+
       return base;
     }
 
@@ -571,6 +646,19 @@ flights: {
       if (typeof plan.notes !== "string") plan.notes = "";
       if (typeof plan.tips !== "string") plan.tips = "";
 
+      if (!plan.translations) {
+        plan.translations = {
+          language: "",
+          daily: {},
+          notes: "",
+          tips: ""
+        };
+      }
+      if (!plan.translations.daily) plan.translations.daily = {};
+      if (typeof plan.translations.notes !== "string") plan.translations.notes = "";
+      if (typeof plan.translations.tips !== "string") plan.translations.tips = "";
+      if (typeof plan.translations.language !== "string") plan.translations.language = "";
+
       if (!plan.hotel) plan.hotel = { ...base.hotel };
       if (!("notes" in plan.hotel)) plan.hotel.notes = "";
 
@@ -578,44 +666,44 @@ flights: {
       if (!plan.budget.cheap) plan.budget.cheap = { ...base.budget.cheap };
       if (!plan.budget.luxury) plan.budget.luxury = { ...base.budget.luxury };
 
-      // Flights
-if (!plan.flights) {
-  plan.flights = makeEmptyPlan(plan.days).flights;
-} else {
-  if (!("from" in plan.flights)) plan.flights.from = "";
-  if (!("to" in plan.flights)) plan.flights.to = "";
+      if (!plan.flights) {
+        plan.flights = makeEmptyPlan(plan.days).flights;
+      } else {
+        if (!("from" in plan.flights)) plan.flights.from = "";
+        if (!("to" in plan.flights)) plan.flights.to = "";
+        if (!plan.flights.out) plan.flights.out = { date: "", time: "" };
+        if (!plan.flights.ret) plan.flights.ret = { date: "", time: "" };
+        if (!("operator" in plan.flights)) plan.flights.operator = "";
+        if (!("flightCode" in plan.flights)) plan.flights.flightCode = "";
+        if (!plan.flights.journey) plan.flights.journey = { outDuration: "", returnDuration: "" };
+        if (!("outDuration" in plan.flights.journey)) plan.flights.journey.outDuration = "";
+        if (!("returnDuration" in plan.flights.journey)) plan.flights.journey.returnDuration = "";
+        if (!("layoverDuration" in plan.flights)) plan.flights.layoverDuration = "";
+        if (!("layoverDestination" in plan.flights)) plan.flights.layoverDestination = "";
+        if (!("notes" in plan.flights)) plan.flights.notes = "";
+      }
 
-  if (!plan.flights.out) plan.flights.out = { date: "", time: "" };
-  if (!plan.flights.ret) plan.flights.ret = { date: "", time: "" };
+      if (plan.foodDiary && !plan.food) {
+        plan.food = {};
+        delete plan.foodDiary;
+      }
 
-  if (!("operator" in plan.flights)) plan.flights.operator = "";
-  if (!("flightCode" in plan.flights)) plan.flights.flightCode = "";
+      if (!plan.food || typeof plan.food !== "object" || Array.isArray(plan.food)) {
+        plan.food = {};
+      }
 
-  if (!plan.flights.journey) plan.flights.journey = { outDuration: "", returnDuration: "" };
-  if (!("outDuration" in plan.flights.journey)) plan.flights.journey.outDuration = "";
-  if (!("returnDuration" in plan.flights.journey)) plan.flights.journey.returnDuration = "";
-
-  if (!("layoverDuration" in plan.flights)) plan.flights.layoverDuration = "";
-  if (!("layoverDestination" in plan.flights)) plan.flights.layoverDestination = "";
-
-  if (!("notes" in plan.flights)) plan.flights.notes = "";
-}
-
-      if (plan.foodDiary && !plan.food) { plan.food = {}; delete plan.foodDiary; }
-      if (!plan.food || typeof plan.food !== "object" || Array.isArray(plan.food)) plan.food = {};
-
-      for (let i=1; i<=plan.days; i++){
+      for (let i = 1; i <= plan.days; i++) {
         if (!(i in plan.activities)) plan.activities[i] = "";
         if (!plan.food[i]) plan.food[i] = JSON.parse(JSON.stringify(base.food[i]));
       }
 
-      Object.keys(plan.activities).map(k=>+k).filter(k=>k>plan.days).forEach(k=>delete plan.activities[k]);
-      Object.keys(plan.food).map(k=>+k).filter(k=>k>plan.days).forEach(k=>delete plan.food[k]);
+      Object.keys(plan.activities).map(k => +k).filter(k => k > plan.days).forEach(k => delete plan.activities[k]);
+      Object.keys(plan.food).map(k => +k).filter(k => k > plan.days).forEach(k => delete plan.food[k]);
 
       return plan;
     }
 
-    function loadPlanLocal(name){
+    function loadPlanLocal(name) {
       const key = findExistingPlanKey(name);
       const raw = getLargeItem(key);
 
@@ -626,7 +714,7 @@ if (!plan.flights) {
       return normalizePlanShape(plan);
     }
 
-    function savePlanLocal(name, data){
+    function savePlanLocal(name, data) {
       const key = storageKey(name);
       const plan = normalizePlanShape(data);
       setLargeItem(key, JSON.stringify(plan));
@@ -659,6 +747,7 @@ if (!plan.flights) {
       } catch (e) {
         console.warn("Firebase plan load failed for", name, e);
       }
+
       return { plan, from: "local" };
     }
 
@@ -679,7 +768,7 @@ if (!plan.flights) {
         safeStorage.setItem(`hasPlan:${canonicalDestinationName(name)}`, "1");
         return true;
       } catch (e) {
-        console.warn("Firebase plan save failed for", name, e);
+        console.warn("Firebase plan save failed:", e);
         return false;
       }
     }
@@ -694,12 +783,12 @@ if (!plan.flights) {
       });
     }
 
-    // === Next Trip Departures Strip ===
     function setNextTripBoard({ outDate, outTime, returnDate, returnTime, operator, flightCode }) {
       const set = (id, val) => {
         const el = document.getElementById(id);
         if (el) el.textContent = val || "—";
       };
+
       set("nextTripOutDate", outDate);
       set("nextTripOutTime", outTime);
       set("nextTripReturnDate", returnDate);
@@ -736,358 +825,409 @@ if (!plan.flights) {
         name: "Vancouver",
         lat: 49.28239845936347, lng: -123.1201280732361,    
         destination: "assets/black-dot.png",  
-         note: "-",
-        region: "north-america"
+        note: "-",
+        region: "north-america",
+        language: "en"
       },
            {
         name: "Banff",
         lat: 51.17832458370294, lng: -115.5707963532298,    
         destination: "assets/black-dot.png",  
          note: "-",
-        region: "north-america"
+         region: "north-america",
+        language: "en"
       },
            {
         name: "Detroit",
         lat: 42.329879544353226, lng: -83.0409047870654,    
         destination: "assets/black-dot.png",  
          note: "-",
-        region: "north-america"
+          region: "north-america",
+        language: "en"
       },
          {
         name: "Toronto",
         lat:  43.652627129818654, lng: -79.38432555629761,  
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+          region: "north-america",
+        language: "en"
       },
            {
         name: "Ottawa",
         lat: 45.41997247826557, lng: -75.70000171763027,    
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
            {
         name: "Montreal",
         lat: 45.503463342454616, lng: -73.56769621488876,    
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+           region: "north-america",
+        language: "fr"
       },
            {
         name: "Quebec City",
         lat: 46.812554109739246, lng: -71.2081315885433,    
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "fr"
       },
         {
         name: "New York City",
         lat: 40.71209411855515, lng: -74.00500529400429,   
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
            {
         name: "Philadelphia",
         lat: 39.95362138471616, lng: -75.15725298609271,    
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
            {
         name: "Boston",
         lat: 42.355756353550504, lng: -71.05980501991988,    
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
            {
         name: "Washington DC",
         lat: 38.90950627319311, lng: -77.0378603298129,    
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
          {
         name: "Charlotte",
         lat: 35.22068845703077, lng: -80.84207585899921,    
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
            {
         name: "Kentucky Bourbon Trail",
         lat: 36.96615901727974, lng: -86.18277184438787,    
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
            {
         name: "Chicago",
         lat: 41.88268842658458, lng: -87.62751922198979,    
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
            {
         name: "Indianapolis",
         lat: 39.7689786349564, lng: -86.15311289232605,    
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
         {
         name: "Cleveland",
         lat: 41.50273521152955, lng: -81.68986031536389,    
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
            {
         name: "Kansas City",
         lat: 39.10034294911827, lng: -94.5833309693297,    
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
            {
         name: "Denver",
         lat: 39.7403722248545, lng: -104.97767259664374,    
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
            {
         name: "Moab",
         lat: 38.57327876611761, lng: -109.55074386985126,    
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
          {
         name: "Yellowstone National Park",
         lat: 44.611411823368435, lng: -110.514530780498,    
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
            {
         name: "Miami",
         lat: 25.76323961340018, lng: -80.1922635683231,    
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
            {
         name: "Savannah",
         lat: 32.080776482381886, lng: -81.09070428371469,    
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
            {
         name: "Charleston",
         lat: 32.783630768755735, lng: -79.93041210581677,    
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
             {
         name: "Atlanta",
         lat: 33.74980983050412, lng: -84.3877520670381,    
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
             {
         name: "New Orleans",
         lat: 29.950974551233713, lng: -90.07527395509003,   
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
             {
         name: "Memphis",
         lat: 35.14814012845415, lng: -90.0504868932041,    
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
             {
         name: "Nashville",
         lat: 36.162542545391226, lng: -86.7822524630937,    
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
             {
         name: "Huntsville",
         lat: 34.73015580981167, lng: -86.58397780143977,    
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
          {
         name: "Houston",
         lat: 29.76656834960227, lng: -95.36236094159233,    
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
          {
         name: "Austin",
         lat: 30.271106994370317, lng: -97.73504184817182,    
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
          {
         name: "Santa Fe",
         lat: 35.68959519613997, lng:  -105.93721216032161,   
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
          {
         name: "Route 66",
         lat: 35.19212083604028, lng: -114.04847373827002,     
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
        {
         name: "Phoenix",
         lat: 33.44518313947133, lng: -112.07786658699041,    
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
         {
         name: "Oklahoma City",
         lat: 35.47261707938066, lng: -97.52246540442685,    
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
         {
         name: "Dallas",
         lat: 32.77972522784886, lng: -96.79527900808196,    
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+       region: "north-america",
+        language: "en"
       },
        {
         name: "Sedona",
         lat: 34.86371195123784, lng: -111.81438583102138,    
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
        {
         name: "Grand Canyon",
         lat: 36.100802410513744, lng: -112.11205548994302,    
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
        {
         name: "Las Vegas",
         lat: 36.17149945007827, lng: -115.13872482571836,   
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
         {
         name: "Los Angeles",
         lat: 34.05465650605094, lng: -118.2561380681273,    
         destination: "assets/usa-flag.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
         {
         name: "San Francisco",
         lat: 37.77784484651388, lng: -122.41282705873314,    
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
          {
         name: "Guadalajara",
         lat: 20.677010987331542, lng: -103.34752670709736,   
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "es"
       },
          {
         name: "Mexico City",
         lat: 19.432544560239055, lng: -99.13096556640932,   
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "es"
       },
          {
         name: "Oaxaca",
         lat: 17.07278435125949, lng: -96.72634456484178,  
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "es"
       },
          {
         name: "Merida",
         lat: 20.967716148485437, lng: -89.59273287275839,   
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "es"
       },
          {
         name: "Havana",
         lat: 23.13459246458203, lng: -82.35791906899723,   
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "es"
       },
          {
         name: "Vinales",
         lat: 22.618811297850826, lng: -83.70665053329138,   
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "es"
       },
          {
         name: "Kingston",
         lat: 18.0183056544133,  lng: -76.8089772023489,  
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+        region: "north-america",
+        language: "en"
       },
            {
         name: "Ocho Rios",
         lat: 18.4073695583668,  lng: -77.10310726492314,  
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+         region: "north-america",
+        language: "en"
       },
          {
         name: "Negril",
         lat: 18.278913566295927, lng:  -78.34370756164991,  
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+         region: "north-america",
+        language: "en"
       },
          {
         name: "Montego Bay",
         lat: 18.471831669696066, lng: -77.92041525946033,  
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+         region: "north-america",
+        language: "en"
       },
          {
         name: "San Jose",
         lat:  9.928248163622198, lng: -84.09028388072183,  
         destination: "assets/black-dot.png",  
         note: "-",
-        region: "north-america"
+         region: "north-america",
+        language: "es"
       },
 
       // South America
@@ -2810,13 +2950,22 @@ if (!plan.flights) {
 
     ];
 
-      // POPUP HTML
+      DEST_NAME_LOOKUP = new Map(destinations.map(d => [normalizeName(d.name), d.name]));
+
+    async function translateText(text, targetLang) {
+      if (!text || !text.trim()) return "";
+      return `[${targetLang}] ${text}`;
+    }
+
     function buildPopup(d) {
       const plan = loadPlanLocal(d.name);
       const days = Math.max(1, Number(plan.days || 1));
       const nightsDefault = Math.max(1, Number(plan.hotel?.nights ?? Math.max(1, days - 1)));
 
-      const dayOptions = Array.from({ length: days }, (_, i) => `<option value="${i + 1}">Day ${i + 1}</option>`).join("");
+      const dayOptions = Array.from({ length: days }, (_, i) =>
+        `<option value="${i + 1}">Day ${i + 1}</option>`
+      ).join("");
+
       const currencies = ["GBP","EUR","USD","CAD","AUD","NZD","JPY","CNY"];
       const currencyOptions = currencies.map(
         c => `<option value="${c}" ${(plan.hotel?.currency || "GBP") === c ? "selected" : ""}>${c}</option>`
@@ -2833,6 +2982,7 @@ if (!plan.flights) {
                 <a href="https://maps.google.com/?q=${d.lat},${d.lng}" target="_blank" rel="noopener">Open in Google Maps</a>
               </p>
               <div class="loading-hint" id="cloud-hint">If signed in, your latest data loads from Firebase when this popup opens.</div>
+              ${d.language ? `<div class="translation-badge">Local language: ${d.language.toUpperCase()}</div>` : ""}
             </div>
           </div>
 
@@ -2853,7 +3003,7 @@ if (!plan.flights) {
               <input id="days-input" type="number" min="1" step="1" value="${days}">
               <button class="btn primary" id="apply-days">Apply</button>
             </div>
-            <p class="hint">Set how long you’ll stay. This also influences default nights for hotel total (editable).</p>
+            <p class="hint">Set how long you’ll stay. This also influences default nights for hotel total.</p>
           </div>
 
           <div id="tab-daily" class="tab-panel">
@@ -2863,6 +3013,7 @@ if (!plan.flights) {
               <select id="day-select">${dayOptions}</select>
               <button class="btn ghost" id="next-day" title="Next day">&#9654;</button>
             </div>
+
             <div id="day-label" style="font-weight:600;margin-bottom:6px;color:#333;"></div>
 
             <textarea id="day-activities"
@@ -2872,6 +3023,9 @@ if (!plan.flights) {
             <div class="save-bar">
               <button class="btn primary" id="save-day">Save Day</button>
               <button class="btn" id="clear-day">Clear Day</button>
+              <button class="btn ghost" id="translate-day">Translate</button>
+              <button class="btn ghost" id="show-original-day">Original</button>
+              <button class="btn ghost" id="show-translated-day">Local</button>
             </div>
           </div>
 
@@ -2936,80 +3090,31 @@ if (!plan.flights) {
             </div>
           </div>
 
-         <div id="tab-flights" class="tab-panel">
-  <h4 style="margin: 6px 0 10px;">Flights</h4>
+          <div id="tab-flights" class="tab-panel">
+            <h4 style="margin:6px 0 10px;">Flights</h4>
 
-  <div class="row">
-    <label>From:</label>
-    <input id="flight-from" type="text" placeholder="e.g., London (LGW/LHR)">
-  </div>
+            <div class="row"><label>From:</label><input id="flight-from" type="text" placeholder="e.g., London (LGW/LHR)"></div>
+            <div class="row"><label>To:</label><input id="flight-to" type="text" placeholder="e.g., Hanoi (HAN)"></div>
+            <div class="row"><label>Operator:</label><input id="flight-operator" type="text" placeholder="e.g., Cathay Pacific"></div>
+            <div class="row"><label>Flight code:</label><input id="flight-code" type="text" placeholder="e.g., CX254"></div>
+            <div class="row"><label>Outbound date:</label><input id="out-date" type="text" placeholder="DD/MM/YYYY"></div>
+            <div class="row"><label>Outbound time:</label><input id="out-time" type="text" placeholder="HH:MM"></div>
+            <div class="row"><label>Return date:</label><input id="ret-date" type="text" placeholder="DD/MM/YYYY"></div>
+            <div class="row"><label>Return time:</label><input id="ret-time" type="text" placeholder="HH:MM"></div>
+            <div class="row"><label>Out journey time:</label><input id="out-duration" type="text" placeholder="e.g., 12h 40m"></div>
+            <div class="row"><label>Return journey time:</label><input id="ret-duration" type="text" placeholder="e.g., 13h 10m"></div>
+            <div class="row"><label>Layover destination:</label><input id="layover-destination" type="text" placeholder="e.g., Hong Kong (HKG)"></div>
+            <div class="row"><label>Layover duration:</label><input id="layover-duration" type="text" placeholder="e.g., 2h 10m"></div>
 
-  <div class="row">
-    <label>To:</label>
-    <input id="flight-to" type="text" placeholder="e.g., Hanoi (HAN)">
-  </div>
+            <textarea id="flight-notes" class="textarea" placeholder="Flight notes (optional)"></textarea>
 
-  <div class="row">
-    <label>Operator:</label>
-    <input id="flight-operator" type="text" placeholder="e.g., Cathay Pacific">
-  </div>
+            <div class="save-bar">
+              <button class="btn primary" id="save-flights">Save Flights</button>
+              <button class="btn" id="clear-flights">Clear</button>
+            </div>
 
-  <div class="row">
-    <label>Flight code:</label>
-    <input id="flight-code" type="text" placeholder="e.g., CX254">
-  </div>
-
-  <div class="row">
-    <label>Outbound date:</label>
-    <input id="out-date" type="text" placeholder="DD/MM/YYYY">
-  </div>
-
-  <div class="row">
-    <label>Outbound time:</label>
-    <input id="out-time" type="text" placeholder="HH:MM">
-  </div>
-
-  <div class="row">
-    <label>Return date:</label>
-    <input id="ret-date" type="text" placeholder="DD/MM/YYYY">
-  </div>
-
-  <div class="row">
-    <label>Return time:</label>
-    <input id="ret-time" type="text" placeholder="HH:MM">
-  </div>
-
-  <div class="row">
-    <label>Out journey time:</label>
-    <input id="out-duration" type="text" placeholder="e.g., 12h 40m">
-  </div>
-
-  <div class="row">
-    <label>Return journey time:</label>
-    <input id="ret-duration" type="text" placeholder="e.g., 13h 10m">
-  </div>
-
-  <div class="row">
-    <label>Layover destination:</label>
-    <input id="layover-destination" type="text" placeholder="e.g., Hong Kong (HKG)">
-  </div>
-
-  <div class="row">
-    <label>Layover duration:</label>
-    <input id="layover-duration" type="text" placeholder="e.g., 2h 10m">
-  </div>
-
-  <textarea id="flight-notes" class="textarea" placeholder="Flight notes (optional)"></textarea>
-
-  <div class="save-bar">
-    <button class="btn primary" id="save-flights">Save Flights</button>
-    <button class="btn" id="clear-flights">Clear</button>
-  </div>
-
-  <p class="hint">Saved per destination and syncs to Firebase when signed in.</p>
-</div>
-
-
+            <p class="hint">Saved per destination and syncs to Firebase when signed in.</p>
+          </div>
 
           <div id="tab-food" class="tab-panel">
             <div class="day-nav">
@@ -3056,6 +3161,9 @@ if (!plan.flights) {
             <div class="save-bar">
               <button class="btn primary" id="save-notes">Save Notes</button>
               <button class="btn" id="clear-notes">Clear</button>
+              <button class="btn ghost" id="translate-notes">Translate</button>
+              <button class="btn ghost" id="show-original-notes">Original</button>
+              <button class="btn ghost" id="show-translated-notes">Local</button>
             </div>
           </div>
 
@@ -3064,43 +3172,49 @@ if (!plan.flights) {
             <div class="save-bar">
               <button class="btn primary" id="save-tips">Save Tips</button>
               <button class="btn" id="clear-tips">Clear</button>
+              <button class="btn ghost" id="translate-tips">Translate</button>
+              <button class="btn ghost" id="show-original-tips">Original</button>
+              <button class="btn ghost" id="show-translated-tips">Local</button>
             </div>
           </div>
-        </div>`;
+        </div>
+      `;
     }
 
-    // -------------------------
-    // POPUP HANDLERS (async)
-    // -------------------------
     async function initPopupHandlers(container, d){
       const name = d.name;
       const toast = container.querySelector('.saved-toast');
-
       let plan = loadPlanLocal(name);
+      const targetLang = d.language || "en";
 
       const hint = container.querySelector("#cloud-hint");
       if (hint) hint.textContent = "Loading latest data…";
+
       const loaded = await loadPlanFromFirebaseIfSignedIn(name);
       plan = loaded.plan;
-      if (hint) hint.textContent = loaded.from === "firebase"
-        ? "✅ Loaded latest from Firebase."
-        : "Loaded from local cache (sign in to sync).";
+
+      if (hint) {
+        hint.textContent = loaded.from === "firebase"
+          ? "✅ Loaded latest from Firebase."
+          : "Loaded from local cache (sign in to sync).";
+      }
 
       function showSaved(){
         if (!toast) return;
         toast.classList.add('show');
-        setTimeout(()=>toast.classList.remove('show'), 1200);
+        setTimeout(() => toast.classList.remove('show'), 1200);
       }
 
-      // Budget subtabs
       const budgetBtns = container.querySelectorAll('.budget-subtabs .tab-btn[data-btab]');
       const budgetPanels = ['tab-cheap','tab-medium','tab-luxury'];
+
       function activateBudgetTab(id){
         budgetBtns.forEach(b => b.classList.remove('active'));
         container.querySelector(`.budget-subtabs .tab-btn[data-btab="${id}"]`)?.classList.add('active');
         budgetPanels.forEach(pid => container.querySelector('#'+pid)?.classList.remove('active'));
         container.querySelector('#'+id)?.classList.add('active');
       }
+
       budgetBtns.forEach(btn => {
         btn.addEventListener('click', (e) => {
           e.preventDefault();
@@ -3108,16 +3222,16 @@ if (!plan.flights) {
           activateBudgetTab(btn.dataset.btab);
         }, { passive: false });
       });
+
       activateBudgetTab('tab-medium');
 
-      // Main tabs
       const mainTabBtns = container.querySelectorAll('.tab-btn[data-tab]');
-      mainTabBtns.forEach(btn=>{
-        btn.addEventListener('click', ()=>{
-          mainTabBtns.forEach(b=>b.classList.remove('active'));
-          container.querySelectorAll(':scope > .tab-panel').forEach(p=>p.classList.remove('active'));
+      mainTabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          mainTabBtns.forEach(b => b.classList.remove('active'));
+          container.querySelectorAll(':scope > .tab-panel').forEach(p => p.classList.remove('active'));
           btn.classList.add('active');
-          const panel = container.querySelector('#'+btn.dataset.tab);
+          const panel = container.querySelector('#' + btn.dataset.tab);
           if (panel) panel.classList.add('active');
         });
       });
@@ -3125,17 +3239,22 @@ if (!plan.flights) {
       const daysInput = container.querySelector('#days-input');
       const applyDaysBtn = container.querySelector('#apply-days');
 
-      const rebuildDaySelector = ()=>{
+      const rebuildDaySelector = () => {
         const daySelect = container.querySelector('#day-select');
         if (!daySelect) return;
-        const newDays = Math.max(1, Number(daysInput.value||1));
-        for (let i=1; i<=newDays; i++){
+
+        const newDays = Math.max(1, Number(daysInput.value || 1));
+        for (let i = 1; i <= newDays; i++) {
           if (!(i in plan.activities)) plan.activities[i] = "";
           if (!plan.food[i]) plan.food[i] = makeEmptyPlan(newDays).food[i];
         }
-        Object.keys(plan.activities).map(k=>+k).filter(k=>k>newDays).forEach(k=>delete plan.activities[k]);
-        Object.keys(plan.food).map(k=>+k).filter(k=>k>newDays).forEach(k=>delete plan.food[k]);
-        daySelect.innerHTML = Array.from({length:newDays},(_,i)=>`<option value="${i+1}">Day ${i+1}</option>`).join("");
+
+        Object.keys(plan.activities).map(k => +k).filter(k => k > newDays).forEach(k => delete plan.activities[k]);
+        Object.keys(plan.food).map(k => +k).filter(k => k > newDays).forEach(k => delete plan.food[k]);
+
+        daySelect.innerHTML = Array.from({length:newDays}, (_,i) =>
+          `<option value="${i+1}">Day ${i+1}</option>`
+        ).join("");
       };
 
       async function persistPlan(){
@@ -3143,14 +3262,13 @@ if (!plan.flights) {
         await savePlanToFirebaseIfSignedIn(name, plan);
       }
 
-      applyDaysBtn?.addEventListener('click', async ()=>{
-        plan.days = Math.max(1, Number(daysInput.value||1));
+      applyDaysBtn?.addEventListener('click', async () => {
+        plan.days = Math.max(1, Number(daysInput.value || 1));
         rebuildDaySelector();
         await persistPlan();
         showSaved();
       });
 
-      // Daily plan
       const daySelect = container.querySelector('#day-select');
       const dayArea = container.querySelector('#day-activities');
       const dayLabel = container.querySelector('#day-label');
@@ -3201,9 +3319,37 @@ if (!plan.flights) {
       });
 
       container.querySelector('#save-day')?.addEventListener('click', async () => saveDayText(currentDay));
-      container.querySelector('#clear-day')?.addEventListener('click', async () => { if(dayArea){ dayArea.value=""; } await saveDayText(currentDay); });
+      container.querySelector('#clear-day')?.addEventListener('click', async () => {
+        if (dayArea) dayArea.value = "";
+        await saveDayText(currentDay);
+      });
 
-      // Stay & budget (medium)
+      container.querySelector('#translate-day')?.addEventListener('click', async () => {
+        try {
+          const sourceText = plan.activities[currentDay] || dayArea?.value || "";
+          if (!sourceText.trim()) return;
+
+          const translated = await translateText(sourceText, targetLang);
+          plan.translations.daily[currentDay] = translated;
+          plan.translations.language = targetLang;
+
+          await persistPlan();
+          if (dayArea) dayArea.value = translated;
+          showSaved();
+        } catch (err) {
+          console.warn("Day translation failed:", err);
+          alert("Translation failed.");
+        }
+      });
+
+      container.querySelector('#show-original-day')?.addEventListener('click', () => {
+        if (dayArea) dayArea.value = plan.activities[currentDay] || "";
+      });
+
+      container.querySelector('#show-translated-day')?.addEventListener('click', () => {
+        if (dayArea) dayArea.value = plan.translations?.daily?.[currentDay] || "";
+      });
+
       const hotelName = container.querySelector('#hotel-name');
       const currency = container.querySelector('#currency');
       const nightly = container.querySelector('#nightly');
@@ -3214,15 +3360,16 @@ if (!plan.flights) {
       if (hotelName) hotelName.value = plan.hotel?.name || "";
       if (currency) currency.value = plan.hotel?.currency || "GBP";
       if (nightly) nightly.value = plan.hotel?.nightly || "";
-      if (nights)  nights.value  = Math.max(1, Number(plan.hotel?.nights || Math.max(1, (plan.days || 1) - 1)));
+      if (nights) nights.value = Math.max(1, Number(plan.hotel?.nights || Math.max(1, (plan.days || 1) - 1)));
       if (hotelNotes) hotelNotes.value = plan.hotel?.notes || "";
 
-      const renderTotal = ()=>{
-        const n = Number(nightly?.value||0);
-        const k = Math.max(1, Number(nights?.value||1));
+      const renderTotal = () => {
+        const n = Number(nightly?.value || 0);
+        const k = Math.max(1, Number(nights?.value || 1));
         const curr = currency?.value || "GBP";
-        if (total) total.textContent = (n>0 && k>0) ? `${curr} ${(n*k).toLocaleString(undefined,{maximumFractionDigits:0})}` : "—";
+        if (total) total.textContent = (n > 0 && k > 0) ? `${curr} ${(n * k).toLocaleString(undefined,{maximumFractionDigits:0})}` : "—";
       };
+
       nightly?.addEventListener('input', renderTotal);
       nights?.addEventListener('input', renderTotal);
       currency?.addEventListener('change', renderTotal);
@@ -3232,24 +3379,23 @@ if (!plan.flights) {
         plan.hotel.name = hotelName?.value || "";
         plan.hotel.currency = currency?.value || "GBP";
         plan.hotel.nightly = nightly?.value || "";
-        plan.hotel.nights = Math.max(1, Number(nights?.value||1));
+        plan.hotel.nights = Math.max(1, Number(nights?.value || 1));
         plan.hotel.notes = hotelNotes?.value || "";
         await persistPlan();
         showSaved();
       }
 
       container.querySelector('#save-hotel')?.addEventListener('click', saveHotel);
-      container.querySelector('#clear-hotel')?.addEventListener('click', async ()=>{
-        if (hotelName) hotelName.value="";
-        if (currency) currency.value="GBP";
-        if (nightly) nightly.value="";
-        if (nights) nights.value=Math.max(1, (plan.days|0)-1 || 1);
-        if (hotelNotes) hotelNotes.value="";
+      container.querySelector('#clear-hotel')?.addEventListener('click', async () => {
+        if (hotelName) hotelName.value = "";
+        if (currency) currency.value = "GBP";
+        if (nightly) nightly.value = "";
+        if (nights) nights.value = Math.max(1, (plan.days | 0) - 1 || 1);
+        if (hotelNotes) hotelNotes.value = "";
         await saveHotel();
         renderTotal();
       });
 
-      // Budget fields
       const cheapName = container.querySelector('#cheap-name');
       const cheapCurrency = container.querySelector('#cheap-currency');
       const cheapPrice = container.querySelector('#cheap-price');
@@ -3326,133 +3472,108 @@ if (!plan.flights) {
       loadBudgetFields();
       container.querySelector('#save-budget')?.addEventListener('click', saveBudgetFields);
 
-      // -------------------------
-// Flights (load/save/clear)
-// -------------------------
-if (!plan.flights) plan.flights = makeEmptyPlan(plan.days).flights;
+      if (!plan.flights) plan.flights = makeEmptyPlan(plan.days).flights;
 
-const flightFrom = container.querySelector("#flight-from");
-const flightTo = container.querySelector("#flight-to");
-const flightOperator = container.querySelector("#flight-operator");
-const flightCode = container.querySelector("#flight-code");
+      const flightFrom = container.querySelector("#flight-from");
+      const flightTo = container.querySelector("#flight-to");
+      const flightOperator = container.querySelector("#flight-operator");
+      const flightCode = container.querySelector("#flight-code");
+      const outDate = container.querySelector("#out-date");
+      const outTime = container.querySelector("#out-time");
+      const retDate = container.querySelector("#ret-date");
+      const retTime = container.querySelector("#ret-time");
+      const outDur = container.querySelector("#out-duration");
+      const retDur = container.querySelector("#ret-duration");
+      const layoverDest = container.querySelector("#layover-destination");
+      const layoverDur = container.querySelector("#layover-duration");
+      const flightNotes = container.querySelector("#flight-notes");
 
-const outDate = container.querySelector("#out-date");
-const outTime = container.querySelector("#out-time");
-const retDate = container.querySelector("#ret-date");
-const retTime = container.querySelector("#ret-time");
+      function loadFlightsUI() {
+        const fl = plan.flights || makeEmptyPlan(plan.days).flights;
+        if (flightFrom) flightFrom.value = fl.from || "";
+        if (flightTo) flightTo.value = fl.to || "";
+        if (flightOperator) flightOperator.value = fl.operator || "";
+        if (flightCode) flightCode.value = fl.flightCode || "";
+        if (outDate) outDate.value = fl.out?.date || "";
+        if (outTime) outTime.value = fl.out?.time || "";
+        if (retDate) retDate.value = fl.ret?.date || "";
+        if (retTime) retTime.value = fl.ret?.time || "";
+        if (outDur) outDur.value = fl.journey?.outDuration || "";
+        if (retDur) retDur.value = fl.journey?.returnDuration || "";
+        if (layoverDest) layoverDest.value = fl.layoverDestination || "";
+        if (layoverDur) layoverDur.value = fl.layoverDuration || "";
+        if (flightNotes) flightNotes.value = fl.notes || "";
+      }
 
-const outDur = container.querySelector("#out-duration");
-const retDur = container.querySelector("#ret-duration");
-const layoverDest = container.querySelector("#layover-destination");
-const layoverDur = container.querySelector("#layover-duration");
+      async function saveFlightsUI() {
+        plan.flights = plan.flights || makeEmptyPlan(plan.days).flights;
 
-const flightNotes = container.querySelector("#flight-notes");
+        plan.flights.from = flightFrom?.value || "";
+        plan.flights.to = flightTo?.value || "";
+        plan.flights.operator = flightOperator?.value || "";
+        plan.flights.flightCode = flightCode?.value || "";
+        plan.flights.out = { date: outDate?.value || "", time: outTime?.value || "" };
+        plan.flights.ret = { date: retDate?.value || "", time: retTime?.value || "" };
+        plan.flights.journey = {
+          outDuration: outDur?.value || "",
+          returnDuration: retDur?.value || ""
+        };
+        plan.flights.layoverDestination = layoverDest?.value || "";
+        plan.flights.layoverDuration = layoverDur?.value || "";
+        plan.flights.notes = flightNotes?.value || "";
 
-function loadFlightsUI() {
-  const fl = plan.flights || makeEmptyPlan(plan.days).flights;
+        await persistPlan();
+        showSaved();
+      }
 
-  if (flightFrom) flightFrom.value = fl.from || "";
-  if (flightTo) flightTo.value = fl.to || "";
-  if (flightOperator) flightOperator.value = fl.operator || "";
-  if (flightCode) flightCode.value = fl.flightCode || "";
+      async function clearFlightsUI() {
+        if (flightFrom) flightFrom.value = "";
+        if (flightTo) flightTo.value = "";
+        if (flightOperator) flightOperator.value = "";
+        if (flightCode) flightCode.value = "";
+        if (outDate) outDate.value = "";
+        if (outTime) outTime.value = "";
+        if (retDate) retDate.value = "";
+        if (retTime) retTime.value = "";
+        if (outDur) outDur.value = "";
+        if (retDur) retDur.value = "";
+        if (layoverDest) layoverDest.value = "";
+        if (layoverDur) layoverDur.value = "";
+        if (flightNotes) flightNotes.value = "";
 
-  if (outDate) outDate.value = fl.out?.date || "";
-  if (outTime) outTime.value = fl.out?.time || "";
-  if (retDate) retDate.value = fl.ret?.date || "";
-  if (retTime) retTime.value = fl.ret?.time || "";
+        plan.flights = makeEmptyPlan(plan.days).flights;
+        await persistPlan();
+        showSaved();
+      }
 
-  if (outDur) outDur.value = fl.journey?.outDuration || "";
-  if (retDur) retDur.value = fl.journey?.returnDuration || "";
+      container.querySelector("#save-flights")?.addEventListener("click", async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        await saveFlightsUI();
+      });
 
-  if (layoverDest) layoverDest.value = fl.layoverDestination || "";
-  if (layoverDur) layoverDur.value = fl.layoverDuration || "";
+      container.querySelector("#clear-flights")?.addEventListener("click", async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        await clearFlightsUI();
+      });
 
-  if (flightNotes) flightNotes.value = fl.notes || "";
-}
+      loadFlightsUI();
 
-async function saveFlightsUI() {
-  plan.flights = plan.flights || makeEmptyPlan(plan.days).flights;
-
-  plan.flights.from = flightFrom?.value || "";
-  plan.flights.to = flightTo?.value || "";
-  plan.flights.operator = flightOperator?.value || "";
-  plan.flights.flightCode = flightCode?.value || "";
-
-  plan.flights.out = {
-    date: outDate?.value || "",
-    time: outTime?.value || ""
-  };
-
-  plan.flights.ret = {
-    date: retDate?.value || "",
-    time: retTime?.value || ""
-  };
-
-  plan.flights.journey = {
-    outDuration: outDur?.value || "",
-    returnDuration: retDur?.value || ""
-  };
-
-  plan.flights.layoverDestination = layoverDest?.value || "";
-  plan.flights.layoverDuration = layoverDur?.value || "";
-
-  plan.flights.notes = flightNotes?.value || "";
-
-  await persistPlan();
-  showSaved();
-}
-
-async function clearFlightsUI() {
-  if (flightFrom) flightFrom.value = "";
-  if (flightTo) flightTo.value = "";
-  if (flightOperator) flightOperator.value = "";
-  if (flightCode) flightCode.value = "";
-
-  if (outDate) outDate.value = "";
-  if (outTime) outTime.value = "";
-  if (retDate) retDate.value = "";
-  if (retTime) retTime.value = "";
-
-  if (outDur) outDur.value = "";
-  if (retDur) retDur.value = "";
-
-  if (layoverDest) layoverDest.value = "";
-  if (layoverDur) layoverDur.value = "";
-
-  if (flightNotes) flightNotes.value = "";
-
-  plan.flights = makeEmptyPlan(plan.days).flights;
-  await persistPlan();
-  showSaved();
-}
-
-// IMPORTANT: bind listeners after elements exist
-container.querySelector("#save-flights")?.addEventListener("click", async (e) => {
-  e.preventDefault();
-  e.stopPropagation();
-  await saveFlightsUI();
-});
-
-container.querySelector("#clear-flights")?.addEventListener("click", async (e) => {
-  e.preventDefault();
-  e.stopPropagation();
-  await clearFlightsUI();
-});
-
-// Load the UI when popup opens
-loadFlightsUI();
-
-
-
-      // Food per day
       const foodDaySelect = container.querySelector('#food-day-select');
       if (foodDaySelect) {
-        foodDaySelect.innerHTML = Array.from({length: plan.days}, (_,i)=>`<option value="${i+1}">Day ${i+1}</option>`).join('');
+        foodDaySelect.innerHTML = Array.from({length: plan.days}, (_,i) =>
+          `<option value="${i+1}">Day ${i+1}</option>`
+        ).join('');
         foodDaySelect.value = "1";
       }
 
-      const setVal = (sel, v)=>{ const el = container.querySelector(sel); if (el) el.value = v || ""; };
-      const getVal = (sel)=> (container.querySelector(sel)?.value ?? "");
+      const setVal = (sel, v) => {
+        const el = container.querySelector(sel);
+        if (el) el.value = v || "";
+      };
+
+      const getVal = (sel) => (container.querySelector(sel)?.value ?? "");
 
       function loadFoodForDay(day){
         const f = plan.food[day] || makeEmptyPlan(plan.days).food[day];
@@ -3520,7 +3641,7 @@ loadFlightsUI();
       let currentFoodDay = Number(foodDaySelect?.value || 1);
       loadFoodForDay(currentFoodDay);
 
-      foodDaySelect?.addEventListener('change', async ()=>{
+      foodDaySelect?.addEventListener('change', async () => {
         saveFoodForDay(currentFoodDay);
         await persistPlan();
         currentFoodDay = Number(foodDaySelect.value || 1);
@@ -3528,19 +3649,19 @@ loadFlightsUI();
         showSaved();
       });
 
-      container.querySelector('#save-food')?.addEventListener('click', async ()=>{
+      container.querySelector('#save-food')?.addEventListener('click', async () => {
         saveFoodForDay(currentFoodDay);
         await persistPlan();
         showSaved();
       });
 
-      container.querySelector('#clear-food')?.addEventListener('click', async ()=>{
+      container.querySelector('#clear-food')?.addEventListener('click', async () => {
         [
           '#breakfast-dish','#breakfast-dish-desc','#breakfast-hot','#breakfast-hot-desc','#breakfast-cold','#breakfast-cold-desc',
           '#lunch-dish','#lunch-dish-desc','#lunch-hot','#lunch-hot-desc','#lunch-cold','#lunch-cold-desc',
           '#dinner-starter','#dinner-starter-desc','#dinner-main','#dinner-main-desc','#dinner-dessert','#dinner-dessert-desc',
           '#dinner-alcohol','#dinner-alcohol-desc','#dinner-cold','#dinner-cold-desc'
-        ].forEach(sel=> setVal(sel,""));
+        ].forEach(sel => setVal(sel, ""));
 
         plan.food[currentFoodDay] = makeEmptyPlan(plan.days).food[currentFoodDay];
         await persistPlan();
@@ -3549,33 +3670,97 @@ loadFlightsUI();
 
       const subButtons = container.querySelectorAll('.food-subtabs .tab-btn');
       function activateSubtab(id){
-        subButtons.forEach(b=>b.classList.remove('active'));
-        container.querySelectorAll('#tab-breakfast,#tab-lunch,#tab-dinner').forEach(p=>p.classList.remove('active'));
+        subButtons.forEach(b => b.classList.remove('active'));
+        container.querySelectorAll('#tab-breakfast,#tab-lunch,#tab-dinner').forEach(p => p.classList.remove('active'));
         container.querySelector(`.food-subtabs .tab-btn[data-subtab="${id}"]`)?.classList.add('active');
         container.querySelector('#'+id)?.classList.add('active');
       }
-      subButtons.forEach(btn=> btn.addEventListener('click', ()=> activateSubtab(btn.dataset.subtab)));
+      subButtons.forEach(btn => btn.addEventListener('click', () => activateSubtab(btn.dataset.subtab)));
 
       const notesArea = container.querySelector('#notes-text');
       const tipsArea = container.querySelector('#tips-text');
+
       if (notesArea) notesArea.value = plan.notes || "";
       if (tipsArea) tipsArea.value = plan.tips || "";
 
-      container.querySelector('#save-notes')?.addEventListener('click', async ()=>{
-        plan.notes = notesArea.value; await persistPlan(); showSaved();
-      });
-      container.querySelector('#clear-notes')?.addEventListener('click', async ()=>{
-        notesArea.value=""; plan.notes=""; await persistPlan(); showSaved();
-      });
-
-      container.querySelector('#save-tips')?.addEventListener('click', async ()=>{
-        plan.tips = tipsArea.value; await persistPlan(); showSaved();
-      });
-      container.querySelector('#clear-tips')?.addEventListener('click', async ()=>{
-        tipsArea.value=""; plan.tips=""; await persistPlan(); showSaved();
+      container.querySelector('#save-notes')?.addEventListener('click', async () => {
+        plan.notes = notesArea?.value || "";
+        await persistPlan();
+        showSaved();
       });
 
-      // Init day 1
+      container.querySelector('#clear-notes')?.addEventListener('click', async () => {
+        if (notesArea) notesArea.value = "";
+        plan.notes = "";
+        await persistPlan();
+        showSaved();
+      });
+
+      container.querySelector('#translate-notes')?.addEventListener('click', async () => {
+        try {
+          const sourceText = plan.notes || notesArea?.value || "";
+          if (!sourceText.trim()) return;
+
+          const translated = await translateText(sourceText, targetLang);
+          plan.translations.notes = translated;
+          plan.translations.language = targetLang;
+
+          await persistPlan();
+          if (notesArea) notesArea.value = translated;
+          showSaved();
+        } catch (err) {
+          console.warn("Notes translation failed:", err);
+          alert("Translation failed.");
+        }
+      });
+
+      container.querySelector('#show-original-notes')?.addEventListener('click', () => {
+        if (notesArea) notesArea.value = plan.notes || "";
+      });
+
+      container.querySelector('#show-translated-notes')?.addEventListener('click', () => {
+        if (notesArea) notesArea.value = plan.translations?.notes || "";
+      });
+
+      container.querySelector('#save-tips')?.addEventListener('click', async () => {
+        plan.tips = tipsArea?.value || "";
+        await persistPlan();
+        showSaved();
+      });
+
+      container.querySelector('#clear-tips')?.addEventListener('click', async () => {
+        if (tipsArea) tipsArea.value = "";
+        plan.tips = "";
+        await persistPlan();
+        showSaved();
+      });
+
+      container.querySelector('#translate-tips')?.addEventListener('click', async () => {
+        try {
+          const sourceText = plan.tips || tipsArea?.value || "";
+          if (!sourceText.trim()) return;
+
+          const translated = await translateText(sourceText, targetLang);
+          plan.translations.tips = translated;
+          plan.translations.language = targetLang;
+
+          await persistPlan();
+          if (tipsArea) tipsArea.value = translated;
+          showSaved();
+        } catch (err) {
+          console.warn("Tips translation failed:", err);
+          alert("Translation failed.");
+        }
+      });
+
+      container.querySelector('#show-original-tips')?.addEventListener('click', () => {
+        if (tipsArea) tipsArea.value = plan.tips || "";
+      });
+
+      container.querySelector('#show-translated-tips')?.addEventListener('click', () => {
+        if (tipsArea) tipsArea.value = plan.translations?.tips || "";
+      });
+
       if (daysInput) daysInput.value = plan.days;
       if (daySelect) {
         daySelect.innerHTML = "";
@@ -3591,11 +3776,8 @@ loadFlightsUI();
       }
     }
 
-    // -------------------------
-    // MAP SETUP  ✅ (MAP CREATED BEFORE DEPARTURES INIT)
-    // -------------------------
     const map = L.map("map", { zoomControl: true }).setView([48.5, 8], 5);
-    window.map = map; // ✅ safe now (map exists)
+    window.map = map;
 
     window.addEventListener("load", () => {
       setTimeout(() => map.invalidateSize(true), 150);
@@ -3611,7 +3793,9 @@ loadFlightsUI();
     let allMarkers = [];
     let allLayerGroup;
 
-    function isBlackDotIconPath(path) { return String(path || "").includes("black-dot.png"); }
+    function isBlackDotIconPath(path) {
+      return String(path || "").includes("black-dot.png");
+    }
 
     function updateIconCounts() {
       const el = document.getElementById("icon-counts");
@@ -3619,13 +3803,14 @@ loadFlightsUI();
 
       let flags = 0;
       let dots = 0;
-
       const visibleMarkers = allLayerGroup ? allLayerGroup.getLayers() : [];
+
       for (const m of visibleMarkers) {
         const d = m.destinationData || {};
         if (isBlackDotIconPath(d.destination)) dots++;
         else flags++;
       }
+
       el.textContent = `🏴 Flags: ${flags} | ⚫ Dots: ${dots}`;
     }
 
@@ -3669,7 +3854,6 @@ loadFlightsUI();
 
     window.renderMap = renderMap;
 
-    // ✅ Departures collapse init (MOVED HERE: after map exists)
     (function initDeparturesCollapse(){
       const strip = document.getElementById("departuresStrip");
       const btn = document.getElementById("departuresToggle");
@@ -3681,9 +3865,7 @@ loadFlightsUI();
         strip.classList.toggle("is-collapsed", collapsed);
         btn.setAttribute("aria-expanded", String(!collapsed));
         btn.textContent = collapsed ? "SHOW" : "HIDE";
-
         document.documentElement.style.setProperty("--strip-space", collapsed ? "10px" : "86px");
-
         setTimeout(() => {
           try { window.map?.invalidateSize(true); } catch {}
         }, 260);
@@ -3699,7 +3881,6 @@ loadFlightsUI();
       }, { passive: true });
     })();
 
-    // Controls (search/filter)
     document.addEventListener("DOMContentLoaded", () => {
       const searchInput = document.getElementById("search-input");
       const regionFilter = document.getElementById("region-filter");
@@ -3713,6 +3894,7 @@ loadFlightsUI();
           const d = marker.destinationData;
           const nameMatch = d.name.toLowerCase().includes(query);
           const regionMatch = (region === "all") || d.region === region;
+
           if (nameMatch && regionMatch) marker.addTo(allLayerGroup);
           else allLayerGroup.removeLayer(marker);
         });
@@ -3734,6 +3916,27 @@ loadFlightsUI();
 
       renderMap();
     });
+
+    function updateOfflineBanner() {
+      const banner = document.getElementById("offline-banner");
+      if (!banner) return;
+      banner.style.display = navigator.onLine ? "none" : "block";
+    }
+
+    window.addEventListener("online", updateOfflineBanner);
+    window.addEventListener("offline", updateOfflineBanner);
+    window.addEventListener("load", updateOfflineBanner);
+
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", async () => {
+        try {
+          await navigator.serviceWorker.register("./sw.js");
+          console.log("Service worker registered");
+        } catch (err) {
+          console.warn("Service worker registration failed:", err);
+        }
+      });
+    }
   </script>
 
   <!-- Firebase SDKs -->
@@ -3741,15 +3944,15 @@ loadFlightsUI();
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
     import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
     import {
-  doc,
-  setDoc,
-  collection,
-  getDocs,
-  getDoc,
-  initializeFirestore,
-  persistentLocalCache,
-  persistentMultipleTabManager
-} from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+      doc,
+      setDoc,
+      collection,
+      getDocs,
+      getDoc,
+      initializeFirestore,
+      persistentLocalCache,
+      persistentMultipleTabManager
+    } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyCAY-izVSAjouJjL960zS8xs84jaOZQBIo",
@@ -3763,47 +3966,44 @@ loadFlightsUI();
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
 
-  const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
-  useFetchStreams: false,
-  localCache: persistentLocalCache({
-    tabManager: persistentMultipleTabManager()
-  })
-});
+    const db = initializeFirestore(app, {
+      experimentalForceLongPolling: true,
+      useFetchStreams: false,
+      localCache: persistentLocalCache({
+        tabManager: persistentMultipleTabManager()
+      })
+    });
 
     const provider = new GoogleAuthProvider();
 
     window.firebaseAuth = auth;
     window.firebaseProvider = provider;
     window.firebaseDB = db;
-
     window.setDoc = setDoc;
     window.doc = doc;
     window.collection = collection;
     window.getDocs = getDocs;
     window.getDoc = getDoc;
-
     window.firebaseSignIn = () => signInWithPopup(auth, provider);
     window.firebaseSignOut = () => signOut(auth);
+
+    function showStatus(html, duration = 2000) {
+      const statusBox = document.getElementById("migration-status");
+      if (!statusBox) return;
+
+      statusBox.innerHTML = html;
+      statusBox.classList.add("show");
+
+      setTimeout(() => {
+        statusBox.classList.remove("show");
+      }, duration);
+    }
 
     onAuthStateChanged(auth, async (user) => {
       const signInBtn = document.getElementById("sign-in-btn");
       const signOutBtn = document.getElementById("sign-out-btn");
       const userInfo = document.getElementById("user-info");
       const migrateBtn = document.getElementById("migrate-btn");
-      const statusBox = document.getElementById("migration-status");
-
-  function showStatus(html, duration = 2000) { // default 2 seconds
-  if (!statusBox) return;
-
-  statusBox.innerHTML = html;
-  statusBox.classList.add("show");
-
-  // Auto-hide after duration
-  setTimeout(() => {
-    statusBox.classList.remove("show");
-  }, duration);
-}
 
       if (user) {
         signInBtn.style.display = "none";
@@ -3839,9 +4039,9 @@ loadFlightsUI();
         signOutBtn.style.display = "none";
         userInfo.textContent = "";
         migrateBtn.style.display = "none";
-
         updateBarsLayout();
 
+        const statusBox = document.getElementById("migration-status");
         if (statusBox) {
           statusBox.style.display = "none";
           statusBox.innerHTML = "";
@@ -3849,7 +4049,6 @@ loadFlightsUI();
       }
     });
 
-    // Migration button: read local (chunked) -> Firebase
     document.addEventListener("DOMContentLoaded", () => {
       const migrateBtn = document.getElementById("migrate-btn");
       if (!migrateBtn) return;
@@ -3858,15 +4057,14 @@ loadFlightsUI();
         const user = auth.currentUser;
         if (!user) return;
 
-        const statusBox = document.getElementById("migration-status");
-       showStatus("⏳ Starting migration…", 10000);
+        showStatus("⏳ Starting migration…", 10000);
 
         const keys = (window.safeStorage.keys() || [])
           .filter(k => k.startsWith("tripPlan:") && k.endsWith("::__chunks"))
           .map(k => k.replace("::__chunks",""));
 
         if (keys.length === 0) {
-          statusBox.innerHTML = "❌ No local plans found.";
+          showStatus("❌ No local plans found.", 5000);
           return;
         }
 
@@ -3880,70 +4078,24 @@ loadFlightsUI();
           }
 
           if (!data) {
-            const line = document.createElement("div");
-            line.textContent = `❌ Skipped "${name}" (could not load).`;
-            showStatus(line.textContent, 10000);
+            showStatus(`❌ Skipped "${name}" (could not load).`, 10000);
             continue;
           }
 
           try {
-            await setDoc(doc(db, "users", user.uid, "plans", name), { name, data, updatedAt: Date.now() }, { merge: true });
-            const line = document.createElement("div");
-            line.textContent = `✅ Migrated "${name}" to Firebase.`;
-            showStatus(line.textContent, 10000);
+            await setDoc(doc(db, "users", user.uid, "plans", name), {
+              name,
+              data,
+              updatedAt: Date.now()
+            }, { merge: true });
+
+            showStatus(`✅ Migrated "${name}" to Firebase.`, 10000);
           } catch (err) {
-            const line = document.createElement("div");
-            line.textContent = `❌ Failed to migrate "${name}": ${err.message}`;
-            showStatus(line.textContent, 10000);
+            showStatus(`❌ Failed to migrate "${name}": ${err.message}`, 10000);
           }
         }
       });
     });
   </script>
-
-  <script>
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", async () => {
-      try {
-        await navigator.serviceWorker.register("./sw.js");
-        console.log("Service worker registered");
-      } catch (err) {
-        console.warn("Service worker registration failed:", err);
-      }
-    });
-  }
-</script>
-
-<script>
-  function updateOfflineBanner() {
-    const banner = document.getElementById("offline-banner");
-    if (!banner) return;
-    banner.style.display = navigator.onLine ? "none" : "block";
-  }
-
-  window.addEventListener("online", updateOfflineBanner);
-  window.addEventListener("offline", updateOfflineBanner);
-  window.addEventListener("load", updateOfflineBanner);
-</script>
-
 </body>
-
-<div id="offline-banner" style="
-  display:none;
-  position:fixed;
-  left:10px;
-  right:10px;
-  bottom:100px;
-  z-index:10000;
-  background:#fff7ed;
-  border:1px solid #fdba74;
-  color:#9a3412;
-  padding:10px 12px;
-  border-radius:10px;
-  font-size:13px;
-  box-shadow:0 4px 12px rgba(0,0,0,0.12);
-">
-  You’re offline. Saved plans still work, but new map areas and live Firebase sync may be limited.
-</div>
-
 </html>

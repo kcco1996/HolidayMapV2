@@ -395,7 +395,7 @@
         <div class="db-cell"><div class="db-cell__head">RETURN DATE</div><div class="db-cell__value" id="nextTripReturnDate">—</div></div>
         <div class="db-cell"><div class="db-cell__head">RETURN TIME</div><div class="db-cell__value" id="nextTripReturnTime">—</div></div>
         <div class="db-cell"><div class="db-cell__head">OPERATOR</div><div class="db-cell__value" id="nextTripOperator">—</div></div>
-        <div class="db-cell"><div class="db-cell__head">FLIGHT</div><div class="db-cell__value" id="nextTripFlight">—</div></div>
+        <div class="db-cell"><div class="db-cell__head">ROUTE</div><div class="db-cell__value" id="nextTripFlight">—</div></div>
       </div>
     </div>
   </footer>
@@ -605,18 +605,45 @@
           cheap:  { name:"", currency:"GBP", price:"", nights:"", notes:"" },
           luxury: { name:"", currency:"GBP", price:"", nights:"", notes:"" }
         },
-        flights: {
-          from: "",
-          to: "",
-          out: { date: "", time: "" },
-          ret: { date: "", time: "" },
-          operator: "",
-          flightCode: "",
-          journey: { outDuration: "", returnDuration: "" },
-          layoverDuration: "",
-          layoverDestination: "",
-          notes: ""
-        },
+   flights: {
+  from: "",
+  to: "",
+  out: { date: "", time: "" },
+  ret: { date: "", time: "" },
+  selectedOption: 1,
+  options: [
+    {
+      airline: "",
+      stopovers: "0",
+      via1: "",
+      via2: "",
+      outDuration: "",
+      returnDuration: "",
+      estimatedPrice: "",
+      notes: ""
+    },
+    {
+      airline: "",
+      stopovers: "0",
+      via1: "",
+      via2: "",
+      outDuration: "",
+      returnDuration: "",
+      estimatedPrice: "",
+      notes: ""
+    },
+    {
+      airline: "",
+      stopovers: "0",
+      via1: "",
+      via2: "",
+      outDuration: "",
+      returnDuration: "",
+      estimatedPrice: "",
+      notes: ""
+    }
+  ]
+},
         food: {}
       };
 
@@ -668,20 +695,33 @@
 
       if (!plan.flights) {
         plan.flights = makeEmptyPlan(plan.days).flights;
-      } else {
-        if (!("from" in plan.flights)) plan.flights.from = "";
-        if (!("to" in plan.flights)) plan.flights.to = "";
-        if (!plan.flights.out) plan.flights.out = { date: "", time: "" };
-        if (!plan.flights.ret) plan.flights.ret = { date: "", time: "" };
-        if (!("operator" in plan.flights)) plan.flights.operator = "";
-        if (!("flightCode" in plan.flights)) plan.flights.flightCode = "";
-        if (!plan.flights.journey) plan.flights.journey = { outDuration: "", returnDuration: "" };
-        if (!("outDuration" in plan.flights.journey)) plan.flights.journey.outDuration = "";
-        if (!("returnDuration" in plan.flights.journey)) plan.flights.journey.returnDuration = "";
-        if (!("layoverDuration" in plan.flights)) plan.flights.layoverDuration = "";
-        if (!("layoverDestination" in plan.flights)) plan.flights.layoverDestination = "";
-        if (!("notes" in plan.flights)) plan.flights.notes = "";
-      }
+    } else {
+  if (!("from" in plan.flights)) plan.flights.from = "";
+  if (!("to" in plan.flights)) plan.flights.to = "";
+  if (!plan.flights.out) plan.flights.out = { date: "", time: "" };
+  if (!plan.flights.ret) plan.flights.ret = { date: "", time: "" };
+  if (!("selectedOption" in plan.flights)) plan.flights.selectedOption = 1;
+
+  if (!Array.isArray(plan.flights.options) || plan.flights.options.length !== 3) {
+    plan.flights.options = makeEmptyPlan(plan.days).flights.options;
+  }
+
+  for (let i = 0; i < 3; i++) {
+    if (!plan.flights.options[i]) {
+      plan.flights.options[i] = makeEmptyPlan(plan.days).flights.options[i];
+    }
+
+    const opt = plan.flights.options[i];
+    if (!("airline" in opt)) opt.airline = "";
+    if (!("stopovers" in opt)) opt.stopovers = "0";
+    if (!("via1" in opt)) opt.via1 = "";
+    if (!("via2" in opt)) opt.via2 = "";
+    if (!("outDuration" in opt)) opt.outDuration = "";
+    if (!("returnDuration" in opt)) opt.returnDuration = "";
+    if (!("estimatedPrice" in opt)) opt.estimatedPrice = "";
+    if (!("notes" in opt)) opt.notes = "";
+  }
+}
 
       if (plan.foodDiary && !plan.food) {
         plan.food = {};
@@ -3414,31 +3454,95 @@ function getLanguageLabel(code) {
             </div>
           </div>
 
-          <div id="tab-flights" class="tab-panel">
-            <h4 style="margin:6px 0 10px;">Flights</h4>
+      <div id="tab-flights" class="tab-panel">
+  <h4 style="margin:6px 0 10px;">Flights</h4>
 
-            <div class="row"><label>From:</label><input id="flight-from" type="text" placeholder="e.g., London (LGW/LHR)"></div>
-            <div class="row"><label>To:</label><input id="flight-to" type="text" placeholder="e.g., Hanoi (HAN)"></div>
-            <div class="row"><label>Operator:</label><input id="flight-operator" type="text" placeholder="e.g., Cathay Pacific"></div>
-            <div class="row"><label>Flight code:</label><input id="flight-code" type="text" placeholder="e.g., CX254"></div>
-            <div class="row"><label>Outbound date:</label><input id="out-date" type="text" placeholder="DD/MM/YYYY"></div>
-            <div class="row"><label>Outbound time:</label><input id="out-time" type="text" placeholder="HH:MM"></div>
-            <div class="row"><label>Return date:</label><input id="ret-date" type="text" placeholder="DD/MM/YYYY"></div>
-            <div class="row"><label>Return time:</label><input id="ret-time" type="text" placeholder="HH:MM"></div>
-            <div class="row"><label>Out journey time:</label><input id="out-duration" type="text" placeholder="e.g., 12h 40m"></div>
-            <div class="row"><label>Return journey time:</label><input id="ret-duration" type="text" placeholder="e.g., 13h 10m"></div>
-            <div class="row"><label>Layover destination:</label><input id="layover-destination" type="text" placeholder="e.g., Hong Kong (HKG)"></div>
-            <div class="row"><label>Layover duration:</label><input id="layover-duration" type="text" placeholder="e.g., 2h 10m"></div>
+  <div class="row"><label>From:</label><input id="flight-from" type="text" placeholder="e.g., London (LGW/LHR)"></div>
+  <div class="row"><label>To:</label><input id="flight-to" type="text" placeholder="e.g., Hanoi (HAN)"></div>
+  <div class="row"><label>Outbound date:</label><input id="out-date" type="text" placeholder="DD/MM/YYYY"></div>
+  <div class="row"><label>Outbound time:</label><input id="out-time" type="text" placeholder="HH:MM"></div>
+  <div class="row"><label>Return date:</label><input id="ret-date" type="text" placeholder="DD/MM/YYYY"></div>
+  <div class="row"><label>Return time:</label><input id="ret-time" type="text" placeholder="HH:MM"></div>
 
-            <textarea id="flight-notes" class="textarea" placeholder="Flight notes (optional)"></textarea>
+  <div class="row">
+    <label>Default route shown:</label>
+    <select id="flight-selected-option">
+      <option value="1">Option 1</option>
+      <option value="2">Option 2</option>
+      <option value="3">Option 3</option>
+    </select>
+  </div>
 
-            <div class="save-bar">
-              <button class="btn primary" id="save-flights">Save Flights</button>
-              <button class="btn" id="clear-flights">Clear</button>
-            </div>
+  <div class="tabs flight-subtabs">
+    <button class="tab-btn active" data-flighttab="flight-option-1">Option 1</button>
+    <button class="tab-btn" data-flighttab="flight-option-2">Option 2</button>
+    <button class="tab-btn" data-flighttab="flight-option-3">Option 3</button>
+  </div>
 
-            <p class="hint">Saved per destination and syncs to Firebase when signed in.</p>
-          </div>
+  <div id="flight-option-1" class="tab-panel active">
+    <h4>Route Option 1</h4>
+    <div class="row"><label>Airline:</label><input id="flight1-airline" type="text" placeholder="e.g., Cathay Pacific"></div>
+    <div class="row">
+      <label>Stopovers:</label>
+      <select id="flight1-stopovers">
+        <option value="0">Direct</option>
+        <option value="1">1 stop</option>
+        <option value="2">2 stops</option>
+      </select>
+    </div>
+    <div class="row"><label>Via stop 1:</label><input id="flight1-via1" type="text" placeholder="e.g., Hong Kong"></div>
+    <div class="row"><label>Via stop 2:</label><input id="flight1-via2" type="text" placeholder="e.g., Doha"></div>
+    <div class="row"><label>Out duration:</label><input id="flight1-out-duration" type="text" placeholder="e.g., 15h 10m"></div>
+    <div class="row"><label>Return duration:</label><input id="flight1-ret-duration" type="text" placeholder="e.g., 16h 00m"></div>
+    <div class="row"><label>Est. price:</label><input id="flight1-price" type="text" placeholder="e.g., £780"></div>
+    <textarea id="flight1-notes" class="textarea" placeholder="Why this option is good"></textarea>
+  </div>
+
+  <div id="flight-option-2" class="tab-panel">
+    <h4>Route Option 2</h4>
+    <div class="row"><label>Airline:</label><input id="flight2-airline" type="text" placeholder="e.g., Qatar Airways"></div>
+    <div class="row">
+      <label>Stopovers:</label>
+      <select id="flight2-stopovers">
+        <option value="0">Direct</option>
+        <option value="1">1 stop</option>
+        <option value="2">2 stops</option>
+      </select>
+    </div>
+    <div class="row"><label>Via stop 1:</label><input id="flight2-via1" type="text" placeholder="e.g., Doha"></div>
+    <div class="row"><label>Via stop 2:</label><input id="flight2-via2" type="text" placeholder="e.g., Bangkok"></div>
+    <div class="row"><label>Out duration:</label><input id="flight2-out-duration" type="text" placeholder="e.g., 16h 20m"></div>
+    <div class="row"><label>Return duration:</label><input id="flight2-ret-duration" type="text" placeholder="e.g., 15h 55m"></div>
+    <div class="row"><label>Est. price:</label><input id="flight2-price" type="text" placeholder="e.g., £820"></div>
+    <textarea id="flight2-notes" class="textarea" placeholder="Why this option is good"></textarea>
+  </div>
+
+  <div id="flight-option-3" class="tab-panel">
+    <h4>Route Option 3</h4>
+    <div class="row"><label>Airline:</label><input id="flight3-airline" type="text" placeholder="e.g., Emirates"></div>
+    <div class="row">
+      <label>Stopovers:</label>
+      <select id="flight3-stopovers">
+        <option value="0">Direct</option>
+        <option value="1">1 stop</option>
+        <option value="2">2 stops</option>
+      </select>
+    </div>
+    <div class="row"><label>Via stop 1:</label><input id="flight3-via1" type="text" placeholder="e.g., Dubai"></div>
+    <div class="row"><label>Via stop 2:</label><input id="flight3-via2" type="text" placeholder="e.g., Singapore"></div>
+    <div class="row"><label>Out duration:</label><input id="flight3-out-duration" type="text" placeholder="e.g., 17h 05m"></div>
+    <div class="row"><label>Return duration:</label><input id="flight3-ret-duration" type="text" placeholder="e.g., 16h 40m"></div>
+    <div class="row"><label>Est. price:</label><input id="flight3-price" type="text" placeholder="e.g., £760"></div>
+    <textarea id="flight3-notes" class="textarea" placeholder="Why this option is good"></textarea>
+  </div>
+
+  <div class="save-bar">
+    <button class="btn primary" id="save-flights">Save Flights</button>
+    <button class="btn" id="clear-flights">Clear</button>
+  </div>
+
+  <p class="hint">Store your 3 best flight paths here. Default stopovers are set to direct.</p>
+</div>
 
           <div id="tab-food" class="tab-panel">
             <div class="day-nav">
@@ -3798,91 +3902,185 @@ container.querySelector('#translate-day')?.addEventListener('click', async () =>
 
       if (!plan.flights) plan.flights = makeEmptyPlan(plan.days).flights;
 
-      const flightFrom = container.querySelector("#flight-from");
-      const flightTo = container.querySelector("#flight-to");
-      const flightOperator = container.querySelector("#flight-operator");
-      const flightCode = container.querySelector("#flight-code");
-      const outDate = container.querySelector("#out-date");
-      const outTime = container.querySelector("#out-time");
-      const retDate = container.querySelector("#ret-date");
-      const retTime = container.querySelector("#ret-time");
-      const outDur = container.querySelector("#out-duration");
-      const retDur = container.querySelector("#ret-duration");
-      const layoverDest = container.querySelector("#layover-destination");
-      const layoverDur = container.querySelector("#layover-duration");
-      const flightNotes = container.querySelector("#flight-notes");
+const flightFrom = container.querySelector("#flight-from");
+const flightTo = container.querySelector("#flight-to");
+const outDate = container.querySelector("#out-date");
+const outTime = container.querySelector("#out-time");
+const retDate = container.querySelector("#ret-date");
+const retTime = container.querySelector("#ret-time");
+const selectedOption = container.querySelector("#flight-selected-option");
 
-      function loadFlightsUI() {
-        const fl = plan.flights || makeEmptyPlan(plan.days).flights;
-        if (flightFrom) flightFrom.value = fl.from || "";
-        if (flightTo) flightTo.value = fl.to || "";
-        if (flightOperator) flightOperator.value = fl.operator || "";
-        if (flightCode) flightCode.value = fl.flightCode || "";
-        if (outDate) outDate.value = fl.out?.date || "";
-        if (outTime) outTime.value = fl.out?.time || "";
-        if (retDate) retDate.value = fl.ret?.date || "";
-        if (retTime) retTime.value = fl.ret?.time || "";
-        if (outDur) outDur.value = fl.journey?.outDuration || "";
-        if (retDur) retDur.value = fl.journey?.returnDuration || "";
-        if (layoverDest) layoverDest.value = fl.layoverDestination || "";
-        if (layoverDur) layoverDur.value = fl.layoverDuration || "";
-        if (flightNotes) flightNotes.value = fl.notes || "";
-      }
+const flightTabButtons = container.querySelectorAll(".flight-subtabs .tab-btn");
+const flightPanels = ["flight-option-1", "flight-option-2", "flight-option-3"];
 
-      async function saveFlightsUI() {
-        plan.flights = plan.flights || makeEmptyPlan(plan.days).flights;
+function activateFlightTab(id) {
+  flightTabButtons.forEach(btn => btn.classList.remove("active"));
+  flightPanels.forEach(pid => container.querySelector("#" + pid)?.classList.remove("active"));
+  container.querySelector(`.flight-subtabs .tab-btn[data-flighttab="${id}"]`)?.classList.add("active");
+  container.querySelector("#" + id)?.classList.add("active");
+}
 
-        plan.flights.from = flightFrom?.value || "";
-        plan.flights.to = flightTo?.value || "";
-        plan.flights.operator = flightOperator?.value || "";
-        plan.flights.flightCode = flightCode?.value || "";
-        plan.flights.out = { date: outDate?.value || "", time: outTime?.value || "" };
-        plan.flights.ret = { date: retDate?.value || "", time: retTime?.value || "" };
-        plan.flights.journey = {
-          outDuration: outDur?.value || "",
-          returnDuration: retDur?.value || ""
-        };
-        plan.flights.layoverDestination = layoverDest?.value || "";
-        plan.flights.layoverDuration = layoverDur?.value || "";
-        plan.flights.notes = flightNotes?.value || "";
+flightTabButtons.forEach(btn => {
+  btn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    activateFlightTab(btn.dataset.flighttab);
+  });
+});
 
-        await persistPlan();
-        showSaved();
-      }
+function optionFields(n) {
+  return {
+    airline: container.querySelector(`#flight${n}-airline`),
+    stopovers: container.querySelector(`#flight${n}-stopovers`),
+    via1: container.querySelector(`#flight${n}-via1`),
+    via2: container.querySelector(`#flight${n}-via2`),
+    outDuration: container.querySelector(`#flight${n}-out-duration`),
+    returnDuration: container.querySelector(`#flight${n}-ret-duration`),
+    estimatedPrice: container.querySelector(`#flight${n}-price`),
+    notes: container.querySelector(`#flight${n}-notes`)
+  };
+}
 
-      async function clearFlightsUI() {
-        if (flightFrom) flightFrom.value = "";
-        if (flightTo) flightTo.value = "";
-        if (flightOperator) flightOperator.value = "";
-        if (flightCode) flightCode.value = "";
-        if (outDate) outDate.value = "";
-        if (outTime) outTime.value = "";
-        if (retDate) retDate.value = "";
-        if (retTime) retTime.value = "";
-        if (outDur) outDur.value = "";
-        if (retDur) retDur.value = "";
-        if (layoverDest) layoverDest.value = "";
-        if (layoverDur) layoverDur.value = "";
-        if (flightNotes) flightNotes.value = "";
+function applyStopoverVisibility(n) {
+  const fields = optionFields(n);
+  const stopCount = Number(fields.stopovers?.value || 0);
 
-        plan.flights = makeEmptyPlan(plan.days).flights;
-        await persistPlan();
-        showSaved();
-      }
+  if (fields.via1) {
+    fields.via1.closest(".row").style.display = stopCount >= 1 ? "flex" : "none";
+    if (stopCount < 1) fields.via1.value = "";
+  }
 
-      container.querySelector("#save-flights")?.addEventListener("click", async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        await saveFlightsUI();
-      });
+  if (fields.via2) {
+    fields.via2.closest(".row").style.display = stopCount >= 2 ? "flex" : "none";
+    if (stopCount < 2) fields.via2.value = "";
+  }
+}
 
-      container.querySelector("#clear-flights")?.addEventListener("click", async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        await clearFlightsUI();
-      });
+function loadFlightsUI() {
+  const fl = plan.flights || makeEmptyPlan(plan.days).flights;
 
-      loadFlightsUI();
+  if (flightFrom) flightFrom.value = fl.from || "";
+  if (flightTo) flightTo.value = fl.to || "";
+  if (outDate) outDate.value = fl.out?.date || "";
+  if (outTime) outTime.value = fl.out?.time || "";
+  if (retDate) retDate.value = fl.ret?.date || "";
+  if (retTime) retTime.value = fl.ret?.time || "";
+  if (selectedOption) selectedOption.value = String(fl.selectedOption || 1);
+
+  for (let i = 1; i <= 3; i++) {
+    const opt = fl.options[i - 1] || {};
+    const fields = optionFields(i);
+
+    if (fields.airline) fields.airline.value = opt.airline || "";
+    if (fields.stopovers) fields.stopovers.value = opt.stopovers || "0";
+    if (fields.via1) fields.via1.value = opt.via1 || "";
+    if (fields.via2) fields.via2.value = opt.via2 || "";
+    if (fields.outDuration) fields.outDuration.value = opt.outDuration || "";
+    if (fields.returnDuration) fields.returnDuration.value = opt.returnDuration || "";
+    if (fields.estimatedPrice) fields.estimatedPrice.value = opt.estimatedPrice || "";
+    if (fields.notes) fields.notes.value = opt.notes || "";
+
+    fields.stopovers?.addEventListener("change", () => applyStopoverVisibility(i));
+    applyStopoverVisibility(i);
+  }
+
+  activateFlightTab(`flight-option-${fl.selectedOption || 1}`);
+}
+
+async function saveFlightsUI() {
+  plan.flights = plan.flights || makeEmptyPlan(plan.days).flights;
+
+  plan.flights.from = flightFrom?.value || "";
+  plan.flights.to = flightTo?.value || "";
+  plan.flights.out = { date: outDate?.value || "", time: outTime?.value || "" };
+  plan.flights.ret = { date: retDate?.value || "", time: retTime?.value || "" };
+  plan.flights.selectedOption = Number(selectedOption?.value || 1);
+
+  plan.flights.options = [1, 2, 3].map((n) => {
+    const fields = optionFields(n);
+    return {
+      airline: fields.airline?.value || "",
+      stopovers: fields.stopovers?.value || "0",
+      via1: fields.via1?.value || "",
+      via2: fields.via2?.value || "",
+      outDuration: fields.outDuration?.value || "",
+      returnDuration: fields.returnDuration?.value || "",
+      estimatedPrice: fields.estimatedPrice?.value || "",
+      notes: fields.notes?.value || ""
+    };
+  });
+
+  const chosen = plan.flights.options[plan.flights.selectedOption - 1] || {};
+  setNextTripBoard({
+    outDate: plan.flights.out?.date || "-",
+    outTime: plan.flights.out?.time || "-",
+    returnDate: plan.flights.ret?.date || "-",
+    returnTime: plan.flights.ret?.time || "-",
+    operator: chosen.airline || "-",
+    flightCode:
+      Number(chosen.stopovers || 0) === 0
+        ? "DIRECT"
+        : [chosen.via1, chosen.via2].filter(Boolean).join(" → ") || "-"
+  });
+
+  await persistPlan();
+  showSaved();
+}
+
+async function clearFlightsUI() {
+  if (flightFrom) flightFrom.value = "";
+  if (flightTo) flightTo.value = "";
+  if (outDate) outDate.value = "";
+  if (outTime) outTime.value = "";
+  if (retDate) retDate.value = "";
+  if (retTime) retTime.value = "";
+  if (selectedOption) selectedOption.value = "1";
+
+  for (let i = 1; i <= 3; i++) {
+    const fields = optionFields(i);
+    if (fields.airline) fields.airline.value = "";
+    if (fields.stopovers) fields.stopovers.value = "0";
+    if (fields.via1) fields.via1.value = "";
+    if (fields.via2) fields.via2.value = "";
+    if (fields.outDuration) fields.outDuration.value = "";
+    if (fields.returnDuration) fields.returnDuration.value = "";
+    if (fields.estimatedPrice) fields.estimatedPrice.value = "";
+    if (fields.notes) fields.notes.value = "";
+    applyStopoverVisibility(i);
+  }
+
+  plan.flights = makeEmptyPlan(plan.days).flights;
+
+  setNextTripBoard({
+    outDate: "-",
+    outTime: "-",
+    returnDate: "-",
+    returnTime: "-",
+    operator: "-",
+    flightCode: "-"
+  });
+
+  await persistPlan();
+  showSaved();
+}
+
+container.querySelector("#save-flights")?.addEventListener("click", async (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  await saveFlightsUI();
+});
+
+container.querySelector("#clear-flights")?.addEventListener("click", async (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  await clearFlightsUI();
+});
+
+selectedOption?.addEventListener("change", () => {
+  activateFlightTab(`flight-option-${selectedOption.value}`);
+});
+
+loadFlightsUI();
 
       const foodDaySelect = container.querySelector('#food-day-select');
       if (foodDaySelect) {

@@ -356,6 +356,8 @@
     </span>
   </div>
 
+  <div id="migration-status" aria-live="polite"></div>
+  
   <div id="top-bar">
     <button id="sign-in-btn" class="btn" onclick="firebaseSignIn()">Sign in with Google</button>
     <button id="sign-out-btn" class="btn" onclick="firebaseSignOut()" style="display:none;">Sign out</button>
@@ -415,7 +417,7 @@
       window.visualViewport.addEventListener("scroll", updateBarsLayout, { passive: true });
     }
 
-    
+
 
     // -------------------------
     // iOS-safe storage wrapper

@@ -2966,37 +2966,35 @@
     ];
 
       DEST_NAME_LOOKUP = new Map(destinations.map(d => [normalizeName(d.name), d.name]));
-
-  async function translateText(text, targetLang, sourceLang = "en") {
+async function translateText(text, targetLang, sourceLang = "en") {
   if (!text || !text.trim()) return "";
 
-  if (sourceLang === targetLang) {
-    console.log("Translation skipped: source and target are the same.");
-    return text;
+  if (sourceLang === targetLang) return text;
+
+  const MAX_CHARS = 450; // safe limit
+  const chunks = [];
+
+  for (let i = 0; i < text.length; i += MAX_CHARS) {
+    chunks.push(text.slice(i, i + MAX_CHARS));
   }
 
-  const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sourceLang}|${targetLang}`;
-  console.log("Translation request:", url);
+  const results = [];
 
-  const response = await fetch(url);
-  console.log("Translation response status:", response.status);
+  for (const chunk of chunks) {
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(chunk)}&langpair=${sourceLang}|${targetLang}`;
 
-  if (!response.ok) {
-    const errText = await response.text();
-    console.error("Translation HTTP error:", errText);
-    throw new Error(`Translation request failed with status ${response.status}`);
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Translation failed with status ${response.status}`);
+    }
+
+    const data = await response.json();
+    const translated = data?.responseData?.translatedText || chunk;
+
+    results.push(translated);
   }
 
-  const data = await response.json();
-  console.log("Translation response data:", data);
-
-  const translated = data?.responseData?.translatedText;
-
-  if (!translated || translated.trim() === "") {
-    throw new Error("No translated text returned");
-  }
-
-  return translated;
+  return results.join(" ");
 }
 
 function getLanguageLabel(code) {

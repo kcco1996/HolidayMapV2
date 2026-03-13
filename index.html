@@ -56,8 +56,46 @@
     .destination-icon { background: transparent; border: 0; }
     .destination-icon img { display:block; height:20px; width:auto; }
 
-    .leaflet-popup-content { max-height: 80vh; overflow: hidden; width: 560px !important; }
-    .popup { max-height: 80vh; display:flex; flex-direction:column; }
+   .leaflet-popup-content {
+  max-height: 85vh;
+  overflow: visible;
+  width: 680px !important;
+}
+
+.popup {
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.popup .tab-panel {
+  max-height: 60vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 6px;
+}
+
+.leaflet-popup-content {
+  max-height: 85vh;
+  overflow: visible;
+  width: 680px !important;
+}
+
+.popup {
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.popup .tab-panel {
+  max-height: 60vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 6px;
+}
+
     .popup .tab-content { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; min-height:0; }
 
     .tabs {
@@ -618,6 +656,7 @@
       via1: "",
       via2: "",
       outDuration: "",
+       layoverDuration: "",
       returnDuration: "",
       estimatedPrice: "",
       notes: ""
@@ -628,6 +667,7 @@
       via1: "",
       via2: "",
       outDuration: "",
+       layoverDuration: "",
       returnDuration: "",
       estimatedPrice: "",
       notes: ""
@@ -638,6 +678,7 @@
       via1: "",
       via2: "",
       outDuration: "",
+       layoverDuration: "",
       returnDuration: "",
       estimatedPrice: "",
       notes: ""
@@ -717,6 +758,7 @@
     if (!("via1" in opt)) opt.via1 = "";
     if (!("via2" in opt)) opt.via2 = "";
     if (!("outDuration" in opt)) opt.outDuration = "";
+    if (!("layoverDuration" in opt)) opt.layoverDuration = "";
     if (!("returnDuration" in opt)) opt.returnDuration = "";
     if (!("estimatedPrice" in opt)) opt.estimatedPrice = "";
     if (!("notes" in opt)) opt.notes = "";
@@ -3493,6 +3535,7 @@ function getLanguageLabel(code) {
     <div class="row"><label>Via stop 1:</label><input id="flight1-via1" type="text" placeholder="e.g., Hong Kong"></div>
     <div class="row"><label>Via stop 2:</label><input id="flight1-via2" type="text" placeholder="e.g., Doha"></div>
     <div class="row"><label>Out duration:</label><input id="flight1-out-duration" type="text" placeholder="e.g., 15h 10m"></div>
+    <div class="row"><label>Layover duration:</label><input id="flight1-layover-duration" type="text" placeholder="e.g., 2h 10m"></div>
     <div class="row"><label>Return duration:</label><input id="flight1-ret-duration" type="text" placeholder="e.g., 16h 00m"></div>
     <div class="row"><label>Est. price:</label><input id="flight1-price" type="text" placeholder="e.g., £780"></div>
     <textarea id="flight1-notes" class="textarea" placeholder="Why this option is good"></textarea>
@@ -3512,6 +3555,7 @@ function getLanguageLabel(code) {
     <div class="row"><label>Via stop 1:</label><input id="flight2-via1" type="text" placeholder="e.g., Doha"></div>
     <div class="row"><label>Via stop 2:</label><input id="flight2-via2" type="text" placeholder="e.g., Bangkok"></div>
     <div class="row"><label>Out duration:</label><input id="flight2-out-duration" type="text" placeholder="e.g., 16h 20m"></div>
+    <div class="row"><label>Layover duration:</label><input id="flight2-layover-duration" type="text" placeholder="e.g., 2h 10m"></div>
     <div class="row"><label>Return duration:</label><input id="flight2-ret-duration" type="text" placeholder="e.g., 15h 55m"></div>
     <div class="row"><label>Est. price:</label><input id="flight2-price" type="text" placeholder="e.g., £820"></div>
     <textarea id="flight2-notes" class="textarea" placeholder="Why this option is good"></textarea>
@@ -3531,6 +3575,7 @@ function getLanguageLabel(code) {
     <div class="row"><label>Via stop 1:</label><input id="flight3-via1" type="text" placeholder="e.g., Dubai"></div>
     <div class="row"><label>Via stop 2:</label><input id="flight3-via2" type="text" placeholder="e.g., Singapore"></div>
     <div class="row"><label>Out duration:</label><input id="flight3-out-duration" type="text" placeholder="e.g., 17h 05m"></div>
+    <div class="row"><label>Layover duration:</label><input id="flight3-layover-duration" type="text" placeholder="e.g., 2h 10m"></div>
     <div class="row"><label>Return duration:</label><input id="flight3-ret-duration" type="text" placeholder="e.g., 16h 40m"></div>
     <div class="row"><label>Est. price:</label><input id="flight3-price" type="text" placeholder="e.g., £760"></div>
     <textarea id="flight3-notes" class="textarea" placeholder="Why this option is good"></textarea>
@@ -3935,6 +3980,7 @@ function optionFields(n) {
     via1: container.querySelector(`#flight${n}-via1`),
     via2: container.querySelector(`#flight${n}-via2`),
     outDuration: container.querySelector(`#flight${n}-out-duration`),
+     layoverDuration: container.querySelector(`#flight${n}-layover-duration`),
     returnDuration: container.querySelector(`#flight${n}-ret-duration`),
     estimatedPrice: container.querySelector(`#flight${n}-price`),
     notes: container.querySelector(`#flight${n}-notes`)
@@ -3954,6 +4000,11 @@ function applyStopoverVisibility(n) {
     fields.via2.closest(".row").style.display = stopCount >= 2 ? "flex" : "none";
     if (stopCount < 2) fields.via2.value = "";
   }
+
+  if (fields.layoverDuration) {
+  fields.layoverDuration.closest(".row").style.display = stopCount >= 1 ? "flex" : "none";
+  if (stopCount < 1) fields.layoverDuration.value = "";
+}
 }
 
 function loadFlightsUI() {
@@ -3976,6 +4027,7 @@ function loadFlightsUI() {
     if (fields.via1) fields.via1.value = opt.via1 || "";
     if (fields.via2) fields.via2.value = opt.via2 || "";
     if (fields.outDuration) fields.outDuration.value = opt.outDuration || "";
+    if (fields.layoverDuration) fields.layoverDuration.value = opt.layoverDuration || "";
     if (fields.returnDuration) fields.returnDuration.value = opt.returnDuration || "";
     if (fields.estimatedPrice) fields.estimatedPrice.value = opt.estimatedPrice || "";
     if (fields.notes) fields.notes.value = opt.notes || "";
@@ -4004,6 +4056,7 @@ async function saveFlightsUI() {
       via1: fields.via1?.value || "",
       via2: fields.via2?.value || "",
       outDuration: fields.outDuration?.value || "",
+      layoverDuration: fields.layoverDuration?.value || "",
       returnDuration: fields.returnDuration?.value || "",
       estimatedPrice: fields.estimatedPrice?.value || "",
       notes: fields.notes?.value || ""
@@ -4043,6 +4096,7 @@ async function clearFlightsUI() {
     if (fields.via1) fields.via1.value = "";
     if (fields.via2) fields.via2.value = "";
     if (fields.outDuration) fields.outDuration.value = "";
+    if (fields.layoverDuration) fields.layoverDuration.value = "";
     if (fields.returnDuration) fields.returnDuration.value = "";
     if (fields.estimatedPrice) fields.estimatedPrice.value = "";
     if (fields.notes) fields.notes.value = "";

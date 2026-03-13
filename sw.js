@@ -85,6 +85,14 @@ self.addEventListener("fetch", (event) => {
           if (request.destination === "image") {
             return caches.match("./assets/black-dot.png");
           }
+
+          self.addEventListener("install", event => {
+  self.skipWaiting();
+});
+
+self.addEventListener("activate", event => {
+  event.waitUntil(clients.claim());
+});
         });
     })
   );

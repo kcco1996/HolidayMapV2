@@ -2952,29 +2952,14 @@
 
       DEST_NAME_LOOKUP = new Map(destinations.map(d => [normalizeName(d.name), d.name]));
 
-async function translateText(text, targetLang, sourceLang = "en") {
+  async function translateText(text, targetLang, sourceLang = "en") {
   if (!text || !text.trim()) return "";
 
   if (sourceLang === targetLang) {
+    console.log("Translation skipped: source and target are the same.");
     return text;
   }
 
-  const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sourceLang}|${targetLang}`;
-
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Translation request failed with status ${response.status}`);
-  }
-
-  const data = await response.json();
-  const translated = data?.responseData?.translatedText;
-
-  if (!translated || !translated.trim()) {
-    throw new Error("No translated text returned");
-  }
-
-  return translated;
-}
   const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sourceLang}|${targetLang}`;
   console.log("Translation request:", url);
 
@@ -3978,17 +3963,9 @@ container.querySelector('#translate-tips')?.addEventListener('click', async () =
     window.addEventListener("offline", updateOfflineBanner);
     window.addEventListener("load", updateOfflineBanner);
 
-    if ("serviceWorker" in navigator) {
-      window.addEventListener("load", async () => {
-        try {
-          await navigator.serviceWorker.register("./sw.js");
-          console.log("Service worker registered");
-        } catch (err) {
-          console.warn("Service worker registration failed:", err);
-        }
-      });
-    }
-  </script>
+
+  // Service worker temporarily disabled while debugging
+</script>
 
   <!-- Firebase SDKs -->
   <script type="module">

@@ -2955,21 +2955,30 @@
   async function translateText(text, targetLang, sourceLang = "en") {
   if (!text || !text.trim()) return "";
 
-  // Don't translate if source and target are the same
-  if (sourceLang === targetLang) return text;
+  if (sourceLang === targetLang) {
+    console.log("Translation skipped: source and target are the same.");
+    return text;
+  }
 
   const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=${sourceLang}|${targetLang}`;
+  console.log("Translation request:", url);
 
   const response = await fetch(url);
+  console.log("Translation response status:", response.status);
+
   if (!response.ok) {
-    throw new Error("Translation request failed");
+    const errText = await response.text();
+    console.error("Translation HTTP error:", errText);
+    throw new Error(`Translation request failed with status ${response.status}`);
   }
 
   const data = await response.json();
+  console.log("Translation response data:", data);
 
   const translated = data?.responseData?.translatedText;
-  if (!translated) {
-    throw new Error("No translation returned");
+
+  if (!translated || translated.trim() === "") {
+    throw new Error("No translated text returned");
   }
 
   return translated;

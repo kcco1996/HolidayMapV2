@@ -1,10 +1,32 @@
-const CACHE_NAME = "holiday-map-v1";
+const CACHE_NAME = "holiday-map-v2";
 
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./manifest.webmanifest"
+  "./manifest.webmanifest",
+  "./favicon.png",
+  "./assets/app-icon.png",
+  "./assets/black-dot.png",
+  "./assets/usa-flag.png",
+  "./assets/england-flag.png",
+  "./assets/france-flag.png",
+  "./assets/ireland-flag.png",
+  "./assets/scotland-flag.png",
+  "./assets/wales-flag.png",
+  "./assets/poland-flag.png",
+  "./assets/germany-flag.png",
+  "./assets/italy-flag.png",
+  "./assets/greece-flag.png",
+  "./assets/spain-flag.png",
+  "./assets/portugal-flag.png",
+  "./assets/cyprus-flag.png",
+  "./assets/turkey-flag.png",
+  "./assets/china-flag.png",
+  "./assets/vietnam-flag.png",
+  "./assets/thailand-flag.png",
+  "./assets/morocco-flag.png"
 ];
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL))
@@ -38,14 +60,15 @@ self.addEventListener("fetch", (event) => {
 
       return fetch(request)
         .then((networkResponse) => {
-          const responseClone = networkResponse.clone();
-
-          // Cache useful GET responses
+          // Only cache successful basic/cors responses
           if (
-            request.url.startsWith(self.location.origin) ||
-            request.url.includes("unpkg.com") ||
-            request.url.includes("cartocdn.com")
+            networkResponse &&
+            networkResponse.status === 200 &&
+            (request.url.startsWith(self.location.origin) ||
+             request.url.includes("unpkg.com") ||
+             request.url.includes("cartocdn.com"))
           ) {
+            const responseClone = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => {
               cache.put(request, responseClone);
             });
@@ -54,10 +77,13 @@ self.addEventListener("fetch", (event) => {
           return networkResponse;
         })
         .catch(async () => {
-          // Fallback to cached index for navigations
           if (request.mode === "navigate") {
-            const fallback = await caches.match("./index.html");
-            if (fallback) return fallback;
+            return caches.match("./index.html");
+          }
+
+          // Optional fallback for images
+          if (request.destination === "image") {
+            return caches.match("./assets/black-dot.png");
           }
         });
     })

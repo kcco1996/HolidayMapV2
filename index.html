@@ -3116,7 +3116,12 @@ async function translateText(text, targetLang, sourceLang = "en") {
 
     const response = await fetch(url);
     if (!response.ok) {
-      throw new Error(`Translation failed with status ${response.status}`);
+      if (response.status === 429) {
+  console.warn("Translation rate limit reached. Try again in a moment.");
+  return text; // fallback to original
+}
+
+throw new Error(`Translation failed with status ${response.status}`);
     }
 
     const data = await response.json();

@@ -4521,6 +4521,16 @@ container.querySelector('#translate-tips')?.addEventListener('click', async () =
 
 
   // Service worker temporarily disabled while debugging
+  if ("serviceWorker" in navigator) {
+  window.addEventListener("load", async () => {
+    try {
+      await navigator.serviceWorker.register("./sw.js");
+      console.log("Service worker registered");
+    } catch (err) {
+      console.warn("Service worker registration failed:", err);
+    }
+  });
+}
 </script>
 
   <!-- Firebase SDKs -->

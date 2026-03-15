@@ -7,24 +7,23 @@ const APP_SHELL = [
   "./favicon.png",
   "./assets/app-icon.png",
   "./assets/black-dot.png",
-  "./assets/usa-flag.png",
+
   "./assets/england-flag.png",
-  "./assets/france-flag.png",
-  "./assets/ireland-flag.png",
   "./assets/scotland-flag.png",
   "./assets/wales-flag.png",
-  "./assets/poland-flag.png",
+  "./assets/ireland-flag.png",
+  "./assets/france-flag.png",
   "./assets/germany-flag.png",
   "./assets/italy-flag.png",
-  "./assets/greece-flag.png",
   "./assets/spain-flag.png",
   "./assets/portugal-flag.png",
   "./assets/cyprus-flag.png",
   "./assets/turkey-flag.png",
+  "./assets/poland-flag.png",
   "./assets/china-flag.png",
   "./assets/vietnam-flag.png",
-  "./assets/thailand-flag.png",
-  "./assets/morocco-flag.png"
+  "./assets/morocco-flag.png",
+  "./assets/usa-flag.png"
 ];
 
 self.addEventListener("install", (event) => {
@@ -51,49 +50,52 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   const request = event.request;
-
   if (request.method !== "GET") return;
 
-  event.respondWith(
-    caches.match(request).then((cachedResponse) => {
-      if (cachedResponse) return cachedResponse;
+  const url = new URL(request.url);
 
-      return fetch(request)
-        .then((networkResponse) => {
-          // Only cache successful basic/cors responses
-          if (
-            networkResponse &&
-            networkResponse.status === 200 &&
-            (request.url.startsWith(self.location.origin) ||
-             request.url.includes("unpkg.com") ||
-             request.url.includes("cartocdn.com"))
-          ) {
-            const responseClone = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(request, responseClone);
-            });
-          }
+  const shouldCache =
+    url.origin === self.location.origin ||
+    url.hostname.includes("unpkg.com") ||
+    url.hostname.includes("cartocdn.com") ||
+    url.hostname.includes("gstatic.com");
 
-          return networkResponse;
+  if (!shouldCache) return;
+
+  // Pages: network first, fallback to cache
+  if (request.mode === "navigate") {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+          return response;
         })
         .catch(async () => {
-          if (request.mode === "navigate") {
-            return caches.match("./index.html");
-          }
+          return (
+            (await caches.match(request)) ||
+            (await caches.match("./index.html"))
+          );
+        })
+    );
+    return;
+  }
 
-          // Optional fallback for images
-          if (request.destination === "image") {
-            return caches.match("./assets/black-dot.png");
-          }
+  // Everything else: cache first
+  event.respondWith(
+    caches.match(request).then(async (cached) => {
+      if (cached) return cached;
 
-          self.addEventListener("install", event => {
-  self.skipWaiting();
-});
-
-self.addEventListener("activate", event => {
-  event.waitUntil(clients.claim());
-});
-        });
+      try {
+        const response = await fetch(request);
+        if (response && response.ok) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+        }
+        return response;
+      } catch (err) {
+        return caches.match("./index.html");
+      }
     })
   );
 });

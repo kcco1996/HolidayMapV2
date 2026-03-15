@@ -478,6 +478,26 @@
   }
 }
 
+.trip-meta-toggle{
+  margin-top:8px;
+  border:1px solid #cbd5e1;
+  background:#ffffff;
+  color:#1d4ed8;
+  border-radius:8px;
+  padding:5px 10px;
+  font-size:12px;
+  font-weight:600;
+  cursor:pointer;
+}
+
+.trip-meta-toggle:hover{
+  background:#eff6ff;
+}
+
+.trip-meta-wrap.is-hidden{
+  display:none;
+}
+
   </style>
 </head>
 
@@ -685,12 +705,13 @@
 
     function makeEmptyPlan(days = 1) {
       const d = Math.max(1, Number(days || 1));
-      const base = {
-        days: d,
-        activities: { 1: "" },
-        notes: "",
-        tips: "",
-        translations: {
+  const base = {
+  days: d,
+  showOverview: true,
+  activities: { 1: "" },
+  notes: "",
+  tips: "",
+  translations: {
           language: "",
           daily: {},
           notes: "",
@@ -773,8 +794,9 @@
       const base = makeEmptyPlan(plan?.days || 1);
       if (!plan || typeof plan !== "object") return base;
 
-      if (typeof plan.days !== "number" || plan.days < 1) plan.days = 1;
-      if (!plan.activities) plan.activities = {1:""};
+ if (typeof plan.days !== "number" || plan.days < 1) plan.days = 1;
+if (typeof plan.showOverview !== "boolean") plan.showOverview = true;
+if (!plan.activities) plan.activities = {1:""};
       if (typeof plan.notes !== "string") plan.notes = "";
       if (typeof plan.tips !== "string") plan.tips = "";
 
@@ -3591,6 +3613,9 @@ function getTimeZoneLabel(name) {
   const emergencyText = escapeHtml(d.emergencyNumber || "—");
   const tripYearText = escapeHtml(d.tripYear || "—");
 
+  const overviewHiddenClass = plan.showOverview ? "" : " is-hidden";
+const overviewButtonText = plan.showOverview ? "Hide Trip Info" : "Show Trip Info";
+
       const dayOptions = Array.from({ length: days }, (_, i) =>
         `<option value="${i + 1}">Day ${i + 1}</option>`
       ).join("");
@@ -3608,7 +3633,9 @@ function getTimeZoneLabel(name) {
               <h3 style="margin:0 0 4px;">${escapeHtml(d.name)}</h3>
               ${d.note ? `<p style="margin:0 0 4px;">${escapeHtml(d.note)}</p>` : ""}
 
-              <div class="trip-meta-wrap">
+             <button class="trip-meta-toggle" id="toggle-overview" type="button">${overviewButtonText}</button>
+
+<div class="trip-meta-wrap${overviewHiddenClass}" id="trip-meta-wrap">
                 <div class="trip-meta-title">Overview</div>
                 <div class="trip-meta-overview">${overviewText}</div>
 
@@ -3929,6 +3956,24 @@ function getTimeZoneLabel(name) {
         toast.classList.add('show');
         setTimeout(() => toast.classList.remove('show'), 1200);
       }
+
+      const overviewToggleBtn = container.querySelector('#toggle-overview');
+const overviewWrap = container.querySelector('#trip-meta-wrap');
+
+overviewToggleBtn?.addEventListener('click', async () => {
+  plan.showOverview = !plan.showOverview;
+
+  if (overviewWrap) {
+    overviewWrap.classList.toggle('is-hidden', !plan.showOverview);
+  }
+
+  if (overviewToggleBtn) {
+   overviewToggleBtn.textContent = plan.showOverview ? "Hide Trip Info" : "Show Trip Info";
+  }
+
+  await persistPlan();
+  showSaved();
+});
 
       const budgetBtns = container.querySelectorAll('.budget-subtabs .tab-btn[data-btab]');
       const budgetPanels = ['tab-cheap','tab-medium','tab-luxury'];

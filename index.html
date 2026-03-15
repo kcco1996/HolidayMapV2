@@ -3687,7 +3687,7 @@ const overviewButtonText = plan.showOverview ? "Hide Trip Info" : "Show Trip Inf
             <button class="tab-btn" data-tab="tab-food">Food</button>
             <button class="tab-btn" data-tab="tab-notes">Notes</button>
             <button class="tab-btn" data-tab="tab-tips">Tips</button>
-            <button class="tab-btn" data-tab="experience">Experience</button>
+            <button class="tab-btn" data-tab="tab-experience">Experience</button>
             <span class="saved-toast" aria-live="polite">Saved</span>
           </div>
 
@@ -3940,52 +3940,59 @@ const overviewButtonText = plan.showOverview ? "Hide Trip Info" : "Show Trip Inf
           </div>
         </div>
 
-        <div class="tab-panel" data-panel="experience">
-
-  <label>Overall experience</label>
-  <textarea id="exp-summary" rows="3"
-  placeholder="How was your time here overall?"></textarea>
-
-  <label>Best moment</label>
-  <textarea id="exp-best" rows="2"
-  placeholder="Best memory from this destination"></textarea>
-
-  <label>Worst moment</label>
-  <textarea id="exp-worst" rows="2"
-  placeholder="Anything disappointing or difficult?"></textarea>
-
-  <label>Would you return?</label>
-  <select id="exp-return">
-    <option value="">Select</option>
-    <option value="yes">Yes</option>
-    <option value="maybe">Maybe</option>
-    <option value="no">No</option>
-  </select>
-
-  <label>Rating</label>
-  <select id="exp-rating">
-    <option value="">Select</option>
-    <option value="10">10 – Incredible</option>
-    <option value="9">9 – Amazing</option>
-    <option value="8">8 – Very good</option>
-    <option value="7">7 – Good</option>
-    <option value="6">6 – Decent</option>
-    <option value="5">5 – Average</option>
-    <option value="4">4 – Below average</option>
-    <option value="3">3 – Poor</option>
-    <option value="2">2 – Bad</option>
-    <option value="1">1 – Awful</option>
-  </select>
-
-  <label>Extra memories</label>
-  <textarea id="exp-notes" rows="4"
-  placeholder="Anything else you'd like to remember"></textarea>
-
-  <div style="margin-top:10px;">
-    <button id="save-experience">Save Experience</button>
+        <div id="tab-experience" class="tab-panel">
+  <div class="row" style="display:block;">
+    <label for="exp-summary" style="display:block; margin-bottom:6px;">Overall experience</label>
+    <textarea id="exp-summary" class="textarea" rows="3" placeholder="How was your time here overall?"></textarea>
   </div>
 
+  <div class="row" style="display:block;">
+    <label for="exp-best" style="display:block; margin-bottom:6px;">Best moment</label>
+    <textarea id="exp-best" class="textarea" rows="2" placeholder="Best memory from this destination"></textarea>
+  </div>
+
+  <div class="row" style="display:block;">
+    <label for="exp-worst" style="display:block; margin-bottom:6px;">Worst moment</label>
+    <textarea id="exp-worst" class="textarea" rows="2" placeholder="Anything disappointing or difficult?"></textarea>
+  </div>
+
+  <div class="row">
+    <label for="exp-return">Would you return?</label>
+    <select id="exp-return">
+      <option value="">Select</option>
+      <option value="yes">Yes</option>
+      <option value="maybe">Maybe</option>
+      <option value="no">No</option>
+    </select>
+  </div>
+
+  <div class="row">
+    <label for="exp-rating">Rating</label>
+    <select id="exp-rating">
+      <option value="">Select</option>
+      <option value="10">10 – Incredible</option>
+      <option value="9">9 – Amazing</option>
+      <option value="8">8 – Very good</option>
+      <option value="7">7 – Good</option>
+      <option value="6">6 – Decent</option>
+      <option value="5">5 – Average</option>
+      <option value="4">4 – Below average</option>
+      <option value="3">3 – Poor</option>
+      <option value="2">2 – Bad</option>
+      <option value="1">1 – Awful</option>
+    </select>
+  </div>
+
+  <div class="row" style="display:block;">
+    <label for="exp-notes" style="display:block; margin-bottom:6px;">Extra memories</label>
+    <textarea id="exp-notes" class="textarea" rows="4" placeholder="Anything else you'd like to remember"></textarea>
+  </div>
+
+  <div class="save-bar">
+    <button class="btn primary" id="save-experience">Save Experience</button>
+  </div>
 </div>
+
       `;
     }
 

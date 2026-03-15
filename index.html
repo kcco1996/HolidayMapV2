@@ -56,10 +56,12 @@
     .destination-icon { background: transparent; border: 0; }
     .destination-icon img { display:block; height:20px; width:auto; }
 
-   .leaflet-popup-content {
+.leaflet-popup-content {
   max-height: 85vh;
-  overflow: visible;
+  overflow-y: auto;
+  overflow-x: hidden;
   width: 680px !important;
+  padding-right: 4px;
 }
 
 .popup {
@@ -78,8 +80,10 @@
 
 .leaflet-popup-content {
   max-height: 85vh;
-  overflow: visible;
+  overflow-y: auto;
+  overflow-x: hidden;
   width: 680px !important;
+  padding-right: 4px;
 }
 
 .popup {
@@ -414,6 +418,66 @@
       font-size:13px;
       box-shadow:0 4px 12px rgba(0,0,0,0.12);
     }
+
+
+    .trip-meta-wrap{
+  margin-top:8px;
+  padding:10px 12px;
+  background:#f8fafc;
+  border:1px solid #dbe3ef;
+  border-radius:10px;
+}
+
+.trip-meta-title{
+  font-size:13px;
+  font-weight:700;
+  color:#1f2937;
+  margin-bottom:6px;
+}
+
+.trip-meta-overview{
+  font-size:13px;
+  line-height:1.45;
+  color:#374151;
+  margin-bottom:10px;
+}
+
+.trip-meta-grid{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0, 1fr));
+  gap:8px;
+}
+
+.trip-meta-card{
+  background:#fff;
+  border:1px solid #e5e7eb;
+  border-radius:8px;
+  padding:8px 10px;
+  min-width:0;
+}
+
+.trip-meta-label{
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:0.04em;
+  text-transform:uppercase;
+  color:#6b7280;
+  margin-bottom:3px;
+}
+
+.trip-meta-value{
+  font-size:13px;
+  color:#111827;
+  line-height:1.35;
+  word-break:break-word;
+}
+
+@media (max-width: 640px){
+  .trip-meta-grid{
+    grid-template-columns:1fr;
+  }
+}
+
   </style>
 </head>
 
@@ -1514,14 +1578,19 @@
          region: "europe",
          language: "pl"
       },
-         {
-        name: "Krakow",
-        lat: 50.06471010338415,  lng: 19.94501598212411,  
-        destination: "assets/poland-flag.png",
-        note: "Historic square, castle, and cultural heart",
-         region: "europe",
-         language: "pl"
-      },
+   {
+  name: "Krakow",
+  lat: 50.06471010338415,
+  lng: 19.94501598212411,
+  destination: "assets/poland-flag.png",
+  note: "Historic square, castle, and cultural heart",
+  region: "europe",
+  language: "pl",
+  currency: "PLN",
+  timeZone: "Europe/Warsaw",
+  emergencyNumber: "112",
+  tripYear: "2026"
+},
         {
         name: "Aachen",
         lat: 50.775521478161004,  lng: 6.08552393301844,  
@@ -3379,10 +3448,147 @@ function getLanguageLabel(code) {
   return labels[code] || code.toUpperCase();
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function getCurrencyLabel(code) {
+  const labels = {
+    GBP: "British Pound (GBP)",
+    EUR: "Euro (EUR)",
+    USD: "US Dollar (USD)",
+    CAD: "Canadian Dollar (CAD)",
+    AUD: "Australian Dollar (AUD)",
+    NZD: "New Zealand Dollar (NZD)",
+    JPY: "Japanese Yen (JPY)",
+    CNY: "Chinese Yuan (CNY)",
+    PLN: "Polish złoty (PLN)",
+    CZK: "Czech koruna (CZK)",
+    HUF: "Hungarian forint (HUF)",
+    RON: "Romanian leu (RON)",
+    TRY: "Turkish lira (TRY)",
+    HRK: "Croatian kuna (HRK)",
+    CHF: "Swiss franc (CHF)",
+    SEK: "Swedish krona (SEK)",
+    NOK: "Norwegian krone (NOK)",
+    DKK: "Danish krone (DKK)",
+    ISK: "Icelandic króna (ISK)",
+    UAH: "Ukrainian hryvnia (UAH)",
+    RSD: "Serbian dinar (RSD)",
+    MAD: "Moroccan dirham (MAD)",
+    EGP: "Egyptian pound (EGP)",
+    KES: "Kenyan shilling (KES)",
+    TZS: "Tanzanian shilling (TZS)",
+    ZAR: "South African rand (ZAR)",
+    AED: "UAE dirham (AED)",
+    QAR: "Qatari riyal (QAR)",
+    SAR: "Saudi riyal (SAR)",
+    JOD: "Jordanian dinar (JOD)",
+    ILS: "Israeli new shekel (ILS)",
+    CNY: "Chinese yuan (CNY)",
+    HKD: "Hong Kong dollar (HKD)",
+    TWD: "New Taiwan dollar (TWD)",
+    KRW: "South Korean won (KRW)",
+    INR: "Indian rupee (INR)",
+    NPR: "Nepalese rupee (NPR)",
+    LKR: "Sri Lankan rupee (LKR)",
+    THB: "Thai baht (THB)",
+    KHR: "Cambodian riel (KHR)",
+    LAK: "Lao kip (LAK)",
+    VND: "Vietnamese đồng (VND)",
+    MYR: "Malaysian ringgit (MYR)",
+    SGD: "Singapore dollar (SGD)",
+    IDR: "Indonesian rupiah (IDR)",
+    PHP: "Philippine peso (PHP)",
+    MNT: "Mongolian tögrög (MNT)",
+    JPY: "Japanese yen (JPY)",
+    AUD: "Australian dollar (AUD)",
+    NZD: "New Zealand dollar (NZD)",
+    XPF: "CFP franc (XPF)",
+    MXN: "Mexican peso (MXN)",
+    CRC: "Costa Rican colón (CRC)",
+    JMD: "Jamaican dollar (JMD)",
+    CUP: "Cuban peso (CUP)",
+    COP: "Colombian peso (COP)",
+    PEN: "Peruvian sol (PEN)",
+    CLP: "Chilean peso (CLP)",
+    BOB: "Bolivian boliviano (BOB)",
+    BRL: "Brazilian real (BRL)",
+    ARS: "Argentine peso (ARS)",
+    CAD: "Canadian dollar (CAD)"
+  };
+  return labels[code] || code || "—";
+}
+
+function getTimeZoneLabel(name) {
+  const labels = {
+    "Europe/London": "GMT / BST",
+    "Europe/Dublin": "GMT / IST",
+    "Europe/Paris": "CET / CEST",
+    "Europe/Berlin": "CET / CEST",
+    "Europe/Warsaw": "CET / CEST",
+    "Europe/Prague": "CET / CEST",
+    "Europe/Budapest": "CET / CEST",
+    "Europe/Rome": "CET / CEST",
+    "Europe/Madrid": "CET / CEST",
+    "Europe/Lisbon": "WET / WEST",
+    "Europe/Athens": "EET / EEST",
+    "Europe/Bucharest": "EET / EEST",
+    "Europe/Istanbul": "TRT",
+    "Europe/Kyiv": "EET / EEST",
+    "Europe/Moscow": "MSK",
+    "Africa/Casablanca": "GMT / +1 seasonal",
+    "Africa/Cairo": "EET / EEST",
+    "Africa/Nairobi": "EAT",
+    "Africa/Addis_Ababa": "EAT",
+    "Africa/Johannesburg": "SAST",
+    "Asia/Jerusalem": "IST / IDT",
+    "Asia/Qatar": "AST",
+    "Asia/Dubai": "GST",
+    "Asia/Amman": "GMT+3",
+    "Asia/Riyadh": "AST",
+    "Asia/Shanghai": "China Standard Time",
+    "Asia/Hong_Kong": "Hong Kong Time",
+    "Asia/Taipei": "Taipei Standard Time",
+    "Asia/Ulaanbaatar": "Ulaanbaatar Time",
+    "Asia/Bangkok": "ICT",
+    "Asia/Vientiane": "ICT",
+    "Asia/Phnom_Penh": "ICT",
+    "Asia/Jakarta": "WIB",
+    "Asia/Makassar": "WITA",
+    "Asia/Jayapura": "WIT",
+    "Asia/Kuala_Lumpur": "MYT",
+    "Asia/Singapore": "SGT",
+    "Asia/Seoul": "KST",
+    "Asia/Kolkata": "IST",
+    "Asia/Kathmandu": "NPT",
+    "Asia/Colombo": "SLST",
+    "Asia/Tokyo": "JST",
+    "Australia/Sydney": "AEST / AEDT",
+    "Australia/Melbourne": "AEST / AEDT",
+    "Australia/Brisbane": "AEST",
+    "Australia/Hobart": "AEST / AEDT",
+    "Pacific/Auckland": "NZST / NZDT",
+    "Pacific/Tahiti": "Tahiti Time"
+  };
+  return labels[name] || name || "—";
+}
+
     function buildPopup(d) {
       const plan = loadPlanLocal(d.name);
       const days = Math.max(1, Number(plan.days || 1));
       const nightsDefault = Math.max(1, Number(plan.hotel?.nights ?? Math.max(1, days - 1)));
+
+      const languageText = escapeHtml(d.language ? getLanguageLabel(d.language) : "—");
+      const currencyText = escapeHtml(getCurrencyLabel(d.currency || ""));
+      const timeZoneText = escapeHtml(getTimeZoneLabel(d.timeZone || ""));
+      const emergencyText = escapeHtml(d.emergencyNumber || "—");
+      const tripYearText = escapeHtml(d.tripYear || "—");
 
       const dayOptions = Array.from({ length: days }, (_, i) =>
         `<option value="${i + 1}">Day ${i + 1}</option>`
@@ -3395,11 +3601,40 @@ function getLanguageLabel(code) {
 
       return `
         <div class="popup" data-dest="${encodeURIComponent(d.name)}">
-          <div class="header">
-            ${d.destination ? `<img src="${d.destination}" alt="${d.name} icon" />` : ""}
+             <div class="header">
+            ${d.destination ? `<img src="${d.destination}" alt="${escapeHtml(d.name)} icon" />` : ""}
             <div class="title">
-              <h3 style="margin:0 0 4px;">${d.name}</h3>
-              ${d.note ? `<p style="margin:0 0 4px;">${d.note}</p>` : ""}
+              <h3 style="margin:0 0 4px;">${escapeHtml(d.name)}</h3>
+              ${d.note ? `<p style="margin:0 0 4px;">${escapeHtml(d.note)}</p>` : ""}
+
+              <div class="trip-meta-wrap">
+                <div class="trip-meta-title">Overview</div>
+                <div class="trip-meta-overview">${overviewText}</div>
+
+                <div class="trip-meta-grid">
+                  <div class="trip-meta-card">
+                    <div class="trip-meta-label">Language</div>
+                    <div class="trip-meta-value">${languageText}</div>
+                  </div>
+                  <div class="trip-meta-card">
+                    <div class="trip-meta-label">Currency</div>
+                    <div class="trip-meta-value">${currencyText}</div>
+                  </div>
+                  <div class="trip-meta-card">
+                    <div class="trip-meta-label">Time Zone</div>
+                    <div class="trip-meta-value">${timeZoneText}</div>
+                  </div>
+                  <div class="trip-meta-card">
+                    <div class="trip-meta-label">Emergency Number</div>
+                    <div class="trip-meta-value">${emergencyText}</div>
+                  </div>
+                  <div class="trip-meta-card">
+                    <div class="trip-meta-label">Trip Year</div>
+                    <div class="trip-meta-value">${tripYearText}</div>
+                  </div>
+                </div>
+              </div>
+
               <p style="margin:6px 0 0;">
                 <a href="https://maps.google.com/?q=${d.lat},${d.lng}" target="_blank" rel="noopener">Open in Google Maps</a>
               </p>

@@ -3579,16 +3579,17 @@ function getTimeZoneLabel(name) {
   return labels[name] || name || "—";
 }
 
-    function buildPopup(d) {
-      const plan = loadPlanLocal(d.name);
-      const days = Math.max(1, Number(plan.days || 1));
-      const nightsDefault = Math.max(1, Number(plan.hotel?.nights ?? Math.max(1, days - 1)));
+  function buildPopup(d) {
+  const plan = loadPlanLocal(d.name);
+  const days = Math.max(1, Number(plan.days || 1));
+  const nightsDefault = Math.max(1, Number(plan.hotel?.nights ?? Math.max(1, days - 1)));
 
-      const languageText = escapeHtml(d.language ? getLanguageLabel(d.language) : "—");
-      const currencyText = escapeHtml(getCurrencyLabel(d.currency || ""));
-      const timeZoneText = escapeHtml(getTimeZoneLabel(d.timeZone || ""));
-      const emergencyText = escapeHtml(d.emergencyNumber || "—");
-      const tripYearText = escapeHtml(d.tripYear || "—");
+  const overviewText = escapeHtml(d.overview || d.note || "—");
+  const languageText = escapeHtml(d.language ? getLanguageLabel(d.language) : "—");
+  const currencyText = escapeHtml(getCurrencyLabel(d.currency || ""));
+  const timeZoneText = escapeHtml(getTimeZoneLabel(d.timeZone || ""));
+  const emergencyText = escapeHtml(d.emergencyNumber || "—");
+  const tripYearText = escapeHtml(d.tripYear || "—");
 
       const dayOptions = Array.from({ length: days }, (_, i) =>
         `<option value="${i + 1}">Day ${i + 1}</option>`

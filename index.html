@@ -808,6 +808,17 @@ if (!plan.activities) plan.activities = {1:""};
       if (typeof plan.notes !== "string") plan.notes = "";
       if (typeof plan.tips !== "string") plan.tips = "";
 
+      if (!plan.experience || typeof plan.experience !== "object") {
+  plan.experience = { ...base.experience };
+} else {
+  if (typeof plan.experience.summary !== "string") plan.experience.summary = "";
+  if (typeof plan.experience.best !== "string") plan.experience.best = "";
+  if (typeof plan.experience.worst !== "string") plan.experience.worst = "";
+  if (typeof plan.experience.return !== "string") plan.experience.return = "";
+  if (typeof plan.experience.rating !== "string") plan.experience.rating = "";
+  if (typeof plan.experience.notes !== "string") plan.experience.notes = "";
+}
+
       if (!plan.translations) {
         plan.translations = {
           language: "",
@@ -4166,28 +4177,26 @@ const expNotes = container.querySelector('#exp-notes');
 const expSave = container.querySelector('#save-experience');
 
 if (plan.experience) {
-  expSummary.value = plan.experience.summary || "";
-  expBest.value = plan.experience.best || "";
-  expWorst.value = plan.experience.worst || "";
-  expReturn.value = plan.experience.return || "";
-  expRating.value = plan.experience.rating || "";
-  expNotes.value = plan.experience.notes || "";
+  if (expSummary) expSummary.value = plan.experience.summary || "";
+  if (expBest) expBest.value = plan.experience.best || "";
+  if (expWorst) expWorst.value = plan.experience.worst || "";
+  if (expReturn) expReturn.value = plan.experience.return || "";
+  if (expRating) expRating.value = plan.experience.rating || "";
+  if (expNotes) expNotes.value = plan.experience.notes || "";
 }
 
 expSave?.addEventListener('click', async () => {
-
   plan.experience = {
-    summary: expSummary.value,
-    best: expBest.value,
-    worst: expWorst.value,
-    return: expReturn.value,
-    rating: expRating.value,
-    notes: expNotes.value
+    summary: expSummary?.value || "",
+    best: expBest?.value || "",
+    worst: expWorst?.value || "",
+    return: expReturn?.value || "",
+    rating: expRating?.value || "",
+    notes: expNotes?.value || ""
   };
 
   await persistPlan();
   showSaved();
-
 });
 
 container.querySelector('#translate-day')?.addEventListener('click', async () => {

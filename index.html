@@ -711,6 +711,14 @@
   activities: { 1: "" },
   notes: "",
   tips: "",
+    experience: {
+    summary: "",
+    best: "",
+    worst: "",
+    return: "",
+    rating: "",
+    notes: ""
+  },
   translations: {
           language: "",
           daily: {},
@@ -3679,6 +3687,7 @@ const overviewButtonText = plan.showOverview ? "Hide Trip Info" : "Show Trip Inf
             <button class="tab-btn" data-tab="tab-food">Food</button>
             <button class="tab-btn" data-tab="tab-notes">Notes</button>
             <button class="tab-btn" data-tab="tab-tips">Tips</button>
+            <button class="tab-btn" data-tab="experience">Experience</button>
             <span class="saved-toast" aria-live="polite">Saved</span>
           </div>
 
@@ -3930,6 +3939,53 @@ const overviewButtonText = plan.showOverview ? "Hide Trip Info" : "Show Trip Inf
             </div>
           </div>
         </div>
+
+        <div class="tab-panel" data-panel="experience">
+
+  <label>Overall experience</label>
+  <textarea id="exp-summary" rows="3"
+  placeholder="How was your time here overall?"></textarea>
+
+  <label>Best moment</label>
+  <textarea id="exp-best" rows="2"
+  placeholder="Best memory from this destination"></textarea>
+
+  <label>Worst moment</label>
+  <textarea id="exp-worst" rows="2"
+  placeholder="Anything disappointing or difficult?"></textarea>
+
+  <label>Would you return?</label>
+  <select id="exp-return">
+    <option value="">Select</option>
+    <option value="yes">Yes</option>
+    <option value="maybe">Maybe</option>
+    <option value="no">No</option>
+  </select>
+
+  <label>Rating</label>
+  <select id="exp-rating">
+    <option value="">Select</option>
+    <option value="10">10 – Incredible</option>
+    <option value="9">9 – Amazing</option>
+    <option value="8">8 – Very good</option>
+    <option value="7">7 – Good</option>
+    <option value="6">6 – Decent</option>
+    <option value="5">5 – Average</option>
+    <option value="4">4 – Below average</option>
+    <option value="3">3 – Poor</option>
+    <option value="2">2 – Bad</option>
+    <option value="1">1 – Awful</option>
+  </select>
+
+  <label>Extra memories</label>
+  <textarea id="exp-notes" rows="4"
+  placeholder="Anything else you'd like to remember"></textarea>
+
+  <div style="margin-top:10px;">
+    <button id="save-experience">Save Experience</button>
+  </div>
+
+</div>
       `;
     }
 
@@ -4093,6 +4149,39 @@ overviewToggleBtn?.addEventListener('click', async () => {
         if (dayArea) dayArea.value = "";
         await saveDayText(currentDay);
       });
+
+      const expSummary = container.querySelector('#exp-summary');
+const expBest = container.querySelector('#exp-best');
+const expWorst = container.querySelector('#exp-worst');
+const expReturn = container.querySelector('#exp-return');
+const expRating = container.querySelector('#exp-rating');
+const expNotes = container.querySelector('#exp-notes');
+const expSave = container.querySelector('#save-experience');
+
+if (plan.experience) {
+  expSummary.value = plan.experience.summary || "";
+  expBest.value = plan.experience.best || "";
+  expWorst.value = plan.experience.worst || "";
+  expReturn.value = plan.experience.return || "";
+  expRating.value = plan.experience.rating || "";
+  expNotes.value = plan.experience.notes || "";
+}
+
+expSave?.addEventListener('click', async () => {
+
+  plan.experience = {
+    summary: expSummary.value,
+    best: expBest.value,
+    worst: expWorst.value,
+    return: expReturn.value,
+    rating: expRating.value,
+    notes: expNotes.value
+  };
+
+  await persistPlan();
+  showSaved();
+
+});
 
 container.querySelector('#translate-day')?.addEventListener('click', async () => {
   try {

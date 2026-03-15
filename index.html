@@ -707,7 +707,7 @@
       const d = Math.max(1, Number(days || 1));
   const base = {
   days: d,
-  showOverview: true,
+  showOverview: false,
   activities: { 1: "" },
   notes: "",
   tips: "",
@@ -795,7 +795,7 @@
       if (!plan || typeof plan !== "object") return base;
 
  if (typeof plan.days !== "number" || plan.days < 1) plan.days = 1;
-if (typeof plan.showOverview !== "boolean") plan.showOverview = true;
+if (typeof plan.showOverview !== "boolean") plan.showOverview = false;
 if (!plan.activities) plan.activities = {1:""};
       if (typeof plan.notes !== "string") plan.notes = "";
       if (typeof plan.tips !== "string") plan.tips = "";

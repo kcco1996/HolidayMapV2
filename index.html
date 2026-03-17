@@ -420,32 +420,97 @@
     }
 
 
-    .trip-meta-wrap{
-  margin-top:8px;
-  padding:10px 12px;
+   .popup .header{
+  display:flex;
+  align-items:flex-start;
+  gap:12px;
+  margin-bottom:10px;
+}
+
+.popup .header img{
+  width:40px;
+  height:40px;
+  object-fit:contain;
+  flex:0 0 auto;
+}
+
+.popup .title{
+  flex:1;
+  min-width:0;
+}
+
+.trip-meta-toggle{
+  margin-top:4px;
+  border:1px solid #bfdbfe;
+  background:#eff6ff;
+  color:#1d4ed8;
+  border-radius:8px;
+  padding:6px 12px;
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+}
+
+.trip-meta-toggle:hover{
+  background:#dbeafe;
+}
+
+.trip-meta-wrap{
+  margin:0 0 12px 0;
+  padding:14px;
   background:#f8fafc;
   border:1px solid #dbe3ef;
-  border-radius:10px;
+  border-radius:12px;
+}
+
+.trip-meta-wrap.is-hidden{
+  display:none;
 }
 
 .trip-meta-title{
-  font-size:13px;
+  font-size:15px;
   font-weight:700;
-  color:#1f2937;
-  margin-bottom:6px;
+  color:#111827;
+  margin-bottom:8px;
 }
 
 .trip-meta-overview{
   font-size:13px;
-  line-height:1.45;
+  line-height:1.5;
   color:#374151;
-  margin-bottom:10px;
+  margin-bottom:12px;
 }
 
 .trip-meta-grid{
   display:grid;
   grid-template-columns:repeat(3, minmax(0, 1fr));
-  gap:8px;
+  gap:10px;
+}
+
+.trip-meta-card{
+  background:#ffffff;
+  border:1px solid #e5e7eb;
+  border-radius:10px;
+  padding:10px 12px;
+  min-width:0;
+  box-sizing:border-box;
+}
+
+.trip-meta-label{
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:0.08em;
+  text-transform:uppercase;
+  color:#6b7280;
+  margin-bottom:6px;
+  line-height:1.3;
+}
+
+.trip-meta-value{
+  font-size:13px;
+  color:#111827;
+  line-height:1.45;
+  word-break:break-word;
 }
 
 @media (max-width: 900px){
@@ -458,56 +523,10 @@
   .trip-meta-grid{
     grid-template-columns:1fr;
   }
-}
 
-.trip-meta-card{
-  background:#fff;
-  border:1px solid #e5e7eb;
-  border-radius:8px;
-  padding:8px 10px;
-  min-width:0;
-}
-
-.trip-meta-label{
-  font-size:11px;
-  font-weight:700;
-  letter-spacing:0.04em;
-  text-transform:uppercase;
-  color:#6b7280;
-  margin-bottom:3px;
-}
-
-.trip-meta-value{
-  font-size:13px;
-  color:#111827;
-  line-height:1.35;
-  word-break:break-word;
-}
-
-@media (max-width: 640px){
-  .trip-meta-grid{
-    grid-template-columns:1fr;
+  .trip-meta-wrap{
+    padding:12px;
   }
-}
-
-.trip-meta-toggle{
-  margin-top:8px;
-  border:1px solid #cbd5e1;
-  background:#ffffff;
-  color:#1d4ed8;
-  border-radius:8px;
-  padding:5px 10px;
-  font-size:12px;
-  font-weight:600;
-  cursor:pointer;
-}
-
-.trip-meta-toggle:hover{
-  background:#eff6ff;
-}
-
-.trip-meta-wrap.is-hidden{
-  display:none;
 }
 
   </style>
@@ -3724,84 +3743,84 @@ const overviewButtonText = plan.showOverview ? "Hide Trip Info" : "Show Trip Inf
       ).join("");
 
       return `
-        <div class="popup" data-dest="${encodeURIComponent(d.name)}">
-             <div class="header">
+               <div class="popup" data-dest="${encodeURIComponent(d.name)}">
+          <div class="header">
             ${d.destination ? `<img src="${d.destination}" alt="${escapeHtml(d.name)} icon" />` : ""}
             <div class="title">
               <h3 style="margin:0 0 4px;">${escapeHtml(d.name)}</h3>
-              ${d.note ? `<p style="margin:0 0 4px;">${escapeHtml(d.note)}</p>` : ""}
-
-             <button class="trip-meta-toggle" id="toggle-overview" type="button">${overviewButtonText}</button>
-
-<div class="trip-meta-wrap${overviewHiddenClass}" id="trip-meta-wrap">
-                <div class="trip-meta-title">Overview</div>
-                <div class="trip-meta-overview">${overviewText}</div>
-                <div class="trip-meta-grid">
-                  <div class="trip-meta-card">
-                    <div class="trip-meta-label">Language</div>
-                    <div class="trip-meta-value">${languageText}</div>
-                  </div>
-                  <div class="trip-meta-card">
-                    <div class="trip-meta-label">Currency</div>
-                    <div class="trip-meta-value">${currencyText}</div>
-                  </div>
-                  <div class="trip-meta-card">
-                    <div class="trip-meta-label">Time Zone</div>
-                    <div class="trip-meta-value">${timeZoneText}</div>
-                  </div>
-                  <div class="trip-meta-card">
-                    <div class="trip-meta-label">Emergency Number</div>
-                    <div class="trip-meta-value">${emergencyText}</div>
-                  </div>
-                  <div class="trip-meta-card">
-                    <div class="trip-meta-label">Trip Year</div>
-                    <div class="trip-meta-value">${tripYearText}</div>
-                  </div>
-
-                  <div class="trip-meta-card">
-                    <div class="trip-meta-label">Plug Type</div>
-                    <div class="trip-meta-value">${plugTypeText}</div>
-                  </div>
-                  <div class="trip-meta-card">
-                    <div class="trip-meta-label">Voltage</div>
-                    <div class="trip-meta-value">${voltageText}</div>
-                  </div>
-                  <div class="trip-meta-card">
-                    <div class="trip-meta-label">Driving Side</div>
-                    <div class="trip-meta-value">${drivingSideText}</div>
-                  </div>
-                  <div class="trip-meta-card">
-                    <div class="trip-meta-label">Tap Water Safety</div>
-                    <div class="trip-meta-value">${tapWaterText}</div>
-                  </div>
-                  <div class="trip-meta-card">
-                    <div class="trip-meta-label">eSIM Availability</div>
-                    <div class="trip-meta-value">${eSimText}</div>
-                  </div>
-                  <div class="trip-meta-card">
-                    <div class="trip-meta-label">Visa Requirement</div>
-                    <div class="trip-meta-value">${visaText}</div>
-                  </div>
-                  <div class="trip-meta-card">
-                    <div class="trip-meta-label">Daily Cost Estimate</div>
-                    <div class="trip-meta-value">${dailyCostText}</div>
-                  </div>
-                  <div class="trip-meta-card">
-                    <div class="trip-meta-label">Best Time to Visit</div>
-                    <div class="trip-meta-value">${bestTimeText}</div>
-                  </div>
-                  <div class="trip-meta-card">
-                    <div class="trip-meta-label">Safety Score</div>
-                    <div class="trip-meta-value">${safetyScoreText}</div>
-                  </div>
-                </div>
-
-              <p style="margin:6px 0 0;">
-                <a href="https://maps.google.com/?q=${d.lat},${d.lng}" target="_blank" rel="noopener">Open in Google Maps</a>
-              </p>
-              <div class="loading-hint" id="cloud-hint">If signed in, your latest data loads from Firebase when this popup opens.</div>
-              ${d.language ? `<div class="translation-badge">Local language: ${getLanguageLabel(d.language)}</div>` : ""}
+              ${d.note ? `<p style="margin:0 0 6px;">${escapeHtml(d.note)}</p>` : ""}
+              <button class="trip-meta-toggle" id="toggle-overview" type="button">${overviewButtonText}</button>
             </div>
+          </div>
+
+          <div class="trip-meta-wrap${overviewHiddenClass}" id="trip-meta-wrap">
+            <div class="trip-meta-title">Trip Info</div>
+            <div class="trip-meta-overview">${overviewText}</div>
+
+            <div class="trip-meta-grid">
+              <div class="trip-meta-card">
+                <div class="trip-meta-label">Language</div>
+                <div class="trip-meta-value">${languageText}</div>
+              </div>
+              <div class="trip-meta-card">
+                <div class="trip-meta-label">Currency</div>
+                <div class="trip-meta-value">${currencyText}</div>
+              </div>
+              <div class="trip-meta-card">
+                <div class="trip-meta-label">Time Zone</div>
+                <div class="trip-meta-value">${timeZoneText}</div>
+              </div>
+              <div class="trip-meta-card">
+                <div class="trip-meta-label">Emergency Number</div>
+                <div class="trip-meta-value">${emergencyText}</div>
+              </div>
+              <div class="trip-meta-card">
+                <div class="trip-meta-label">Trip Year</div>
+                <div class="trip-meta-value">${tripYearText}</div>
+              </div>
+              <div class="trip-meta-card">
+                <div class="trip-meta-label">Plug Type</div>
+                <div class="trip-meta-value">${plugTypeText}</div>
+              </div>
+              <div class="trip-meta-card">
+                <div class="trip-meta-label">Voltage</div>
+                <div class="trip-meta-value">${voltageText}</div>
+              </div>
+              <div class="trip-meta-card">
+                <div class="trip-meta-label">Driving Side</div>
+                <div class="trip-meta-value">${drivingSideText}</div>
+              </div>
+              <div class="trip-meta-card">
+                <div class="trip-meta-label">Tap Water Safety</div>
+                <div class="trip-meta-value">${tapWaterText}</div>
+              </div>
+              <div class="trip-meta-card">
+                <div class="trip-meta-label">eSIM Availability</div>
+                <div class="trip-meta-value">${eSimText}</div>
+              </div>
+              <div class="trip-meta-card">
+                <div class="trip-meta-label">Visa Requirement</div>
+                <div class="trip-meta-value">${visaText}</div>
+              </div>
+              <div class="trip-meta-card">
+                <div class="trip-meta-label">Daily Cost Estimate</div>
+                <div class="trip-meta-value">${dailyCostText}</div>
+              </div>
+              <div class="trip-meta-card">
+                <div class="trip-meta-label">Best Time to Visit</div>
+                <div class="trip-meta-value">${bestTimeText}</div>
+              </div>
+              <div class="trip-meta-card">
+                <div class="trip-meta-label">Safety Score</div>
+                <div class="trip-meta-value">${safetyScoreText}</div>
+              </div>
+            </div>
+
+            <p style="margin:10px 0 0;">
+              <a href="https://maps.google.com/?q=${d.lat},${d.lng}" target="_blank" rel="noopener">Open in Google Maps</a>
+            </p>
+            <div class="loading-hint" id="cloud-hint">If signed in, your latest data loads from Firebase when this popup opens.</div>
+            ${d.language ? `<div class="translation-badge">Local language: ${getLanguageLabel(d.language)}</div>` : ""}
           </div>
 
           <div class="tabs">

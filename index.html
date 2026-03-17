@@ -3753,75 +3753,91 @@ const overviewButtonText = plan.showOverview ? "Hide Trip Info" : "Show Trip Inf
             </div>
           </div>
 
-          <div class="trip-meta-wrap${overviewHiddenClass}" id="trip-meta-wrap">
-            <div class="trip-meta-title">Trip Info</div>
-            <div class="trip-meta-overview">${overviewText}</div>
+         <div class="trip-meta-wrap${overviewHiddenClass}" id="trip-meta-wrap">
+  <div class="trip-meta-title">Trip Info</div>
+  <div class="trip-meta-overview">${overviewText}</div>
 
-            <div class="trip-meta-grid">
-              <div class="trip-meta-card">
-                <div class="trip-meta-label">Language</div>
-                <div class="trip-meta-value">${languageText}</div>
-              </div>
-              <div class="trip-meta-card">
-                <div class="trip-meta-label">Currency</div>
-                <div class="trip-meta-value">${currencyText}</div>
-              </div>
-              <div class="trip-meta-card">
-                <div class="trip-meta-label">Time Zone</div>
-                <div class="trip-meta-value">${timeZoneText}</div>
-              </div>
-              <div class="trip-meta-card">
-                <div class="trip-meta-label">Emergency Number</div>
-                <div class="trip-meta-value">${emergencyText}</div>
-              </div>
-              <div class="trip-meta-card">
-                <div class="trip-meta-label">Trip Year</div>
-                <div class="trip-meta-value">${tripYearText}</div>
-              </div>
-              <div class="trip-meta-card">
-                <div class="trip-meta-label">Plug Type</div>
-                <div class="trip-meta-value">${plugTypeText}</div>
-              </div>
-              <div class="trip-meta-card">
-                <div class="trip-meta-label">Voltage</div>
-                <div class="trip-meta-value">${voltageText}</div>
-              </div>
-              <div class="trip-meta-card">
-                <div class="trip-meta-label">Driving Side</div>
-                <div class="trip-meta-value">${drivingSideText}</div>
-              </div>
-              <div class="trip-meta-card">
-                <div class="trip-meta-label">Tap Water Safety</div>
-                <div class="trip-meta-value">${tapWaterText}</div>
-              </div>
-              <div class="trip-meta-card">
-                <div class="trip-meta-label">eSIM Availability</div>
-                <div class="trip-meta-value">${eSimText}</div>
-              </div>
-              <div class="trip-meta-card">
-                <div class="trip-meta-label">Visa Requirement</div>
-                <div class="trip-meta-value">${visaText}</div>
-              </div>
-              <div class="trip-meta-card">
-                <div class="trip-meta-label">Daily Cost Estimate</div>
-                <div class="trip-meta-value">${dailyCostText}</div>
-              </div>
-              <div class="trip-meta-card">
-                <div class="trip-meta-label">Best Time to Visit</div>
-                <div class="trip-meta-value">${bestTimeText}</div>
-              </div>
-              <div class="trip-meta-card">
-                <div class="trip-meta-label">Safety Score</div>
-                <div class="trip-meta-value">${safetyScoreText}</div>
-              </div>
-            </div>
+  <!-- NEW SUB TABS -->
+  <div class="tabs trip-subtabs">
+    <button class="tab-btn active" data-triptab="trip-essential">Essentials</button>
+    <button class="tab-btn" data-triptab="trip-details">Travel Details</button>
+  </div>
 
-            <p style="margin:10px 0 0;">
-              <a href="https://maps.google.com/?q=${d.lat},${d.lng}" target="_blank" rel="noopener">Open in Google Maps</a>
-            </p>
-            <div class="loading-hint" id="cloud-hint">If signed in, your latest data loads from Firebase when this popup opens.</div>
-            ${d.language ? `<div class="translation-badge">Local language: ${getLanguageLabel(d.language)}</div>` : ""}
-          </div>
+  <!-- PAGE 1 -->
+  <div id="trip-essential" class="tab-panel active">
+    <div class="trip-meta-grid">
+      <div class="trip-meta-card">
+        <div class="trip-meta-label">Language</div>
+        <div class="trip-meta-value">${languageText}</div>
+      </div>
+      <div class="trip-meta-card">
+        <div class="trip-meta-label">Currency</div>
+        <div class="trip-meta-value">${currencyText}</div>
+      </div>
+      <div class="trip-meta-card">
+        <div class="trip-meta-label">Time Zone</div>
+        <div class="trip-meta-value">${timeZoneText}</div>
+      </div>
+      <div class="trip-meta-card">
+        <div class="trip-meta-label">Emergency Number</div>
+        <div class="trip-meta-value">${emergencyText}</div>
+      </div>
+      <div class="trip-meta-card">
+        <div class="trip-meta-label">Trip Year</div>
+        <div class="trip-meta-value">${tripYearText}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PAGE 2 -->
+  <div id="trip-details" class="tab-panel">
+    <div class="trip-meta-grid">
+      <div class="trip-meta-card">
+        <div class="trip-meta-label">Plug Type</div>
+        <div class="trip-meta-value">${plugTypeText}</div>
+      </div>
+      <div class="trip-meta-card">
+        <div class="trip-meta-label">Voltage</div>
+        <div class="trip-meta-value">${voltageText}</div>
+      </div>
+      <div class="trip-meta-card">
+        <div class="trip-meta-label">Driving Side</div>
+        <div class="trip-meta-value">${drivingSideText}</div>
+      </div>
+      <div class="trip-meta-card">
+        <div class="trip-meta-label">Tap Water Safety</div>
+        <div class="trip-meta-value">${tapWaterText}</div>
+      </div>
+      <div class="trip-meta-card">
+        <div class="trip-meta-label">eSIM Availability</div>
+        <div class="trip-meta-value">${eSimText}</div>
+      </div>
+      <div class="trip-meta-card">
+        <div class="trip-meta-label">Visa Requirement</div>
+        <div class="trip-meta-value">${visaText}</div>
+      </div>
+      <div class="trip-meta-card">
+        <div class="trip-meta-label">Daily Cost Estimate</div>
+        <div class="trip-meta-value">${dailyCostText}</div>
+      </div>
+      <div class="trip-meta-card">
+        <div class="trip-meta-label">Best Time to Visit</div>
+        <div class="trip-meta-value">${bestTimeText}</div>
+      </div>
+      <div class="trip-meta-card">
+        <div class="trip-meta-label">Safety Score</div>
+        <div class="trip-meta-value">${safetyScoreText}</div>
+      </div>
+    </div>
+  </div>
+
+  <p style="margin:10px 0 0;">
+    <a href="https://maps.google.com/?q=${d.lat},${d.lng}" target="_blank">Open in Google Maps</a>
+  </p>
+
+  <div class="loading-hint" id="cloud-hint"></div>
+  ${d.language ? `<div class="translation-badge">Local language: ${getLanguageLabel(d.language)}</div>` : ""}
+</div>
 
           <div class="tabs">
             <button class="tab-btn active" data-tab="tab-days">Days</button>
@@ -4174,11 +4190,29 @@ overviewToggleBtn?.addEventListener('click', async () => {
   }
 
   if (overviewToggleBtn) {
+    
    overviewToggleBtn.textContent = plan.showOverview ? "Hide Trip Info" : "Show Trip Info";
   }
 
   await persistPlan();
   showSaved();
+});
+
+// Trip Info sub-tabs
+const tripTabBtns = container.querySelectorAll('.trip-subtabs .tab-btn');
+
+tripTabBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    tripTabBtns.forEach(b => b.classList.remove('active'));
+
+    container.querySelectorAll('#trip-essential, #trip-details')
+      .forEach(p => p.classList.remove('active'));
+
+    btn.classList.add('active');
+
+    const panel = container.querySelector('#' + btn.dataset.triptab);
+    if (panel) panel.classList.add('active');
+  });
 });
 
       const budgetBtns = container.querySelectorAll('.budget-subtabs .tab-btn[data-btab]');

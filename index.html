@@ -56,48 +56,72 @@
     .destination-icon { background: transparent; border: 0; }
     .destination-icon img { display:block; height:20px; width:auto; }
 
-.leaflet-popup-content {
-  max-height: 85vh;
-  overflow-y: auto;
-  overflow-x: hidden;
-  width: 680px !important;
-  padding-right: 4px;
+/* === FIXED SIZE POPUP (CONSISTENT ACROSS TABS) === */
+
+.leaflet-popup-content-wrapper {
+  border-radius: 16px;
 }
 
-.popup {
-  max-height: 85vh;
-  display: flex;
-  flex-direction: column;
+.leaflet-popup-content {
+  width: min(680px, calc(100vw - 32px)) !important;
+  margin: 0 !important;
+  padding: 0 !important;
   overflow: hidden;
 }
 
-.popup .tab-panel {
-  max-height: 60vh;
+.popup {
+  width: min(680px, calc(100vw - 32px));
+  height: min(720px, calc(100vh - 120px));
+  max-height: min(720px, calc(100vh - 120px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+  padding: 16px;
+}
+
+/* header + tabs stay fixed */
+.popup .header,
+.popup .tabs {
+  flex: 0 0 auto;
+}
+
+/* THIS is the key fix */
+.popup > .tab-panel {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   padding-right: 6px;
 }
 
-.leaflet-popup-content {
-  max-height: 85vh;
+/* Trip info internal scroll */
+.trip-meta-wrap .tab-panel {
+  max-height: 220px;
   overflow-y: auto;
-  overflow-x: hidden;
-  width: 680px !important;
-  padding-right: 4px;
 }
 
-.popup {
-  max-height: 85vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
+/* Mobile adjustments */
+@media (max-width: 640px) {
 
-.popup .tab-panel {
-  max-height: 60vh;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-right: 6px;
+  .leaflet-popup-content {
+    width: calc(100vw - 24px) !important;
+  }
+
+  .popup {
+    width: calc(100vw - 24px);
+    height: min(78vh, 680px);
+    max-height: min(78vh, 680px);
+    padding: 12px;
+  }
+
+  .popup > .tab-panel {
+    padding-right: 2px;
+  }
+
+  .trip-meta-wrap .tab-panel {
+    max-height: 180px;
+  }
 }
 
     .popup .tab-content { flex:1; overflow-y:auto; -webkit-overflow-scrolling:touch; min-height:0; }

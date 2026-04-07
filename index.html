@@ -8653,11 +8653,11 @@ async function saveFlightsUI() {
 
   const chosen = plan.flights.options[plan.flights.selectedOption - 1] || {};
   setNextTripBoard({
-    outDate: plan.flights.out?.date || "21/08/2026",
-    outTime: plan.flights.out?.time || "08:25",
-    returnDate: plan.flights.ret?.date || "05/09/2026",
-    returnTime: plan.flights.ret?.time || "23:25",
-    operator: chosen.airline || "Qatar Airways and Singapore Airlines",
+    outDate: plan.flights.out?.date || "-",
+    outTime: plan.flights.out?.time || "-",
+    returnDate: plan.flights.ret?.date || "-",
+    returnTime: plan.flights.ret?.time || "-",
+    operator: chosen.airline || "-",
     flightCode:
       Number(chosen.stopovers || 0) === 0
         ? "DIRECT"

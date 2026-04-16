@@ -8940,12 +8940,14 @@ container.querySelector('#translate-tips')?.addEventListener('click', async () =
       }
     }
 
-    const map = L.map("map", { zoomControl: true }).setView([48.5, 8], 5);
-    window.map = map;
-
-    window.addEventListener("load", () => {
-      setTimeout(() => map.invalidateSize(true), 150);
-    });
+const map = L.map('map', {
+  worldCopyJump: false,
+  maxBounds: [
+    [-90, -180],
+    [90, 180]
+  ],
+  maxBoundsViscosity: 1.0
+});
 
     const cartoAttr = '&copy; OpenStreetMap contributors, &copy; CARTO';
     L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {

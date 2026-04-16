@@ -9013,7 +9013,7 @@ const map = L.map('map', {
   const bounds = allLayerGroup.getBounds();
   if (bounds.isValid()) {
     map.fitBounds(bounds, {
-      padding: [30, 30]
+      padding: [50, 50]
     });
   }
 }
@@ -9069,11 +9069,11 @@ const map = L.map('map', {
           else allLayerGroup.removeLayer(marker);
         });
 
-  if (allLayerGroup.getLayers().length > 0) {
+ if (allLayerGroup.getLayers().length > 0) {
   const bounds = allLayerGroup.getBounds();
   if (bounds.isValid()) {
     map.fitBounds(bounds, {
-      padding: [30, 30]
+      padding: [50, 50]
     });
   }
 }

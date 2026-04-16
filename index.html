@@ -8943,8 +8943,8 @@ container.querySelector('#translate-tips')?.addEventListener('click', async () =
 const map = L.map('map', {
   worldCopyJump: false,
   maxBounds: [
-    [-90, -180],
-    [90, 180]
+    [-90, -200],
+    [90, 200]
   ],
   maxBoundsViscosity: 1.0
 });
@@ -9009,11 +9009,11 @@ const map = L.map('map', {
         allMarkers.push(marker);
       }
 
- if (allLayerGroup.getLayers().length > 0) {
+   if (allLayerGroup.getLayers().length > 0) {
   const bounds = allLayerGroup.getBounds();
   if (bounds.isValid()) {
     map.fitBounds(bounds, {
-      padding: [50, 50]
+      padding: [30, 30]
     });
   }
 }
@@ -9069,11 +9069,11 @@ const map = L.map('map', {
           else allLayerGroup.removeLayer(marker);
         });
 
- if (allLayerGroup.getLayers().length > 0) {
+   if (allLayerGroup.getLayers().length > 0) {
   const bounds = allLayerGroup.getBounds();
   if (bounds.isValid()) {
     map.fitBounds(bounds, {
-      padding: [50, 50]
+      padding: [30, 30]
     });
   }
 }

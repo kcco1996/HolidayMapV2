@@ -9009,10 +9009,14 @@ const map = L.map('map', {
         allMarkers.push(marker);
       }
 
-      if (allLayerGroup.getLayers().length > 0) {
-        const bounds = allLayerGroup.getBounds();
-        if (bounds.isValid()) map.fitBounds(bounds.pad(0.2));
-      }
+ if (allLayerGroup.getLayers().length > 0) {
+  const bounds = allLayerGroup.getBounds();
+  if (bounds.isValid()) {
+    map.fitBounds(bounds, {
+      padding: [30, 30]
+    });
+  }
+}
 
       updateIconCounts();
       setTimeout(() => map.invalidateSize(true), 60);
@@ -9065,9 +9069,14 @@ const map = L.map('map', {
           else allLayerGroup.removeLayer(marker);
         });
 
-        if (allLayerGroup.getLayers().length > 0) {
-          map.fitBounds(allLayerGroup.getBounds().pad(0.2));
-        }
+  if (allLayerGroup.getLayers().length > 0) {
+  const bounds = allLayerGroup.getBounds();
+  if (bounds.isValid()) {
+    map.fitBounds(bounds, {
+      padding: [30, 30]
+    });
+  }
+}
 
         updateIconCounts();
       }

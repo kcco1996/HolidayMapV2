@@ -1070,23 +1070,41 @@ async function loadFlightsFromFirebase() {
   try {
     const snap = await getDoc(doc(db, "users", user.uid, "appData", "flightsLog"));
 
-    if (snap.exists()) {
-      const data = snap.data();
-      if (Array.isArray(data.flights)) {
-        flights = data.flights;
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(flights));
-        renderFlights();
-        return true;
-      }
+    const localFlights = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    const cloudFlights =
+      snap.exists() && Array.isArray(snap.data()?.flights)
+        ? snap.data().flights
+        : [];
 
-      if (flights.length) {
-  await saveFlightsToFirebase();
-}
+    // If local has more than cloud, push local up to Firebase
+    if (localFlights.length > cloudFlights.length) {
+      flights = localFlights;
+      await saveFlightsToFirebase();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(flights));
+      renderFlights();
+      return true;
     }
+
+    // If cloud has data, use cloud
+    if (cloudFlights.length > 0) {
+      flights = cloudFlights;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(flights));
+      renderFlights();
+      return true;
+    }
+
+    // If cloud empty but local has data, seed cloud
+    if (localFlights.length > 0) {
+      flights = localFlights;
+      await saveFlightsToFirebase();
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(flights));
+      renderFlights();
+      return true;
+    }
+
   } catch (err) {
     console.warn("Failed to load flights from Firebase:", err);
   }
-  
 
   return false;
 }

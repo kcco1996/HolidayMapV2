@@ -955,6 +955,8 @@
 
     let flights = loadFlights();
 
+    let editingFlightId = null;
+
     function getAirlineTier(airline) {
       if (premiumElite.includes(airline)) return "elite";
       if (mediumHigher.includes(airline)) return "higher";
@@ -1039,17 +1041,18 @@
 
             ${flight.notes ? `<div class="flight-notes">${escapeHtml(flight.notes)}</div>` : ""}
 
-            <div class="flight-actions">
-              <label class="checkbox-row" style="margin:0;">
-                <input type="checkbox" ${flight.flown ? "checked" : ""} onchange="toggleFlown('${flight.id}')" />
-                ${flight.flown
-                  ? '<span class="flown-badge">Flown</span>'
-                  : '<span class="not-flown-badge">Not flown</span>'}
-              </label>
-              <button class="small-btn" onclick="deleteFlight('${flight.id}')">Delete</button>
-            </div>
-          </div>
-        </div>
+  <div class="flight-actions">
+  <label class="checkbox-row" style="margin:0;">
+    <input type="checkbox" ${flight.flown ? "checked" : ""} onchange="toggleFlown('${flight.id}')" />
+    ${flight.flown
+      ? '<span class="flown-badge">Flown</span>'
+      : '<span class="not-flown-badge">Not flown</span>'}
+  </label>
+  <div style="display:flex; gap:8px;">
+    <button class="small-btn" onclick="editFlight('${flight.id}')">Edit</button>
+    <button class="small-btn" onclick="deleteFlight('${flight.id}')">Delete</button>
+  </div>
+</div>
       `;
     }
 
@@ -1127,11 +1130,22 @@
       renderFlights();
     }
 
-    function deleteFlight(id) {
-      flights = flights.filter(flight => flight.id !== id);
-      saveFlights();
-      renderFlights();
-    }
+ function deleteFlight(id) {
+  flights = flights.filter(flight => flight.id !== id);
+
+  if (editingFlightId === id) {
+    editingFlightId = null;
+    const form = document.getElementById("flightForm");
+    form.reset();
+    document.getElementById("airline").selectedIndex = 0;
+
+    const submitBtn = document.querySelector('#flightForm button[type="submit"]');
+    if (submitBtn) submitBtn.textContent = "Add Flight";
+  }
+
+  saveFlights();
+  renderFlights();
+}
 
     function escapeHtml(str) {
       return String(str)
@@ -1142,46 +1156,84 @@
         .replaceAll("'", "&#039;");
     }
 
+    function editFlight(id) {
+  const flight = flights.find(f => f.id === id);
+  if (!flight) return;
+
+  editingFlightId = id;
+
+  document.getElementById("airline").value = flight.airline || "";
+  document.getElementById("model").value = flight.model || "";
+  document.getElementById("image").value = flight.image || "";
+  document.getElementById("route").value = flight.route || "";
+  document.getElementById("registration").value = flight.registration || "";
+  document.getElementById("date").value = flight.date || "";
+  document.getElementById("seat").value = flight.seat || "";
+  document.getElementById("cabin").value = flight.cabin || "";
+  document.getElementById("notes").value = flight.notes || "";
+  document.getElementById("flown").checked = !!flight.flown;
+
+  const submitBtn = document.querySelector('#flightForm button[type="submit"]');
+  if (submitBtn) submitBtn.textContent = "Save Changes";
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
     function goBack() {
       window.location.href = "index.html";
     }
 
     document.getElementById("flightForm").addEventListener("submit", function (e) {
-      e.preventDefault();
+  e.preventDefault();
 
-      const airline = document.getElementById("airline").value.trim();
-      const model = document.getElementById("model").value.trim();
-      const image = document.getElementById("image").value.trim();
-      const route = document.getElementById("route").value.trim();
-      const registration = document.getElementById("registration").value.trim();
-      const date = document.getElementById("date").value;
-      const seat = document.getElementById("seat").value.trim();
-      const cabin = document.getElementById("cabin").value.trim();
-      const notes = document.getElementById("notes").value.trim();
-      const flown = document.getElementById("flown").checked;
+  const airline = document.getElementById("airline").value.trim();
+  const model = document.getElementById("model").value.trim();
+  const image = document.getElementById("image").value.trim();
+  const route = document.getElementById("route").value.trim();
+  const registration = document.getElementById("registration").value.trim();
+  const date = document.getElementById("date").value;
+  const seat = document.getElementById("seat").value.trim();
+  const cabin = document.getElementById("cabin").value.trim();
+  const notes = document.getElementById("notes").value.trim();
+  const flown = document.getElementById("flown").checked;
 
-      if (!airline || !model) return;
+  if (!airline || !model) return;
 
-      const newFlight = {
-        id: crypto.randomUUID(),
-        airline,
-        model,
-        image,
-        route,
-        registration,
-        date,
-        seat,
-        cabin,
-        notes,
-        flown
-      };
+  const flightData = {
+    airline,
+    model,
+    image,
+    route,
+    registration,
+    date,
+    seat,
+    cabin,
+    notes,
+    flown
+  };
 
-      flights.unshift(newFlight);
-      saveFlights();
-      renderFlights();
-      this.reset();
-      document.getElementById("airline").selectedIndex = 0;
+  if (editingFlightId) {
+    flights = flights.map(flight =>
+      flight.id === editingFlightId
+        ? { ...flight, ...flightData }
+        : flight
+    );
+    editingFlightId = null;
+  } else {
+    flights.unshift({
+      id: crypto.randomUUID(),
+      ...flightData
     });
+  }
+
+  saveFlights();
+  renderFlights();
+  this.reset();
+  document.getElementById("airline").selectedIndex = 0;
+
+  const submitBtn = document.querySelector('#flightForm button[type="submit"]');
+  if (submitBtn) submitBtn.textContent = "Add Flight";
+});
 
     populateAirlineDropdown();
     renderFlights();

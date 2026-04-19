@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flights Log</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --panel-2: #1f2937;
+      --line: #334155;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-2: #0ea5e9;
+      --good: #22c55e;
+      --shadow: 0 10px 30px rgba(0,0,0,0.25);
+      --radius: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
+      color: var(--text);
+    }
+
+    .page {
+      max-width: 1500px;
+      margin: 0 auto;
+      padding: 20px 16px 40px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .title-wrap h1 {
+      margin: 0;
+      font-size: 1.9rem;
+    }
+
+    .title-wrap p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 0.98rem;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 12px;
+      padding: 10px 14px;
+      background: var(--accent);
+      color: #062033;
+      font-weight: 700;
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+
+    .btn:hover {
+      background: var(--accent-2);
+      color: white;
+    }
+
+    .btn.secondary {
+      background: var(--panel-2);
+      color: var(--text);
+      border: 1px solid var(--line);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+      margin-bottom: 24px;
+    }
+
+    .stat-card {
+      background: rgba(17, 24, 39, 0.9);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px;
+      box-shadow: var(--shadow);
+    }
+
+    .stat-card .label {
+      color: var(--muted);
+      font-size: 0.92rem;
+      margin-bottom: 8px;
+    }
+
+    .stat-card .value {
+      font-size: 1.8rem;
+      font-weight: 800;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .panel {
+      background: rgba(17, 24, 39, 0.9);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: var(--shadow);
+    }
+
+    .panel h2 {
+      margin-top: 0;
+      margin-bottom: 14px;
+      font-size: 1.15rem;
+    }
+
+    .form-grid {
+      display: grid;
+      gap: 12px;
+    }
+
+    label {
+      display: block;
+      font-size: 0.92rem;
+      margin-bottom: 6px;
+      color: var(--muted);
+    }
+
+    input[type="text"],
+    input[type="date"],
+    select,
+    textarea {
+      width: 100%;
+      padding: 11px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--line);
+      background: #0b1220;
+      color: var(--text);
+      font-size: 0.95rem;
+      font-family: inherit;
+    }
+
+    textarea {
+      min-height: 90px;
+      resize: vertical;
+    }
+
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 4px;
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+
+    .groups-wrap {
+      display: grid;
+      gap: 28px;
+    }
+
+    .tier-section {
+      display: grid;
+      gap: 12px;
+    }
+
+    .tier-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .tier-header h2 {
+      margin: 0;
+      font-size: 1.2rem;
+    }
+
+    .tier-count {
+      min-width: 36px;
+      height: 36px;
+      padding: 0 12px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.95rem;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+
+    .elite-section .tier-header h2 { color: #f2c230; }
+    .elite-section .tier-count {
+      background: rgba(242, 194, 48, 0.16);
+      color: #f2c230;
+      border-color: rgba(242, 194, 48, 0.35);
+    }
+
+    .higher-section .tier-header h2 { color: #8ec5ff; }
+    .higher-section .tier-count {
+      background: rgba(142, 197, 255, 0.14);
+      color: #8ec5ff;
+      border-color: rgba(142, 197, 255, 0.3);
+    }
+
+    .lower-section .tier-header h2 { color: #cbd5e1; }
+    .lower-section .tier-count {
+      background: rgba(203, 213, 225, 0.14);
+      color: #cbd5e1;
+      border-color: rgba(203, 213, 225, 0.3);
+    }
+
+    .budget-section .tier-header h2 { color: #7df0b8; }
+    .budget-section .tier-count {
+      background: rgba(125, 240, 184, 0.14);
+      color: #7df0b8;
+      border-color: rgba(125, 240, 184, 0.3);
+    }
+
+    .flight-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+
+    .flight-card {
+      --card-bg: #1f2937;
+      --banner-bg: #334155;
+      --card-text: #ffffff;
+      --card-accent: #38bdf8;
+
+      overflow: hidden;
+      background: linear-gradient(180deg, var(--card-bg), rgba(0,0,0,0.22));
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      min-height: 100%;
+    }
+
+    .flight-banner {
+      background: linear-gradient(135deg, var(--banner-bg), rgba(0,0,0,0.18));
+      min-height: 76px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .flight-banner img {
+      max-width: 82%;
+      max-height: 44px;
+      object-fit: contain;
+      display: block;
+    }
+
+    .flight-image {
+      width: 100%;
+      height: 180px;
+      object-fit: cover;
+      background: #0b1220;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .flight-content {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: 1;
+    }
+
+    .flight-model {
+      font-size: 1.08rem;
+      font-weight: 800;
+      margin: 0;
+      color: var(--card-text);
+    }
+
+    .flight-airline {
+      color: var(--card-accent);
+      font-weight: 800;
+      margin: 0;
+      font-size: 0.98rem;
+    }
+
+    .flight-route {
+      color: rgba(255,255,255,0.82);
+      font-size: 0.93rem;
+      margin: 0;
+    }
+
+    .flight-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 2px;
+    }
+
+    .flight-meta span {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--card-text);
+    }
+
+    .flight-notes {
+      margin-top: 6px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.88);
+      font-size: 0.9rem;
+      line-height: 1.45;
+      white-space: pre-wrap;
+    }
+
+    .flight-actions {
+      margin-top: auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding-top: 10px;
+    }
+
+    .flown-badge,
+    .not-flown-badge {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 800;
+      border: 1px solid transparent;
+    }
+
+    .flown-badge {
+      background: rgba(34, 197, 94, 0.15);
+      color: #86efac;
+      border-color: rgba(34, 197, 94, 0.35);
+    }
+
+    .not-flown-badge {
+      background: rgba(148, 163, 184, 0.12);
+      color: #cbd5e1;
+      border-color: rgba(148, 163, 184, 0.25);
+    }
+
+    .small-btn {
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(0,0,0,0.22);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 8px 10px;
+      cursor: pointer;
+      font-size: 0.88rem;
+      font-weight: 700;
+    }
+
+    .empty-state,
+    .empty-tier {
+      text-align: center;
+      color: var(--muted);
+      padding: 24px 18px;
+      border: 1px dashed var(--line);
+      border-radius: var(--radius);
+      background: rgba(255,255,255,0.02);
+    }
+
+    @media (max-width: 1280px) {
+      .flight-grid {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+
+    @media (max-width: 1000px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .flight-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    @media (max-width: 640px) {
+      .flight-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="topbar">
+      <div class="title-wrap">
+        <h1>✈️ Flights Log</h1>
+        <p>Track the aircraft and airlines you’ve flown.</p>
+      </div>
+      <button class="btn secondary" onclick="goBack()">← Back to Holiday App</button>
+    </div>
+
+    <section class="stats">
+      <div class="stat-card">
+        <div class="label">Total Entries</div>
+        <div class="value" id="statTotal">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Flown</div>
+        <div class="value" id="statFlown">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Not Flown Yet</div>
+        <div class="value" id="statNotFlown">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Unique Airlines</div>
+        <div class="value" id="statAirlines">0</div>
+      </div>
+    </section>
+
+    <div class="layout">
+      <aside class="panel">
+        <h2>Add a Flight</h2>
+        <form id="flightForm" class="form-grid">
+          <div>
+            <label for="airline">Airline</label>
+            <select id="airline" required></select>
+          </div>
+
+          <div>
+            <label for="model">Aircraft Model</label>
+            <input type="text" id="model" placeholder="Airbus A380-800" required />
+          </div>
+
+          <div>
+            <label for="image">Aircraft Image File Path</label>
+            <input type="text" id="image" placeholder="assets/planes/qatar-a380.jpg" />
+          </div>
+
+          <div>
+            <label for="route">Route</label>
+            <input type="text" id="route" placeholder="London → Doha" />
+          </div>
+
+          <div>
+            <label for="registration">Registration</label>
+            <input type="text" id="registration" placeholder="A7-APA" />
+          </div>
+
+          <div>
+            <label for="date">Date Flown</label>
+            <input type="date" id="date" />
+          </div>
+
+          <div>
+            <label for="seat">Seat</label>
+            <input type="text" id="seat" placeholder="20A" />
+          </div>
+
+          <div>
+            <label for="cabin">Cabin Class</label>
+            <input type="text" id="cabin" placeholder="Economy" />
+          </div>
+
+          <div>
+            <label for="notes">Notes</label>
+            <textarea id="notes" placeholder="Upper deck economy felt special."></textarea>
+          </div>
+
+          <label class="checkbox-row">
+            <input type="checkbox" id="flown" />
+            I’ve flown this
+          </label>
+
+          <button type="submit" class="btn">Add Flight</button>
+        </form>
+      </aside>
+
+      <main class="panel">
+        <div class="groups-wrap">
+          <section class="tier-section elite-section">
+            <div class="tier-header">
+              <h2>Premium Elite</h2>
+              <span id="eliteCount" class="tier-count">0</span>
+            </div>
+            <div id="eliteCards" class="flight-grid"></div>
+          </section>
+
+          <section class="tier-section higher-section">
+            <div class="tier-header">
+              <h2>Medium Higher</h2>
+              <span id="higherCount" class="tier-count">0</span>
+            </div>
+            <div id="higherCards" class="flight-grid"></div>
+          </section>
+
+          <section class="tier-section lower-section">
+            <div class="tier-header">
+              <h2>Medium Lower</h2>
+              <span id="lowerCount" class="tier-count">0</span>
+            </div>
+            <div id="lowerCards" class="flight-grid"></div>
+          </section>
+
+          <section class="tier-section budget-section">
+            <div class="tier-header">
+              <h2>Budget</h2>
+              <span id="budgetCount" class="tier-count">0</span>
+            </div>
+            <div id="budgetCards" class="flight-grid"></div>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "holidayApp.flights.v2";
+
+    const airlineOrder = [
+      "Qatar Airways",
+      "Singapore Airlines",
+      "Cathay Pacific",
+      "Emirates",
+      "Etihad Airways",
+      "EVA Air",
+      "ANA",
+      "Japan Airlines",
+      "Qantas",
+      "Air New Zealand",
+      "Air France",
+      "Lufthansa",
+      "British Airways",
+      "Turkish Airlines",
+      "KLM",
+      "Swiss International Air Lines",
+      "Finnair",
+      "Virgin Atlantic",
+      "Korean Air",
+      "Thai Airways",
+      "Malaysia Airlines",
+      "Saudia",
+      "Vietnam Airlines",
+      "Garuda Indonesia",
+      "United Airlines",
+      "Delta Air Lines",
+      "American Airlines",
+      "Air Canada",
+      "LATAM Airlines",
+      "Aeroméxico",
+      "Ethiopian Airlines",
+      "Iberia",
+      "SAS",
+      "TAP Air Portugal",
+      "Royal Air Maroc",
+      "Kenya Airways",
+      "Jet2",
+      "easyJet",
+      "Ryanair",
+      "Wizz Air"
+    ];
+
+    const airlines = {
+      "Qatar Airways": {
+        logo: "assets/airlines/qatar-airways.png",
+        bg: "#5c1234",
+        banner: "#701b44",
+        text: "#ffffff",
+        accent: "#d6b36a"
+      },
+      "Singapore Airlines": {
+        logo: "assets/airlines/singapore-airlines.png",
+        bg: "#0b2c6f",
+        banner: "#123d92",
+        text: "#ffffff",
+        accent: "#f0b323"
+      },
+      "Cathay Pacific": {
+        logo: "assets/airlines/cathay-pacific.png",
+        bg: "#006564",
+        banner: "#007d7b",
+        text: "#ffffff",
+        accent: "#c7f0ea"
+      },
+      "Emirates": {
+        logo: "assets/airlines/emirates.png",
+        bg: "#b31217",
+        banner: "#d71920",
+        text: "#ffffff",
+        accent: "#f2c230"
+      },
+      "Etihad Airways": {
+        logo: "assets/airlines/etihad-airways.png",
+        bg: "#6b5a2b",
+        banner: "#8a7437",
+        text: "#ffffff",
+        accent: "#d7c38b"
+      },
+      "EVA Air": {
+        logo: "assets/airlines/eva-air.png",
+        bg: "#007a3d",
+        banner: "#00994d",
+        text: "#ffffff",
+        accent: "#ffcc33"
+      },
+      "ANA": {
+        logo: "assets/airlines/ana.png",
+        bg: "#003b8e",
+        banner: "#004ebd",
+        text: "#ffffff",
+        accent: "#dbeafe"
+      },
+      "Japan Airlines": {
+        logo: "assets/airlines/japan-airlines.png",
+        bg: "#7f1d1d",
+        banner: "#b91c1c",
+        text: "#ffffff",
+        accent: "#fecaca"
+      },
+      "Qantas": {
+        logo: "assets/airlines/qantas.png",
+        bg: "#d71920",
+        banner: "#ef233c",
+        text: "#ffffff",
+        accent: "#ffffff"
+      },
+      "Air New Zealand": {
+        logo: "assets/airlines/air-new-zealand.png",
+        bg: "#111111",
+        banner: "#222222",
+        text: "#ffffff",
+        accent: "#ffffff"
+      },
+
+      "Air France": {
+        logo: "assets/airlines/air-france.png",
+        bg: "#002157",
+        banner: "#00337f",
+        text: "#ffffff",
+        accent: "#e11d48"
+      },
+      "Lufthansa": {
+        logo: "assets/airlines/lufthansa.png",
+        bg: "#05164d",
+        banner: "#102a83",
+        text: "#ffffff",
+        accent: "#ffcc00"
+      },
+      "British Airways": {
+        logo: "assets/airlines/british-airways.png",
+        bg: "#0a2c72",
+        banner: "#1245a8",
+        text: "#ffffff",
+        accent: "#e31837"
+      },
+      "Turkish Airlines": {
+        logo: "assets/airlines/turkish-airlines.png",
+        bg: "#c8102e",
+        banner: "#e11d3f",
+        text: "#ffffff",
+        accent: "#ffffff"
+      },
+      "KLM": {
+        logo: "assets/airlines/klm.png",
+        bg: "#00a1de",
+        banner: "#1ab4ef",
+        text: "#ffffff",
+        accent: "#dff6ff"
+      },
+      "Swiss International Air Lines": {
+        logo: "assets/airlines/swiss.png",
+        bg: "#9b111e",
+        banner: "#b91c1c",
+        text: "#ffffff",
+        accent: "#ffffff"
+      },
+      "Finnair": {
+        logo: "assets/airlines/finnair.png",
+        bg: "#0f3460",
+        banner: "#174f8a",
+        text: "#ffffff",
+        accent: "#dbeafe"
+      },
+      "Virgin Atlantic": {
+        logo: "assets/airlines/virgin-atlantic.png",
+        bg: "#7a003c",
+        banner: "#a00050",
+        text: "#ffffff",
+        accent: "#ffd1e8"
+      },
+      "Korean Air": {
+        logo: "assets/airlines/korean-air.png",
+        bg: "#0f4c81",
+        banner: "#1762a5",
+        text: "#ffffff",
+        accent: "#dbeafe"
+      },
+      "Thai Airways": {
+        logo: "assets/airlines/thai-airways.png",
+        bg: "#4b1f73",
+        banner: "#6a2ea0",
+        text: "#ffffff",
+        accent: "#c9a227"
+      },
+      "Malaysia Airlines": {
+        logo: "assets/airlines/malaysia-airlines.png",
+        bg: "#102a83",
+        banner: "#1739b7",
+        text: "#ffffff",
+        accent: "#ef4444"
+      },
+      "Saudia": {
+        logo: "assets/airlines/saudia.png",
+        bg: "#0f5132",
+        banner: "#146c43",
+        text: "#ffffff",
+        accent: "#d1fae5"
+      },
+      "Vietnam Airlines": {
+        logo: "assets/airlines/vietnam-airlines.png",
+        bg: "#0f3d7a",
+        banner: "#1851a6",
+        text: "#ffffff",
+        accent: "#f2c230"
+      },
+      "Garuda Indonesia": {
+        logo: "assets/airlines/garuda-indonesia.png",
+        bg: "#004b6b",
+        banner: "#006d9c",
+        text: "#ffffff",
+        accent: "#c0f0ff"
+      },
+
+      "United Airlines": {
+        logo: "assets/airlines/united-airlines.png",
+        bg: "#002244",
+        banner: "#003366",
+        text: "#ffffff",
+        accent: "#66b3ff"
+      },
+      "Delta Air Lines": {
+        logo: "assets/airlines/delta-air-lines.png",
+        bg: "#0c2340",
+        banner: "#102f57",
+        text: "#ffffff",
+        accent: "#d71920"
+      },
+      "American Airlines": {
+        logo: "assets/airlines/american-airlines.png",
+        bg: "#002244",
+        banner: "#003a70",
+        text: "#ffffff",
+        accent: "#d71920"
+      },
+      "Air Canada": {
+        logo: "assets/airlines/air-canada.png",
+        bg: "#d71920",
+        banner: "#ef233c",
+        text: "#ffffff",
+        accent: "#ffffff"
+      },
+      "LATAM Airlines": {
+        logo: "assets/airlines/latam-airlines.png",
+        bg: "#4b1f73",
+        banner: "#6d28d9",
+        text: "#ffffff",
+        accent: "#ff5ca8"
+      },
+      "Aeroméxico": {
+        logo: "assets/airlines/aeromexico.png",
+        bg: "#002b5c",
+        banner: "#004080",
+        text: "#ffffff",
+        accent: "#c0d8ff"
+      },
+      "Ethiopian Airlines": {
+        logo: "assets/airlines/ethiopian-airlines.png",
+        bg: "#0f7b0f",
+        banner: "#159915",
+        text: "#ffffff",
+        accent: "#f4c430"
+      },
+      "Iberia": {
+        logo: "assets/airlines/iberia.png",
+        bg: "#b3002d",
+        banner: "#d10036",
+        text: "#ffffff",
+        accent: "#f2c230"
+      },
+      "SAS": {
+        logo: "assets/airlines/sas.png",
+        bg: "#1e3a8a",
+        banner: "#2563eb",
+        text: "#ffffff",
+        accent: "#dbeafe"
+      },
+      "TAP Air Portugal": {
+        logo: "assets/airlines/tap-air-portugal.png",
+        bg: "#14532d",
+        banner: "#166534",
+        text: "#ffffff",
+        accent: "#f87171"
+      },
+      "Royal Air Maroc": {
+        logo: "assets/airlines/royal-air-maroc.png",
+        bg: "#7f1d1d",
+        banner: "#b91c1c",
+        text: "#ffffff",
+        accent: "#fcd34d"
+      },
+      "Kenya Airways": {
+        logo: "assets/airlines/kenya-airways.png",
+        bg: "#14532d",
+        banner: "#166534",
+        text: "#ffffff",
+        accent: "#ef4444"
+      },
+
+      "Jet2": {
+        logo: "assets/airlines/jet2.png",
+        bg: "#c00024",
+        banner: "#e0002a",
+        text: "#ffffff",
+        accent: "#ffd6dc"
+      },
+      "easyJet": {
+        logo: "assets/airlines/easyjet.png",
+        bg: "#ff6600",
+        banner: "#ff7f1a",
+        text: "#ffffff",
+        accent: "#ffe0cc"
+      },
+      "Ryanair": {
+        logo: "assets/airlines/ryanair.png",
+        bg: "#003087",
+        banner: "#0047b3",
+        text: "#ffffff",
+        accent: "#f7c948"
+      },
+      "Wizz Air": {
+        logo: "assets/airlines/wizz-air.png",
+        bg: "#c2188b",
+        banner: "#e91e63",
+        text: "#ffffff",
+        accent: "#ffd1e8"
+      },
+
+      "default": {
+        logo: "assets/airlines/default.png",
+        bg: "#1f2937",
+        banner: "#334155",
+        text: "#ffffff",
+        accent: "#38bdf8"
+      }
+    };
+
+    const premiumElite = [
+      "Qatar Airways",
+      "Singapore Airlines",
+      "Cathay Pacific",
+      "Emirates",
+      "Etihad Airways",
+      "EVA Air",
+      "ANA",
+      "Japan Airlines",
+      "Qantas",
+      "Air New Zealand"
+    ];
+
+    const mediumHigher = [
+      "Air France",
+      "Lufthansa",
+      "British Airways",
+      "Turkish Airlines",
+      "KLM",
+      "Swiss International Air Lines",
+      "Finnair",
+      "Virgin Atlantic",
+      "Korean Air",
+      "Thai Airways",
+      "Malaysia Airlines",
+      "Saudia",
+      "Vietnam Airlines",
+      "Garuda Indonesia"
+    ];
+
+    const mediumLower = [
+      "United Airlines",
+      "Delta Air Lines",
+      "American Airlines",
+      "Air Canada",
+      "LATAM Airlines",
+      "Aeroméxico",
+      "Ethiopian Airlines",
+      "Iberia",
+      "SAS",
+      "TAP Air Portugal",
+      "Royal Air Maroc",
+      "Kenya Airways"
+    ];
+
+    const budget = [
+      "Jet2",
+      "easyJet",
+      "Ryanair",
+      "Wizz Air"
+    ];
+
+    const defaultFlights = [
+      {
+        id: crypto.randomUUID(),
+        airline: "Qatar Airways",
+        model: "Airbus A380-800",
+        image: "assets/planes/qatar-a380.jpg",
+        route: "London → Doha",
+        registration: "A7-APA",
+        date: "",
+        seat: "",
+        cabin: "",
+        notes: "",
+        flown: false
+      },
+      {
+        id: crypto.randomUUID(),
+        airline: "Singapore Airlines",
+        model: "Boeing 787-10 Dreamliner",
+        image: "assets/planes/singapore-787-10.jpg",
+        route: "Osaka → Singapore",
+        registration: "",
+        date: "",
+        seat: "",
+        cabin: "",
+        notes: "",
+        flown: false
+      }
+    ];
+
+    let flights = loadFlights();
+
+    function getAirlineTier(airline) {
+      if (premiumElite.includes(airline)) return "elite";
+      if (mediumHigher.includes(airline)) return "higher";
+      if (mediumLower.includes(airline)) return "lower";
+      if (budget.includes(airline)) return "budget";
+      return "lower";
+    }
+
+    function getAirlineTheme(airline) {
+      return airlines[airline] || airlines.default;
+    }
+
+    function populateAirlineDropdown() {
+      const select = document.getElementById("airline");
+      select.innerHTML = airlineOrder
+        .map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`)
+        .join("");
+    }
+
+    function loadFlights() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (err) {
+          console.error("Failed to parse flights:", err);
+        }
+      }
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultFlights));
+      return defaultFlights;
+    }
+
+    function saveFlights() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(flights));
+    }
+
+    function updateStats() {
+      const total = flights.length;
+      const flown = flights.filter(f => f.flown).length;
+      const notFlown = total - flown;
+      const uniqueAirlines = new Set(
+        flights.map(f => (f.airline || "").trim()).filter(Boolean)
+      ).size;
+
+      document.getElementById("statTotal").textContent = total;
+      document.getElementById("statFlown").textContent = flown;
+      document.getElementById("statNotFlown").textContent = notFlown;
+      document.getElementById("statAirlines").textContent = uniqueAirlines;
+    }
+
+    function createFlightCard(flight) {
+      const theme = getAirlineTheme(flight.airline);
+      const imageSrc = flight.image && flight.image.trim()
+        ? flight.image
+        : "assets/planes/default-plane.jpg";
+      const logoSrc = theme.logo || "assets/airlines/default.png";
+
+      return `
+        <div class="flight-card" style="
+          --card-bg:${theme.bg};
+          --banner-bg:${theme.banner};
+          --card-text:${theme.text};
+          --card-accent:${theme.accent};
+        ">
+          <div class="flight-banner">
+            <img src="${escapeHtml(logoSrc)}" alt="${escapeHtml(flight.airline)} logo" />
+          </div>
+
+          <img class="flight-image" src="${escapeHtml(imageSrc)}" alt="${escapeHtml(flight.airline + ' ' + flight.model)}" />
+
+          <div class="flight-content">
+            <h3 class="flight-model">${escapeHtml(flight.model)}</h3>
+            <p class="flight-airline">${escapeHtml(flight.airline)}</p>
+            <p class="flight-route">${escapeHtml(flight.route || "Route not added")}</p>
+
+            <div class="flight-meta">
+              ${flight.registration ? `<span>Reg: ${escapeHtml(flight.registration)}</span>` : ""}
+              ${flight.date ? `<span>Date: ${escapeHtml(flight.date)}</span>` : ""}
+              ${flight.seat ? `<span>Seat: ${escapeHtml(flight.seat)}</span>` : ""}
+              ${flight.cabin ? `<span>Cabin: ${escapeHtml(flight.cabin)}</span>` : ""}
+            </div>
+
+            ${flight.notes ? `<div class="flight-notes">${escapeHtml(flight.notes)}</div>` : ""}
+
+            <div class="flight-actions">
+              <label class="checkbox-row" style="margin:0;">
+                <input type="checkbox" ${flight.flown ? "checked" : ""} onchange="toggleFlown('${flight.id}')" />
+                ${flight.flown
+                  ? '<span class="flown-badge">Flown</span>'
+                  : '<span class="not-flown-badge">Not flown</span>'}
+              </label>
+              <button class="small-btn" onclick="deleteFlight('${flight.id}')">Delete</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderFlights() {
+      const elite = document.getElementById("eliteCards");
+      const higher = document.getElementById("higherCards");
+      const lower = document.getElementById("lowerCards");
+      const budgetBox = document.getElementById("budgetCards");
+
+      elite.innerHTML = "";
+      higher.innerHTML = "";
+      lower.innerHTML = "";
+      budgetBox.innerHTML = "";
+
+      let eliteTotal = 0;
+      let higherTotal = 0;
+      let lowerTotal = 0;
+      let budgetTotal = 0;
+
+      if (!flights.length) {
+        elite.innerHTML = `<div class="empty-tier">No flights added yet.</div>`;
+        document.getElementById("eliteCount").textContent = 0;
+        document.getElementById("higherCount").textContent = 0;
+        document.getElementById("lowerCount").textContent = 0;
+        document.getElementById("budgetCount").textContent = 0;
+        updateStats();
+        return;
+      }
+
+      flights.forEach(flight => {
+        const cardHtml = createFlightCard(flight);
+        const tier = getAirlineTier(flight.airline);
+
+        if (tier === "elite") {
+          elite.innerHTML += cardHtml;
+          eliteTotal++;
+        } else if (tier === "higher") {
+          higher.innerHTML += cardHtml;
+          higherTotal++;
+        } else if (tier === "budget") {
+          budgetBox.innerHTML += cardHtml;
+          budgetTotal++;
+        } else {
+          lower.innerHTML += cardHtml;
+          lowerTotal++;
+        }
+      });
+
+      document.getElementById("eliteCount").textContent = eliteTotal;
+      document.getElementById("higherCount").textContent = higherTotal;
+      document.getElementById("lowerCount").textContent = lowerTotal;
+      document.getElementById("budgetCount").textContent = budgetTotal;
+
+      if (!eliteTotal) {
+        elite.innerHTML = `<div class="empty-tier">No premium elite airline cards yet.</div>`;
+      }
+      if (!higherTotal) {
+        higher.innerHTML = `<div class="empty-tier">No medium higher airline cards yet.</div>`;
+      }
+      if (!lowerTotal) {
+        lower.innerHTML = `<div class="empty-tier">No medium lower airline cards yet.</div>`;
+      }
+      if (!budgetTotal) {
+        budgetBox.innerHTML = `<div class="empty-tier">No budget airline cards yet.</div>`;
+      }
+
+      updateStats();
+    }
+
+    function toggleFlown(id) {
+      flights = flights.map(flight =>
+        flight.id === id ? { ...flight, flown: !flight.flown } : flight
+      );
+      saveFlights();
+      renderFlights();
+    }
+
+    function deleteFlight(id) {
+      flights = flights.filter(flight => flight.id !== id);
+      saveFlights();
+      renderFlights();
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function goBack() {
+      window.location.href = "index.html";
+    }
+
+    document.getElementById("flightForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      const airline = document.getElementById("airline").value.trim();
+      const model = document.getElementById("model").value.trim();
+      const image = document.getElementById("image").value.trim();
+      const route = document.getElementById("route").value.trim();
+      const registration = document.getElementById("registration").value.trim();
+      const date = document.getElementById("date").value;
+      const seat = document.getElementById("seat").value.trim();
+      const cabin = document.getElementById("cabin").value.trim();
+      const notes = document.getElementById("notes").value.trim();
+      const flown = document.getElementById("flown").checked;
+
+      if (!airline || !model) return;
+
+      const newFlight = {
+        id: crypto.randomUUID(),
+        airline,
+        model,
+        image,
+        route,
+        registration,
+        date,
+        seat,
+        cabin,
+        notes,
+        flown
+      };
+
+      flights.unshift(newFlight);
+      saveFlights();
+      renderFlights();
+      this.reset();
+      document.getElementById("airline").selectedIndex = 0;
+    });
+
+    populateAirlineDropdown();
+    renderFlights();
+  </script>
+</body>
+</html>

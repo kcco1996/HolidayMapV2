@@ -606,6 +606,9 @@
     <button id="sign-in-btn" class="btn" onclick="firebaseSignIn()">Sign in with Google</button>
     <button id="sign-out-btn" class="btn" onclick="firebaseSignOut()" style="display:none;">Sign out</button>
     <span id="user-info"></span>
+    <button id="open-flights-log-btn" class="btn ghost" onclick="window.location.href='flights-log.html'">
+  ✈️ Flights Log
+</button>
     <div id="migrate-wrap" style="display:none; flex-direction:column; gap:6px; align-items:flex-start;">
       <button id="migrate-btn" class="btn ghost">Migrate Data to Firebase</button>
       <div id="top-toast" aria-live="polite"></div>
@@ -639,19 +642,21 @@
       window.visualViewport.addEventListener('scroll', setVh, { passive: true });
     }
 
-    function updateBarsLayout() {
-      const cb = document.getElementById("controls-bar");
-      if (!cb) return;
+function updateBarsLayout() {
+  const cb = document.getElementById("controls-bar");
+  if (!cb) return;
 
-      const h = cb.getBoundingClientRect().height || 0;
-      document.documentElement.style.setProperty("--controls-h", `${Math.ceil(h)}px`);
+  const h = cb.getBoundingClientRect().height || 0;
+  document.documentElement.style.setProperty("--controls-h", `${Math.ceil(h)}px`);
 
-      const vvTop = (window.visualViewport && typeof window.visualViewport.offsetTop === "number")
-        ? window.visualViewport.offsetTop
-        : 0;
+  const vvTop = (window.visualViewport && typeof window.visualViewport.offsetTop === "number")
+    ? window.visualViewport.offsetTop
+    : 0;
 
-      document.documentElement.style.setProperty("--vv-top", `${Math.ceil(vvTop)}px`);
-    }
+  document.documentElement.style.setProperty("--vv-top", `${Math.ceil(vvTop)}px`);
+}
+
+window.updateBarsLayout = updateBarsLayout;
 
     window.addEventListener("load", updateBarsLayout, { passive: true });
     window.addEventListener("resize", updateBarsLayout, { passive: true });
@@ -9209,46 +9214,46 @@ const map = L.map('map', {
       }, { passive: true });
     })();
 
-    document.addEventListener("DOMContentLoaded", () => {
-      const searchInput = document.getElementById("search-input");
-      const regionFilter = document.getElementById("region-filter");
-      const resetBtn = document.getElementById("reset-view");
+   document.addEventListener("DOMContentLoaded", () => {
+  const searchInput = document.getElementById("search-input");
+  const regionFilter = document.getElementById("region-filter");
+  const resetBtn = document.getElementById("reset-view");
 
-      function filterMap() {
-        const query = searchInput.value.trim().toLowerCase();
-        const region = regionFilter.value;
+  function filterMap() {
+    const query = searchInput.value.trim().toLowerCase();
+    const region = regionFilter.value;
 
-        allMarkers.forEach(marker => {
-          const d = marker.destinationData;
-          const nameMatch = d.name.toLowerCase().includes(query);
-          const regionMatch = (region === "all") || d.region === region;
+    allMarkers.forEach(marker => {
+      const d = marker.destinationData;
+      const nameMatch = d.name.toLowerCase().includes(query);
+      const regionMatch = (region === "all") || d.region === region;
 
-          if (nameMatch && regionMatch) marker.addTo(allLayerGroup);
-          else allLayerGroup.removeLayer(marker);
+      if (nameMatch && regionMatch) marker.addTo(allLayerGroup);
+      else allLayerGroup.removeLayer(marker);
+    });
+
+    if (allLayerGroup.getLayers().length > 0) {
+      const bounds = allLayerGroup.getBounds();
+      if (bounds.isValid()) {
+        map.fitBounds(bounds, {
+          padding: [30, 30]
         });
-
-   if (allLayerGroup.getLayers().length > 0) {
-  const bounds = allLayerGroup.getBounds();
-  if (bounds.isValid()) {
-    map.fitBounds(bounds, {
-      padding: [30, 30]
-    });
-  }
-}
-
-        updateIconCounts();
       }
+    }
 
-      searchInput.addEventListener("input", filterMap, { passive: true });
-      regionFilter.addEventListener("change", filterMap);
-      resetBtn.addEventListener("click", () => {
-        searchInput.value = "";
-        regionFilter.value = "all";
-        renderMap();
-      });
+    updateIconCounts();
+  }
 
-      renderMap();
-    });
+  searchInput.addEventListener("input", filterMap, { passive: true });
+  regionFilter.addEventListener("change", filterMap);
+  resetBtn.addEventListener("click", () => {
+    searchInput.value = "";
+    regionFilter.value = "all";
+    renderMap();
+  });
+
+  renderMap();
+});
 
     function updateOfflineBanner() {
       const banner = document.getElementById("offline-banner");
@@ -9346,7 +9351,7 @@ const map = L.map('map', {
         userInfo.textContent = `Signed in as: ${user.displayName}`;
         migrateBtn.style.display = (user.email === "kcco1996@gmail.com") ? "inline-block" : "none";
 
-        updateBarsLayout();
+        window.updateBarsLayout?.();
 
         let count = 0;
         try {
@@ -9374,7 +9379,7 @@ const map = L.map('map', {
         signOutBtn.style.display = "none";
         userInfo.textContent = "";
         migrateBtn.style.display = "none";
-        updateBarsLayout();
+      window.updateBarsLayout?.();
 
         const statusBox = document.getElementById("migration-status");
         if (statusBox) {

@@ -409,13 +409,19 @@
 </head>
 <body>
   <div class="page">
-    <div class="topbar">
-      <div class="title-wrap">
-        <h1>✈️ Flights Log</h1>
-        <p>Track the aircraft and airlines you’ve flown.</p>
-      </div>
-      <button class="btn secondary" onclick="goBack()">← Back to Holiday App</button>
-    </div>
+<div class="topbar">
+  <div class="title-wrap">
+    <h1>✈️ Flights Log</h1>
+    <p>Track the aircraft and airlines you’ve flown.</p>
+  </div>
+
+  <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+    <span id="user-info" style="color: var(--muted); font-size: 0.92rem;"></span>
+    <button id="sign-in-btn" class="btn secondary" type="button">Sign in with Google</button>
+    <button id="sign-out-btn" class="btn secondary" type="button" style="display:none;">Sign out</button>
+    <button class="btn secondary" onclick="goBack()">← Back to Holiday App</button>
+  </div>
+</div>
 
     <section class="stats">
       <div class="stat-card">
@@ -531,6 +537,79 @@
       </main>
     </div>
   </div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+  import {
+    doc,
+    setDoc,
+    getDoc,
+    initializeFirestore,
+    persistentLocalCache,
+    persistentMultipleTabManager
+  } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCAY-izVSAjouJjL960zS8xs84jaOZQBIo",
+    authDomain: "kieranholidaymap.firebaseapp.com",
+    projectId: "kieranholidaymap",
+    storageBucket: "kieranholidaymap.firebasestorage.app",
+    messagingSenderId: "733529027142",
+    appId: "1:733529027142:web:f1af423b12491a937dd047"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+
+  const db = initializeFirestore(app, {
+    experimentalForceLongPolling: true,
+    useFetchStreams: false,
+    localCache: persistentLocalCache({
+      tabManager: persistentMultipleTabManager()
+    })
+  });
+
+  const provider = new GoogleAuthProvider();
+
+  window.flightsAuth = auth;
+  window.flightsDB = db;
+  window.flightsDoc = doc;
+  window.flightsSetDoc = setDoc;
+  window.flightsGetDoc = getDoc;
+  window.flightsSignIn = () => signInWithPopup(auth, provider);
+  window.flightsSignOut = () => signOut(auth);
+
+  onAuthStateChanged(auth, async (user) => {
+    const signInBtn = document.getElementById("sign-in-btn");
+    const signOutBtn = document.getElementById("sign-out-btn");
+    const userInfo = document.getElementById("user-info");
+
+    if (user) {
+      if (signInBtn) signInBtn.style.display = "none";
+      if (signOutBtn) signOutBtn.style.display = "inline-block";
+      if (userInfo) userInfo.textContent = `Signed in as: ${user.displayName}`;
+
+      if (window.loadFlightsFromFirebase) {
+        await window.loadFlightsFromFirebase();
+      }
+    } else {
+      if (signInBtn) signInBtn.style.display = "inline-block";
+      if (signOutBtn) signOutBtn.style.display = "none";
+      if (userInfo) userInfo.textContent = "";
+    }
+  });
+
+  window.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("sign-in-btn")?.addEventListener("click", () => {
+      window.flightsSignIn?.();
+    });
+
+    document.getElementById("sign-out-btn")?.addEventListener("click", () => {
+      window.flightsSignOut?.();
+    });
+  });
+</script>
 
   <script>
     const STORAGE_KEY = "holidayApp.flights.v2";
@@ -953,9 +1032,71 @@
       }
     ];
 
-    let flights = loadFlights();
+let flights = loadFlights();
+let editingFlightId = null;
 
-    let editingFlightId = null;
+async function saveFlightsToFirebase() {
+  const user = window.flightsAuth?.currentUser;
+  const db = window.flightsDB;
+  const setDoc = window.flightsSetDoc;
+  const doc = window.flightsDoc;
+
+  if (!user || !db || !setDoc || !doc) return false;
+
+  try {
+    await setDoc(
+      doc(db, "users", user.uid, "appData", "flightsLog"),
+      {
+        flights,
+        updatedAt: Date.now()
+      },
+      { merge: true }
+    );
+    return true;
+  } catch (err) {
+    console.warn("Failed to save flights to Firebase:", err);
+    return false;
+  }
+}
+
+async function loadFlightsFromFirebase() {
+  const user = window.flightsAuth?.currentUser;
+  const db = window.flightsDB;
+  const getDoc = window.flightsGetDoc;
+  const doc = window.flightsDoc;
+
+  if (!user || !db || !getDoc || !doc) return false;
+
+  try {
+    const snap = await getDoc(doc(db, "users", user.uid, "appData", "flightsLog"));
+
+    if (snap.exists()) {
+      const data = snap.data();
+      if (Array.isArray(data.flights)) {
+        flights = data.flights;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(flights));
+        renderFlights();
+        return true;
+      }
+
+      if (flights.length) {
+  await saveFlightsToFirebase();
+}
+    }
+  } catch (err) {
+    console.warn("Failed to load flights from Firebase:", err);
+  }
+  
+
+  return false;
+}
+
+async function saveFlightsEverywhere() {
+  saveFlights();
+  await saveFlightsToFirebase();
+}
+
+window.loadFlightsFromFirebase = loadFlightsFromFirebase;
 
     function getAirlineTier(airline) {
       if (premiumElite.includes(airline)) return "elite";
@@ -1122,15 +1263,15 @@
       updateStats();
     }
 
-    function toggleFlown(id) {
-      flights = flights.map(flight =>
-        flight.id === id ? { ...flight, flown: !flight.flown } : flight
-      );
-      saveFlights();
-      renderFlights();
-    }
+async function toggleFlown(id) {
+  flights = flights.map(flight =>
+    flight.id === id ? { ...flight, flown: !flight.flown } : flight
+  );
+  await saveFlightsEverywhere();
+  renderFlights();
+}
 
- function deleteFlight(id) {
+async function deleteFlight(id) {
   flights = flights.filter(flight => flight.id !== id);
 
   if (editingFlightId === id) {
@@ -1143,8 +1284,9 @@
     if (submitBtn) submitBtn.textContent = "Add Flight";
   }
 
-  saveFlights();
+  await saveFlightsEverywhere();
   renderFlights();
+
 }
 
     function escapeHtml(str) {
@@ -1183,7 +1325,7 @@
       window.location.href = "index.html";
     }
 
-    document.getElementById("flightForm").addEventListener("submit", function (e) {
+document.getElementById("flightForm").addEventListener("submit", async function (e) {
   e.preventDefault();
 
   const airline = document.getElementById("airline").value.trim();
@@ -1226,7 +1368,7 @@
     });
   }
 
-  saveFlights();
+  await saveFlightsEverywhere();
   renderFlights();
   this.reset();
   document.getElementById("airline").selectedIndex = 0;

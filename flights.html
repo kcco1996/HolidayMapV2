@@ -614,50 +614,56 @@
   <script>
     const STORAGE_KEY = "holidayApp.flights.v2";
 
-    const airlineOrder = [
-      "Qatar Airways",
-      "Singapore Airlines",
-      "Cathay Pacific",
-      "Emirates",
-      "Etihad Airways",
-      "EVA Air",
-      "ANA",
-      "Japan Airlines",
-      "Qantas",
-      "Air New Zealand",
-      "Air France",
-      "Lufthansa",
-      "British Airways",
-      "Turkish Airlines",
-      "KLM",
-      "Swiss International Air Lines",
-      "Finnair",
-      "Virgin Atlantic",
-      "Korean Air",
-      "Thai Airways",
-      "Malaysia Airlines",
-      "Saudia",
-      "Vietnam Airlines",
-      "Garuda Indonesia",
-      "United Airlines",
-      "Delta Air Lines",
-      "American Airlines",
-      "Air Canada",
-      "LATAM Airlines",
-      "Aeroméxico",
-      "Ethiopian Airlines",
-      "Iberia",
-      "SAS",
-      "TAP Air Portugal",
-      "Royal Air Maroc",
-      "Avianca",
-      "Kenya Airways",
-      "TUI",
-      "Jet2",
-      "easyJet",
-      "Ryanair",
-      "Wizz Air"
-    ];
+   const airlineOrder = [
+  "Qatar Airways",
+  "Singapore Airlines",
+  "Cathay Pacific",
+  "Emirates",
+  "Etihad Airways",
+  "EVA Air",
+  "ANA",
+  "Japan Airlines",
+  "Qantas",
+  "Air New Zealand",
+  "Turkish Airlines",
+  "Korean Air",
+  "Swiss International Air Lines",
+  "Virgin Atlantic",
+  "Air France",
+  "Lufthansa",
+  "British Airways",
+  "KLM",
+  "Finnair",
+  "Thai Airways",
+  "Malaysia Airlines",
+  "Saudia",
+  "Vietnam Airlines",
+  "Garuda Indonesia",
+  "Iberia",
+  "SAS",
+  "TAP Air Portugal",
+  "Air India",
+  "Austrian Airlines",
+  "LOT Polish Airlines",
+  "United Airlines",
+  "Delta Air Lines",
+  "American Airlines",
+  "Air Canada",
+  "LATAM Airlines",
+  "Aeroméxico",
+  "Ethiopian Airlines",
+  "Royal Air Maroc",
+  "Kenya Airways",
+  "Avianca",
+  "EgyptAir",
+  "Southwest Airlines",
+  "Jet2",
+  "TUI",
+  "easyJet",
+  "Ryanair",
+  "Wizz Air",
+  "Vueling"
+];
 
     const airlines = {
       "Qatar Airways": {
@@ -959,6 +965,49 @@
         accent: "#ffd1e8"
       },
 
+            "Air India": {
+        logo: "assets/airlines/air-india.png",
+        bg: "#7f1d1d",
+        banner: "#b91c1c",
+        text: "#ffffff",
+        accent: "#fcd34d"
+      },
+      "Austrian Airlines": {
+        logo: "assets/airlines/austrian-airlines.png",
+        bg: "#b91c1c",
+        banner: "#dc2626",
+        text: "#ffffff",
+        accent: "#fee2e2"
+      },
+      "LOT Polish Airlines": {
+        logo: "assets/airlines/lot-polish-airlines.png",
+        bg: "#1e3a8a",
+        banner: "#2563eb",
+        text: "#ffffff",
+        accent: "#dbeafe"
+      },
+      "EgyptAir": {
+        logo: "assets/airlines/egyptair.png",
+        bg: "#0f3d7a",
+        banner: "#1851a6",
+        text: "#ffffff",
+        accent: "#cbd5e1"
+      },
+      "Southwest Airlines": {
+        logo: "assets/airlines/southwest-airlines.png",
+        bg: "#1d4ed8",
+        banner: "#2563eb",
+        text: "#ffffff",
+        accent: "#fbbf24"
+      },
+      "Vueling": {
+        logo: "assets/airlines/vueling.png",
+        bg: "#111827",
+        banner: "#1f2937",
+        text: "#ffffff",
+        accent: "#facc15"
+      },
+
       "default": {
         logo: "assets/airlines/default.png",
         bg: "#1f2937",
@@ -969,58 +1018,64 @@
     };
 
     const premiumElite = [
-      "Qatar Airways",
-      "Singapore Airlines",
-      "Cathay Pacific",
-      "Emirates",
-      "Etihad Airways",
-      "EVA Air",
-      "ANA",
-      "Japan Airlines",
-      "Qantas",
-      "Air New Zealand"
-    ];
+  "Qatar Airways",
+  "Singapore Airlines",
+  "Cathay Pacific",
+  "Emirates",
+  "Etihad Airways",
+  "EVA Air",
+  "ANA",
+  "Japan Airlines",
+  "Qantas",
+  "Air New Zealand",
+  "Turkish Airlines",
+  "Korean Air",
+  "Swiss International Air Lines",
+  "Virgin Atlantic"
+];
 
-    const mediumHigher = [
-      "Air France",
-      "Lufthansa",
-      "British Airways",
-      "Turkish Airlines",
-      "KLM",
-      "Swiss International Air Lines",
-      "Finnair",
-      "Virgin Atlantic",
-      "Korean Air",
-      "Thai Airways",
-      "Malaysia Airlines",
-      "Saudia",
-      "Vietnam Airlines",
-      "Garuda Indonesia"
-    ];
+const mediumHigher = [
+  "Air France",
+  "Lufthansa",
+  "British Airways",
+  "KLM",
+  "Finnair",
+  "Thai Airways",
+  "Malaysia Airlines",
+  "Saudia",
+  "Vietnam Airlines",
+  "Garuda Indonesia",
+  "Iberia",
+  "SAS",
+  "TAP Air Portugal",
+  "Air India",
+  "Austrian Airlines",
+  "LOT Polish Airlines"
+];
 
-    const mediumLower = [
-      "United Airlines",
-      "Delta Air Lines",
-      "American Airlines",
-      "Air Canada",
-      "LATAM Airlines",
-      "Aeroméxico",
-      "Ethiopian Airlines",
-      "Iberia",
-      "SAS",
-      "TAP Air Portugal",
-      "Royal Air Maroc",
-      "Kenya Airways",
-      "Avianca"
-    ];
+const mediumLower = [
+  "United Airlines",
+  "Delta Air Lines",
+  "American Airlines",
+  "Air Canada",
+  "LATAM Airlines",
+  "Aeroméxico",
+  "Ethiopian Airlines",
+  "Royal Air Maroc",
+  "Kenya Airways",
+  "Avianca",
+  "EgyptAir",
+  "Southwest Airlines"
+];
 
-    const budget = [
-      "Jet2",
-      "TUI",
-      "easyJet",
-      "Ryanair",
-      "Wizz Air"
-    ];
+const budget = [
+  "Jet2",
+  "TUI",
+  "easyJet",
+  "Ryanair",
+  "Wizz Air",
+  "Vueling"
+];
 
     const defaultFlights = [
       {

@@ -1289,96 +1289,82 @@ window.loadFlightsFromFirebase = loadFlightsFromFirebase;
       `;
     }
 
-    function renderFlights() {
-      const elite = document.getElementById("eliteCards");
-      const higher = document.getElementById("higherCards");
-      const lower = document.getElementById("lowerCards");
-      const budgetBox = document.getElementById("budgetCards");
+   function renderFlights() {
+  const elite = document.getElementById("eliteCards");
+  const higher = document.getElementById("higherCards");
+  const lower = document.getElementById("lowerCards");
+  const budgetBox = document.getElementById("budgetCards");
 
-      elite.innerHTML = "";
-      higher.innerHTML = "";
-      lower.innerHTML = "";
-      budgetBox.innerHTML = "";
+  elite.innerHTML = "";
+  higher.innerHTML = "";
+  lower.innerHTML = "";
+  budgetBox.innerHTML = "";
 
-      let eliteTotal = 0;
-      let higherTotal = 0;
-      let lowerTotal = 0;
-      let budgetTotal = 0;
+  let eliteTotal = 0;
+  let higherTotal = 0;
+  let lowerTotal = 0;
+  let budgetTotal = 0;
 
-      if (!flights.length) {
-        elite.innerHTML = `<div class="empty-tier">No flights added yet.</div>`;
-        document.getElementById("eliteCount").textContent = 0;
-        document.getElementById("higherCount").textContent = 0;
-        document.getElementById("lowerCount").textContent = 0;
-        document.getElementById("budgetCount").textContent = 0;
-        updateStats();
-        return;
-      }
-
-      flights.forEach(flight => {
-        const cardHtml = createFlightCard(flight);
-        const tier = getAirlineTier(flight.airline);
-
-        if (tier === "elite") {
-          elite.innerHTML += cardHtml;
-          eliteTotal++;
-        } else if (tier === "higher") {
-          higher.innerHTML += cardHtml;
-          higherTotal++;
-        } else if (tier === "budget") {
-          budgetBox.innerHTML += cardHtml;
-          budgetTotal++;
-        } else {
-          lower.innerHTML += cardHtml;
-          lowerTotal++;
-        }
-      });
-
-      document.getElementById("eliteCount").textContent = eliteTotal;
-      document.getElementById("higherCount").textContent = higherTotal;
-      document.getElementById("lowerCount").textContent = lowerTotal;
-      document.getElementById("budgetCount").textContent = budgetTotal;
-
-      if (!eliteTotal) {
-        elite.innerHTML = `<div class="empty-tier">No premium elite airline cards yet.</div>`;
-      }
-      if (!higherTotal) {
-        higher.innerHTML = `<div class="empty-tier">No medium higher airline cards yet.</div>`;
-      }
-      if (!lowerTotal) {
-        lower.innerHTML = `<div class="empty-tier">No medium lower airline cards yet.</div>`;
-      }
-      if (!budgetTotal) {
-        budgetBox.innerHTML = `<div class="empty-tier">No budget airline cards yet.</div>`;
-      }
-
-      updateStats();
-    }
-
-async function toggleFlown(id) {
-  flights = flights.map(flight =>
-    flight.id === id ? { ...flight, flown: !flight.flown } : flight
-  );
-  await saveFlightsEverywhere();
-  renderFlights();
-}
-
-async function deleteFlight(id) {
-  flights = flights.filter(flight => flight.id !== id);
-
-  if (editingFlightId === id) {
-    editingFlightId = null;
-    const form = document.getElementById("flightForm");
-    form.reset();
-    document.getElementById("airline").selectedIndex = 0;
-
-    const submitBtn = document.querySelector('#flightForm button[type="submit"]');
-    if (submitBtn) submitBtn.textContent = "Add Flight";
+  if (!flights.length) {
+    elite.innerHTML = `<div class="empty-tier">No flights added yet.</div>`;
+    document.getElementById("eliteCount").textContent = 0;
+    document.getElementById("higherCount").textContent = 0;
+    document.getElementById("lowerCount").textContent = 0;
+    document.getElementById("budgetCount").textContent = 0;
+    updateStats();
+    return;
   }
 
-  await saveFlightsEverywhere();
-  renderFlights();
+  const sortedFlights = [...flights].sort((a, b) => {
+    const aIndex = airlineOrder.indexOf(a.airline);
+    const bIndex = airlineOrder.indexOf(b.airline);
 
+    const safeA = aIndex === -1 ? 9999 : aIndex;
+    const safeB = bIndex === -1 ? 9999 : bIndex;
+
+    if (safeA !== safeB) return safeA - safeB;
+
+    return (a.model || "").localeCompare(b.model || "");
+  });
+
+  sortedFlights.forEach(flight => {
+    const cardHtml = createFlightCard(flight);
+    const tier = getAirlineTier(flight.airline);
+
+    if (tier === "elite") {
+      elite.innerHTML += cardHtml;
+      eliteTotal++;
+    } else if (tier === "higher") {
+      higher.innerHTML += cardHtml;
+      higherTotal++;
+    } else if (tier === "budget") {
+      budgetBox.innerHTML += cardHtml;
+      budgetTotal++;
+    } else {
+      lower.innerHTML += cardHtml;
+      lowerTotal++;
+    }
+  });
+
+  document.getElementById("eliteCount").textContent = eliteTotal;
+  document.getElementById("higherCount").textContent = higherTotal;
+  document.getElementById("lowerCount").textContent = lowerTotal;
+  document.getElementById("budgetCount").textContent = budgetTotal;
+
+  if (!eliteTotal) {
+    elite.innerHTML = `<div class="empty-tier">No premium elite airline cards yet.</div>`;
+  }
+  if (!higherTotal) {
+    higher.innerHTML = `<div class="empty-tier">No medium higher airline cards yet.</div>`;
+  }
+  if (!lowerTotal) {
+    lower.innerHTML = `<div class="empty-tier">No medium lower airline cards yet.</div>`;
+  }
+  if (!budgetTotal) {
+    budgetBox.innerHTML = `<div class="empty-tier">No budget airline cards yet.</div>`;
+  }
+
+  updateStats();
 }
 
     function escapeHtml(str) {

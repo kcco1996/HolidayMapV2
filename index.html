@@ -9113,11 +9113,14 @@ const map = L.map('map', {
 });
 
     const cartoAttr = '&copy; OpenStreetMap contributors, &copy; CARTO';
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      maxZoom: 20,
-      subdomains: 'abcd',
-      attribution: cartoAttr
-    }).addTo(map);
+L.tileLayer(
+  'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+  {
+    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+    subdomains: 'abcd',
+    maxZoom: 20
+  }
+).addTo(map);
 
     let allMarkers = [];
     let allLayerGroup;

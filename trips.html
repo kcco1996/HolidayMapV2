@@ -562,23 +562,42 @@
             <div class="brand">
                 ✈ KIERAN TRAVEL CONTROL
             </div>
+<nav class="nav">
+    <a href="index.html">
+        🗺 <span class="label">MAP</span>
+    </a>
 
-            <nav class="nav">
-                <a href="index.html">
-                    🗺 <span class="label">MAP</span>
-                </a>
+    <a href="trips.html">
+        🛫 <span class="label">TRIPS</span>
+    </a>
 
-                <a href="trips.html">
-                    🛫 <span class="label">TRIPS</span>
-                </a>
+    <a href="flights.html">
+        ✈ <span class="label">FLIGHTS</span>
+    </a>
 
-                <a href="flights.html">
-                    ✈ <span class="label">FLIGHTS</span>
-                </a>
-            </nav>
-        </div>
-    </header>
+    <button
+        class="btn"
+        id="googleSignIn"
+        type="button"
+    >
+        GOOGLE SIGN IN
+    </button>
 
+    <button
+        class="btn"
+        id="googleSignOut"
+        type="button"
+        style="display:none"
+    >
+        SIGN OUT
+    </button>
+
+    <span
+        id="firebaseUser"
+        class="notice"
+        style="align-self:center"
+    ></span>
+</nav>
 
     <!-- =========================================================
          MAIN
@@ -1100,8 +1119,14 @@ function loadCompletedDestinations() {
 function persistCompletedDestinations() {
     localStorage.setItem(
         COMPLETED_STORE,
-        JSON.stringify([...completedDestinations])
+        JSON.stringify(
+            [...completedDestinations]
+        )
     );
+
+    if (window.syncTripsToFirebase) {
+        window.syncTripsToFirebase();
+    }
 }
 
 let completedDestinations = loadCompletedDestinations();
@@ -1127,13 +1152,16 @@ function isDestinationComplete(name) {
         }
 
 
-        function persistTrips() {
-            localStorage.setItem(
-                STORE,
-                JSON.stringify(trips)
-            );
-        }
+  function persistTrips() {
+    localStorage.setItem(
+        STORE,
+        JSON.stringify(trips)
+    );
 
+    if (window.syncTripsToFirebase) {
+        window.syncTripsToFirebase();
+    }
+}
 
         function loadDestinationLocks() {
             try {
@@ -1150,12 +1178,18 @@ function isDestinationComplete(name) {
         }
 
 
-        function persistDestinationLocks() {
-            localStorage.setItem(
-                DESTINATION_LOCK_STORE,
-                JSON.stringify([...lockedDestinations])
-            );
-        }
+  function persistDestinationLocks() {
+    localStorage.setItem(
+        DESTINATION_LOCK_STORE,
+        JSON.stringify(
+            [...lockedDestinations]
+        )
+    );
+
+    if (window.syncTripsToFirebase) {
+        window.syncTripsToFirebase();
+    }
+}
 
 
         function isDestinationLocked(name) {
@@ -1947,9 +1981,584 @@ function renderStats() {
         /* =========================================================
            INITIAL RENDER
         ========================================================= */
-
         renderAll();
+    </script>
+
+
+    <!-- =========================================================
+         FIREBASE / GOOGLE ACCOUNT SYNC
+    ========================================================== -->
+
+    <script type="module">
+
+        import {
+            initializeApp
+        } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+
+        import {
+            getAuth,
+            GoogleAuthProvider,
+            signInWithPopup,
+            signOut,
+            onAuthStateChanged
+        } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+
+        import {
+            getFirestore,
+            doc,
+            getDoc,
+            setDoc,
+            serverTimestamp
+        } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+
+        /* =========================================================
+           FIREBASE CONFIG
+        ========================================================= */
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCAY-izVSAjouJjL960zS8xs84jaOZQBIo",
+            authDomain: "kieranholidaymap.firebaseapp.com",
+            projectId: "kieranholidaymap",
+            storageBucket: "kieranholidaymap.firebasestorage.app",
+            messagingSenderId: "733529027142",
+            appId: "1:733529027142:web:f1af423b12491a937dd047"
+        };
+
+
+        /* =========================================================
+           FIREBASE STARTUP
+        ========================================================= */
+
+        const firebaseApp =
+            initializeApp(firebaseConfig);
+
+        const auth =
+            getAuth(firebaseApp);
+
+        const db =
+            getFirestore(firebaseApp);
+
+        const googleProvider =
+            new GoogleAuthProvider();
+
+
+        /* =========================================================
+           PAGE CONTROLS
+        ========================================================= */
+
+        const googleSignIn =
+            document.getElementById(
+                "googleSignIn"
+            );
+
+        const googleSignOut =
+            document.getElementById(
+                "googleSignOut"
+            );
+
+        const firebaseUser =
+            document.getElementById(
+                "firebaseUser"
+            );
+
+
+        /* =========================================================
+           EXISTING LOCAL STORAGE KEYS
+        ========================================================= */
+
+        const FIREBASE_TRIP_STORE =
+            "kieranTripDepartureBoard:v1";
+
+        const FIREBASE_COMPLETED_STORE =
+            "kieranCompletedDestinations:v1";
+
+        const FIREBASE_LOCK_STORE =
+            "kieranDestinationLocks:v1";
+
+
+        /* =========================================================
+           FIRESTORE LOCATION
+
+           users
+             UID
+               tripBoard
+                 data
+        ========================================================= */
+
+        function getTripBoardRef(uid) {
+            return doc(
+                db,
+                "users",
+                uid,
+                "tripBoard",
+                "data"
+            );
+        }
+
+
+        /* =========================================================
+           READ CURRENT LOCAL DATA
+        ========================================================= */
+
+        function readLocalJSON(
+            key,
+            fallback
+        ) {
+            try {
+                const value =
+                    localStorage.getItem(key);
+
+                if (value === null) {
+                    return fallback;
+                }
+
+                return JSON.parse(value);
+
+            } catch (error) {
+                console.error(
+                    "Could not read local data:",
+                    key,
+                    error
+                );
+
+                return fallback;
+            }
+        }
+
+
+        function getLocalTripBoardData() {
+            return {
+                trips:
+                    readLocalJSON(
+                        FIREBASE_TRIP_STORE,
+                        []
+                    ),
+
+                completedDestinations:
+                    readLocalJSON(
+                        FIREBASE_COMPLETED_STORE,
+                        []
+                    ),
+
+                lockedDestinations:
+                    readLocalJSON(
+                        FIREBASE_LOCK_STORE,
+                        []
+                    )
+            };
+        }
+
+
+        /* =========================================================
+           SAVE CURRENT PAGE TO FIREBASE
+        ========================================================= */
+
+        let firebaseSaveTimer = null;
+
+        let loadingFirebaseData = false;
+
+
+        async function saveTripBoardToFirebase() {
+
+            const user =
+                auth.currentUser;
+
+            if (
+                !user ||
+                loadingFirebaseData
+            ) {
+                return;
+            }
+
+
+            const localData =
+                getLocalTripBoardData();
+
+
+            try {
+
+                await setDoc(
+                    getTripBoardRef(user.uid),
+                    {
+                        trips:
+                            localData.trips,
+
+                        completedDestinations:
+                            localData.completedDestinations,
+
+                        lockedDestinations:
+                            localData.lockedDestinations,
+
+                        updatedAt:
+                            serverTimestamp()
+                    },
+                    {
+                        merge: true
+                    }
+                );
+
+
+                firebaseUser.textContent =
+                    `☁ SAVED · ${user.email}`;
+
+            } catch (error) {
+
+                console.error(
+                    "Firebase save failed:",
+                    error
+                );
+
+                firebaseUser.textContent =
+                    "⚠ FIREBASE SAVE FAILED";
+            }
+        }
+
+
+        function queueFirebaseSave() {
+
+            if (
+                !auth.currentUser ||
+                loadingFirebaseData
+            ) {
+                return;
+            }
+
+
+            firebaseUser.textContent =
+                "☁ SAVING...";
+
+
+            clearTimeout(
+                firebaseSaveTimer
+            );
+
+
+            firebaseSaveTimer =
+                setTimeout(
+                    saveTripBoardToFirebase,
+                    350
+                );
+        }
+
+
+        /* =========================================================
+           LOAD FIREBASE DATA
+        ========================================================= */
+
+        async function loadTripBoardFromFirebase(
+            user
+        ) {
+
+            firebaseUser.textContent =
+                "☁ LOADING...";
+
+
+            try {
+
+                const reference =
+                    getTripBoardRef(
+                        user.uid
+                    );
+
+                const snapshot =
+                    await getDoc(
+                        reference
+                    );
+
+
+                /*
+                    No cloud copy exists yet.
+
+                    This means this is the first
+                    time Trips has been connected
+                    to Firebase.
+
+                    Upload the existing local data
+                    rather than deleting it.
+                */
+
+                if (!snapshot.exists()) {
+
+                    await saveTripBoardToFirebase();
+
+                    firebaseUser.textContent =
+                        `☁ SYNCED · ${user.email}`;
+
+                    return;
+                }
+
+
+                const cloud =
+                    snapshot.data();
+
+
+                loadingFirebaseData =
+                    true;
+
+
+                /*
+                    Replace localStorage with
+                    the user's Firebase copy.
+                */
+
+                if (
+                    Array.isArray(
+                        cloud.trips
+                    )
+                ) {
+                    localStorage.setItem(
+                        FIREBASE_TRIP_STORE,
+                        JSON.stringify(
+                            cloud.trips
+                        )
+                    );
+                }
+
+
+                if (
+                    Array.isArray(
+                        cloud.completedDestinations
+                    )
+                ) {
+                    localStorage.setItem(
+                        FIREBASE_COMPLETED_STORE,
+                        JSON.stringify(
+                            cloud.completedDestinations
+                        )
+                    );
+                }
+
+
+                if (
+                    Array.isArray(
+                        cloud.lockedDestinations
+                    )
+                ) {
+                    localStorage.setItem(
+                        FIREBASE_LOCK_STORE,
+                        JSON.stringify(
+                            cloud.lockedDestinations
+                        )
+                    );
+                }
+
+
+                /*
+                    Reload once so your existing
+                    Trips JavaScript reads the
+                    Firebase values through the
+                    functions you already have.
+                */
+
+                sessionStorage.setItem(
+                    "kieranTripsFirebaseLoaded",
+                    user.uid
+                );
+
+
+                window.location.reload();
+
+
+            } catch (error) {
+
+                loadingFirebaseData =
+                    false;
+
+                console.error(
+                    "Firebase load failed:",
+                    error
+                );
+
+                firebaseUser.textContent =
+                    "⚠ FIREBASE LOAD FAILED";
+            }
+        }
+
+
+        /* =========================================================
+           GOOGLE SIGN IN
+        ========================================================= */
+
+        googleSignIn.addEventListener(
+            "click",
+            async () => {
+
+                try {
+
+                    await signInWithPopup(
+                        auth,
+                        googleProvider
+                    );
+
+                } catch (error) {
+
+                    console.error(
+                        "Google sign in failed:",
+                        error
+                    );
+
+                    alert(
+                        "Google sign in failed. Check the browser console for details."
+                    );
+                }
+            }
+        );
+
+
+        /* =========================================================
+           GOOGLE SIGN OUT
+        ========================================================= */
+
+        googleSignOut.addEventListener(
+            "click",
+            async () => {
+
+                try {
+
+                    sessionStorage.removeItem(
+                        "kieranTripsFirebaseLoaded"
+                    );
+
+                    await signOut(auth);
+
+                } catch (error) {
+
+                    console.error(
+                        "Sign out failed:",
+                        error
+                    );
+                }
+            }
+        );
+
+
+        /* =========================================================
+           AUTH STATE
+        ========================================================= */
+
+        onAuthStateChanged(
+            auth,
+            async user => {
+
+                if (!user) {
+
+                    googleSignIn.style.display =
+                        "";
+
+                    googleSignOut.style.display =
+                        "none";
+
+                    firebaseUser.textContent =
+                        "LOCAL ONLY";
+
+                    sessionStorage.removeItem(
+                        "kieranTripsFirebaseLoaded"
+                    );
+
+                    return;
+                }
+
+
+                googleSignIn.style.display =
+                    "none";
+
+                googleSignOut.style.display =
+                    "";
+
+                firebaseUser.textContent =
+                    `☁ ${user.email}`;
+
+
+                /*
+                    Have we already loaded Firebase
+                    during this page session?
+
+                    This prevents an endless
+                    reload loop.
+                */
+
+                const loadedUid =
+                    sessionStorage.getItem(
+                        "kieranTripsFirebaseLoaded"
+                    );
+
+
+                if (
+                    loadedUid !== user.uid
+                ) {
+
+                    await loadTripBoardFromFirebase(
+                        user
+                    );
+
+                    return;
+                }
+
+
+                firebaseUser.textContent =
+                    `☁ SYNCED · ${user.email}`;
+            }
+        );
+
+
+        /* =========================================================
+           WATCH YOUR EXISTING LOCALSTORAGE SAVES
+
+           Your current page already calls
+           localStorage.setItem() whenever trips,
+           completed destinations or locks change.
+
+           This intercepts those existing saves
+           and sends the new data to Firebase too.
+        ========================================================= */
+
+        const originalSetItem =
+            Storage.prototype.setItem;
+
+
+        Storage.prototype.setItem =
+            function(
+                key,
+                value
+            ) {
+
+                originalSetItem.call(
+                    this,
+                    key,
+                    value
+                );
+
+
+                if (
+                    this !== localStorage
+                ) {
+                    return;
+                }
+
+
+                if (
+                    key === FIREBASE_TRIP_STORE ||
+                    key === FIREBASE_COMPLETED_STORE ||
+                    key === FIREBASE_LOCK_STORE
+                ) {
+                    queueFirebaseSave();
+                }
+            };
+
+
+        /* =========================================================
+           MANUAL SYNC EVENT
+
+           Gives the normal script another way
+           to request a Firebase save if needed.
+        ========================================================= */
+
+        window.syncTripsToFirebase =
+            queueFirebaseSave;
+
     </script>
 
 </body>
 </html>
+

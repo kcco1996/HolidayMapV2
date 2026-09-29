@@ -1,2564 +1,1930 @@
 <!doctype html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1, viewport-fit=cover"
-    >
-
-    <title>Kieran's Trip Departures</title>
-
-    <style>
-        /* =========================================================
-           BASE
-        ========================================================= */
-
-        * {
-            box-sizing: border-box;
-        }
-
-        :root {
-            --bg: #07111d;
-            --panel: #0d1b2a;
-            --panel2: #112438;
-            --line: #29435c;
-            --amber: #ffb000;
-            --green: #39d98a;
-            --red: #ff6577;
-            --blue: #4da3ff;
-            --text: #f4f7fb;
-            --muted: #9eb0c2;
-        }
-
-        body {
-            margin: 0;
-            min-height: 100vh;
-            background: radial-gradient(
-                circle at top,
-                #14283d 0,
-                #07111d 42%
-            );
-            color: var(--text);
-            font-family:
-                ui-monospace,
-                SFMono-Regular,
-                Consolas,
-                "Liberation Mono",
-                monospace;
-        }
-
-
-        /* =========================================================
-           HEADER
-        ========================================================= */
-
-        .top {
-            position: sticky;
-            top: 0;
-            z-index: 20;
-            background: rgba(5, 13, 22, 0.95);
-            border-bottom: 1px solid var(--line);
-            backdrop-filter: blur(12px);
-        }
-
-        .topin {
-            max-width: 1500px;
-            margin: auto;
-            padding: 14px 18px;
-            display: flex;
-            gap: 12px;
-            align-items: center;
-        }
-
-        .brand {
-            font-weight: 900;
-            letter-spacing: 0.12em;
-        }
-
-        .nav {
-            margin-left: auto;
-            display: flex;
-            gap: 8px;
-        }
-
-        .btn,
-        .nav a {
-            border: 1px solid var(--line);
-            background: #102236;
-            color: var(--text);
-            padding: 9px 12px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: 800;
-        }
-
-        .btn {
-            font-family: inherit;
-            cursor: pointer;
-        }
-
-        .btn:hover,
-        .nav a:hover {
-            border-color: var(--amber);
-        }
-
-        .btn.primary {
-            background: var(--amber);
-            color: #161008;
-            border-color: var(--amber);
-        }
-
-        .btn.danger {
-            border-color: #7d3540;
-            color: #ff9ca8;
-        }
-
-        .btn.green {
-            border-color: #267d59;
-            color: #7ef0b7;
-        }
-
-
-        /* =========================================================
-           PAGE
-        ========================================================= */
-
-        .wrap {
-            max-width: 1500px;
-            margin: auto;
-            padding: 24px 18px 60px;
-        }
-
-        .hero {
-            display: flex;
-            justify-content: space-between;
-            gap: 20px;
-            align-items: end;
-            margin-bottom: 18px;
-        }
-
-        .hero h1 {
-            margin: 0;
-            font-size: clamp(28px, 4vw, 50px);
-            letter-spacing: 0.05em;
-        }
-
-        .hero p {
-            color: var(--muted);
-            margin: 7px 0 0;
-        }
-
-        .clock {
-            font-size: 26px;
-            color: var(--amber);
-            font-weight: 900;
-        }
-
-
-        /* =========================================================
-           STATS
-        ========================================================= */
-
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-            margin: 16px 0;
-        }
-
-        .stat {
-            background: #0b1826;
-            border: 1px solid var(--line);
-            padding: 13px;
-        }
-
-        .stat b {
-            display: block;
-            font-size: 24px;
-            color: var(--amber);
-        }
-
-        .stat span {
-            font-size: 11px;
-            color: var(--muted);
-            letter-spacing: 0.1em;
-        }
-
-
-        /* =========================================================
-           MAIN LAYOUT
-        ========================================================= */
-
-        .layout {
-            display: grid;
-            grid-template-columns:
-                minmax(0, 1.65fr)
-                minmax(330px, 0.75fr);
-            gap: 16px;
-        }
-
-        .side {
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-        }
-
-        .panel {
-            background: #0a1724;
-            border: 1px solid var(--line);
-            padding: 15px;
-        }
-
-        .panel h2 {
-            margin: 0 0 12px;
-            font-size: 16px;
-            color: var(--amber);
-            letter-spacing: 0.08em;
-        }
-
-
-        /* =========================================================
-           TOOLBAR
-        ========================================================= */
-
-        .toolbar {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            margin: 14px 0;
-        }
-
-        .toolbar input,
-        .toolbar select,
-        .form input,
-        .form textarea,
-        .form select {
-            background: #091725;
-            border: 1px solid var(--line);
-            color: var(--text);
-            padding: 10px;
-            border-radius: 5px;
-            font-family: inherit;
-        }
-
-        .toolbar input {
-            flex: 1;
-            min-width: 220px;
-        }
-
-        .toolbar select {
-            min-width: 150px;
-        }
-
-
-        /* =========================================================
-           DEPARTURE BOARD
-        ========================================================= */
-
-        .board {
-            border: 1px solid var(--line);
-            background: #081522;
-            box-shadow: 0 16px 45px #0006;
-        }
-
-        .boardhead,
-        .row {
-            display: grid;
-            grid-template-columns:
-                44px
-                minmax(150px, 1.4fr)
-                130px
-                110px
-                minmax(190px, 1.8fr)
-                110px;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .boardhead {
-            padding: 10px 12px;
-            background: #152b41;
-            color: #9fb4c8;
-            font-size: 11px;
-            letter-spacing: 0.12em;
-        }
-
-        .row {
-            padding: 9px 12px;
-            border-top: 1px solid #1b344c;
-            min-height: 52px;
-        }
-
-        .row:hover {
-            background: #0f2234;
-        }
-
-        .row.selected {
-            background: #182d3c;
-            box-shadow: inset 4px 0 var(--amber);
-        }
-
-        .check {
-            width: 20px;
-            height: 20px;
-            accent-color: var(--amber);
-        }
-
-        .check:disabled {
-            opacity: 0.25;
-            cursor: not-allowed;
-        }
-
-        .dest {
-            font-size: 15px;
-            font-weight: 900;
-        }
-
-        .sub {
-            font-size: 11px;
-            color: var(--muted);
-            margin-top: 3px;
-        }
-
-        .status {
-            display: inline-block;
-            padding: 5px 7px;
-            border-radius: 3px;
-            font-size: 11px;
-            font-weight: 900;
-            letter-spacing: 0.06em;
-        }
-
-        .done {
-            background: #123c2c;
-            color: #68e5a8;
-        }
-
-        .todo {
-            background: #40242a;
-            color: #ff9ca8;
-        }
-
-        .region {
-            text-transform: uppercase;
-            color: #bfd0df;
-            font-size: 12px;
-        }
-
-        .dest-lock {
-            border: 1px solid #267d59;
-            background: #102236;
-            color: #7ef0b7;
-            padding: 5px 7px;
-            border-radius: 3px;
-            font-family: inherit;
-            font-size: 10px;
-            font-weight: 900;
-            cursor: pointer;
-            white-space: nowrap;
-            margin-top: 5px;
-        }
-
-        .dest-lock:hover {
-            border-color: var(--amber);
-            color: var(--amber);
-        }
-
-        .dest-lock.locked {
-            border-color: #7d6223;
-            color: var(--amber);
-            background: #211c10;
-        }
-
-
-        /* =========================================================
-           TRIP FORM
-        ========================================================= */
-
-        .form {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 9px;
-        }
-
-        .form label {
-            font-size: 10px;
-            color: var(--muted);
-            letter-spacing: 0.08em;
-        }
-
-        .field {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-
-        .field.full {
-            grid-column: 1 / -1;
-        }
-
-        .form textarea {
-            min-height: 70px;
-            resize: vertical;
-        }
-
-        .selectedlist {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-        }
-
-        .chip {
-            background: #13283a;
-            border: 1px solid #31516e;
-            padding: 6px 8px;
-            border-radius: 3px;
-            font-size: 11px;
-        }
-
-
-        /* =========================================================
-           SAVED TRIPS
-        ========================================================= */
-
-        .trip {
-            border: 1px solid var(--line);
-            background: #0b1927;
-            margin-top: 9px;
-        }
-
-        .trip.locked {
-            border-color: #7d6223;
-        }
-
-        .triptop {
-            padding: 11px;
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            background: #102338;
-        }
-
-        .triptitle {
-            font-weight: 900;
-            flex: 1;
-        }
-
-        .lock {
-            color: var(--amber);
-        }
-
-        .tripbody {
-            padding: 11px;
-            color: #b7c6d4;
-            font-size: 12px;
-            line-height: 1.55;
-        }
-
-        .triproute {
-            color: var(--text);
-            font-weight: 800;
-            margin-bottom: 7px;
-        }
-
-        .tripactions {
-            display: flex;
-            gap: 6px;
-            flex-wrap: wrap;
-            margin-top: 10px;
-        }
-
-        .tiny {
-            font-size: 10px;
-            padding: 6px 8px;
-        }
-
-        .notice {
-            font-size: 11px;
-            color: var(--muted);
-            line-height: 1.5;
-        }
-
-        .empty {
-            padding: 30px;
-            text-align: center;
-            color: var(--muted);
-        }
-
-        .selected-heading {
-            margin-top: 16px !important;
-        }
-
-        .save-area {
-            margin-top: 14px;
-        }
-
-        .trip-summary {
-            margin-top: 7px;
-        }
-
-
-        /* =========================================================
-           RESPONSIVE
-        ========================================================= */
-
-        @media (max-width: 1000px) {
-            .layout {
-                grid-template-columns: 1fr;
-            }
-
-            .stats {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        @media (max-width: 700px) {
-            .boardhead {
-                display: none;
-            }
-
-            .row {
-                grid-template-columns: 34px 1fr 95px;
-            }
-
-            .row .region,
-            .row .note,
-            .row .year {
-                display: none;
-            }
-
-            .form {
-                grid-template-columns: 1fr;
-            }
-
-            .field.full {
-                grid-column: auto;
-            }
-
-            .hero {
-                display: block;
-            }
-
-            .clock {
-                margin-top: 10px;
-            }
-
-            .nav .label {
-                display: none;
-            }
-        }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Kieran's Trip Departures</title>
+
+<style>
+*{box-sizing:border-box}
+:root{
+  --bg:#07111d;
+  --panel:#0d1b2a;
+  --panel2:#112438;
+  --line:#29435c;
+  --amber:#ffb000;
+  --green:#39d98a;
+  --red:#ff6577;
+  --blue:#4da3ff;
+  --text:#f4f7fb;
+  --muted:#9eb0c2;
+}
+body{
+  margin:0;
+  min-height:100vh;
+  background:radial-gradient(circle at top,#14283d 0,#07111d 42%);
+  color:var(--text);
+  font-family:ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;
+}
+.top{
+  position:sticky;
+  top:0;
+  z-index:20;
+  background:rgba(5,13,22,.96);
+  border-bottom:1px solid var(--line);
+  backdrop-filter:blur(12px);
+}
+.topin{
+  max-width:1500px;
+  margin:auto;
+  padding:14px 18px;
+  display:flex;
+  gap:12px;
+  align-items:center;
+}
+.brand{
+  font-weight:900;
+  letter-spacing:.12em;
+  white-space:nowrap;
+}
+.nav{
+  margin-left:auto;
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+.btn,.nav a{
+  border:1px solid var(--line);
+  background:#102236;
+  color:var(--text);
+  padding:9px 12px;
+  border-radius:6px;
+  text-decoration:none;
+  font-weight:800;
+}
+.btn{
+  font-family:inherit;
+  cursor:pointer;
+}
+.btn:hover,.nav a:hover{border-color:var(--amber)}
+.btn.primary{
+  background:var(--amber);
+  border-color:var(--amber);
+  color:#161008;
+}
+.btn.danger{
+  border-color:#7d3540;
+  color:#ff9ca8;
+}
+.btn.green{
+  border-color:#267d59;
+  color:#7ef0b7;
+}
+.wrap{
+  width:min(1500px,calc(100% - 36px));
+  margin:auto;
+  padding:24px 0 60px;
+}
+.hero{
+  display:flex;
+  justify-content:space-between;
+  align-items:end;
+  gap:20px;
+  margin-bottom:18px;
+}
+.hero h1{
+  margin:0;
+  font-size:clamp(28px,4vw,50px);
+  letter-spacing:.05em;
+}
+.hero p{
+  color:var(--muted);
+  margin:7px 0 0;
+}
+.clock{
+  color:var(--amber);
+  font-size:26px;
+  font-weight:900;
+  white-space:nowrap;
+}
+.stats{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+  margin:16px 0;
+}
+.stat{
+  background:#0b1826;
+  border:1px solid var(--line);
+  padding:13px;
+}
+.stat b{
+  display:block;
+  color:var(--amber);
+  font-size:24px;
+}
+.stat span{
+  color:var(--muted);
+  font-size:11px;
+  letter-spacing:.1em;
+}
+.layout{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 360px;
+  gap:18px;
+  align-items:start;
+}
+.layout>section{min-width:0}
+.side{
+  min-width:0;
+  width:360px;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+}
+.panel{
+  background:#0a1724;
+  border:1px solid var(--line);
+  padding:15px;
+}
+.panel h2{
+  margin:0 0 12px;
+  color:var(--amber);
+  font-size:16px;
+  letter-spacing:.08em;
+}
+.toolbar{
+  display:grid;
+  grid-template-columns:minmax(220px,1fr) 145px 145px auto;
+  gap:8px;
+  margin:14px 0;
+}
+input,select,textarea{
+  width:100%;
+  min-width:0;
+  border:1px solid var(--line);
+  background:#091827;
+  color:var(--text);
+  font-family:inherit;
+  padding:10px 11px;
+  border-radius:5px;
+  outline:none;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--amber)}
+.board{
+  width:100%;
+  min-width:0;
+  overflow:hidden;
+  border:1px solid var(--line);
+  background:#081522;
+  box-shadow:0 16px 45px #0006;
+}
+.boardhead,.row{
+  display:grid;
+  grid-template-columns:44px minmax(175px,1.25fr) 125px 110px minmax(180px,1.7fr) 75px;
+  gap:10px;
+  align-items:center;
+}
+.boardhead{
+  padding:10px 12px;
+  background:#152b41;
+  color:#9fb4c8;
+  font-size:11px;
+  letter-spacing:.1em;
+}
+.row{
+  padding:9px 12px;
+  border-top:1px solid #1b344c;
+  min-height:68px;
+}
+.row:hover{background:#0f2234}
+.row.complete-row{
+  background:#0d211d;
+  box-shadow:inset 4px 0 var(--green);
+}
+.row.trip-selected{
+  box-shadow:inset 4px 0 var(--amber);
+}
+.row.complete-row.trip-selected{
+  box-shadow:inset 4px 0 var(--amber);
+}
+.check{
+  width:20px;
+  height:20px;
+  accent-color:var(--green);
+}
+.check:disabled{
+  opacity:.35;
+  cursor:not-allowed;
+}
+.dest-line{
+  display:flex;
+  align-items:center;
+  gap:9px;
+}
+.dest-icon{
+  width:28px;
+  height:19px;
+  object-fit:cover;
+  border-radius:2px;
+  border:1px solid #ffffff25;
+  flex:0 0 auto;
+}
+.dest{
+  font-size:15px;
+  font-weight:900;
+}
+.sub{
+  color:var(--muted);
+  font-size:11px;
+  margin-top:4px;
+}
+.trip-select{
+  margin-top:6px;
+  border:1px solid #31516e;
+  background:#102236;
+  color:#bfd0df;
+  padding:5px 7px;
+  border-radius:3px;
+  font-family:inherit;
+  font-size:10px;
+  font-weight:900;
+  cursor:pointer;
+}
+.trip-select:hover{
+  border-color:var(--amber);
+  color:var(--amber);
+}
+.trip-select.active{
+  border-color:var(--amber);
+  color:var(--amber);
+  background:#211c10;
+}
+.status{
+  display:inline-block;
+  padding:5px 7px;
+  border-radius:3px;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.06em;
+}
+.done{
+  background:#123c2c;
+  color:#68e5a8;
+}
+.todo{
+  background:#40242a;
+  color:#ff9ca8;
+}
+.region{
+  color:#bfd0df;
+  text-transform:uppercase;
+  font-size:12px;
+}
+.note{
+  min-width:0;
+  overflow-wrap:anywhere;
+  line-height:1.35;
+}
+.year{text-align:center}
+.dest-lock{
+  margin-top:5px;
+  border:1px solid #267d59;
+  background:#102236;
+  color:#7ef0b7;
+  padding:5px 7px;
+  border-radius:3px;
+  font-family:inherit;
+  font-size:10px;
+  font-weight:900;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.dest-lock:hover{
+  border-color:var(--amber);
+  color:var(--amber);
+}
+.dest-lock.locked{
+  border-color:#7d6223;
+  color:var(--amber);
+  background:#211c10;
+}
+.form{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:9px;
+}
+.field{
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+  min-width:0;
+}
+.field.full{grid-column:1/-1}
+.form label{
+  color:var(--muted);
+  font-size:10px;
+  letter-spacing:.08em;
+}
+.form textarea{
+  min-height:70px;
+  resize:vertical;
+}
+.selected-heading{margin-top:16px!important}
+.selectedlist{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+.chip{
+  background:#13283a;
+  border:1px solid #31516e;
+  padding:6px 8px;
+  border-radius:3px;
+  font-size:11px;
+}
+.save-area{margin-top:14px}
+.notice{
+  color:var(--muted);
+  font-size:11px;
+  line-height:1.5;
+}
+.empty{
+  padding:30px;
+  text-align:center;
+  color:var(--muted);
+}
+.trip{
+  border:1px solid var(--line);
+  background:#0b1927;
+  margin-top:9px;
+}
+.trip.locked{border-color:#7d6223}
+.triptop{
+  padding:11px;
+  display:flex;
+  gap:8px;
+  align-items:center;
+  background:#102338;
+}
+.triptitle{
+  flex:1;
+  font-weight:900;
+}
+.lock{color:var(--amber)}
+.tripbody{
+  padding:11px;
+  color:#b7c6d4;
+  font-size:12px;
+  line-height:1.55;
+}
+.triproute{
+  color:var(--text);
+  font-weight:800;
+  margin-bottom:7px;
+}
+.tripactions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:10px;
+}
+.tiny{
+  font-size:10px;
+  padding:6px 8px;
+}
+.trip-summary{margin-top:7px}
+
+@media(max-width:1250px){
+  .layout{grid-template-columns:1fr}
+  .side{width:100%}
+}
+@media(max-width:800px){
+  .wrap{width:min(100% - 20px,1500px)}
+  .topin{flex-wrap:wrap}
+  .nav{
+    width:100%;
+    margin-left:0;
+  }
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .toolbar{grid-template-columns:1fr 1fr}
+  .toolbar input{grid-column:1/-1}
+  .boardhead{display:none}
+  .row{grid-template-columns:34px minmax(0,1fr) 105px}
+  .row .region,.row .note,.row .year{display:none}
+  .form{grid-template-columns:1fr}
+  .field.full{grid-column:auto}
+  .hero{display:block}
+  .clock{margin-top:10px}
+  .nav .label{display:none}
+}
+</style>
 </head>
 
 <body>
 
-    <!-- =========================================================
-         HEADER
-    ========================================================== -->
+<header class="top">
+  <div class="topin">
+    <div class="brand">✈ KIERAN TRAVEL CONTROL</div>
 
-    <header class="top">
-        <div class="topin">
-            <div class="brand">
-                ✈ KIERAN TRAVEL CONTROL
-            </div>
-<nav class="nav">
-    <a href="index.html">
-        🗺 <span class="label">MAP</span>
-    </a>
+    <nav class="nav">
+      <a href="index.html">🗺 <span class="label">MAP</span></a>
+      <a href="trips.html">🛫 <span class="label">TRIPS</span></a>
+      <a href="flights.html">✈ <span class="label">FLIGHTS</span></a>
 
-    <a href="trips.html">
-        🛫 <span class="label">TRIPS</span>
-    </a>
-
-    <a href="flights.html">
-        ✈ <span class="label">FLIGHTS</span>
-    </a>
-
-    <button
-        class="btn"
-        id="googleSignIn"
-        type="button"
-    >
+      <button class="btn" id="googleSignIn" type="button">
         GOOGLE SIGN IN
-    </button>
+      </button>
 
-    <button
-        class="btn"
-        id="googleSignOut"
-        type="button"
-        style="display:none"
-    >
+      <button class="btn" id="googleSignOut" type="button" style="display:none">
         SIGN OUT
-    </button>
+      </button>
 
-    <span
-        id="firebaseUser"
-        class="notice"
-        style="align-self:center"
-    ></span>
-</nav>
+      <span id="firebaseUser" class="notice"></span>
+    </nav>
+  </div>
+</header>
 
-    <!-- =========================================================
-         MAIN
-    ========================================================== -->
+<main class="wrap">
 
-    <main class="wrap">
+  <div class="hero">
+    <div>
+      <h1>TRIP DEPARTURE BOARD</h1>
+      <p>
+        Tick destinations you have completed, add destinations to a trip,
+        enter your trip details and lock everything when final.
+      </p>
+    </div>
 
-        <div class="hero">
-            <div>
-                <h1>TRIP DEPARTURE BOARD</h1>
+    <div class="clock" id="clock"></div>
+  </div>
 
-                <p>
-                    Select destinations from the master board, build a trip,
-                    add the details, then lock it when final.
-                </p>
-            </div>
+  <section class="stats">
+    <div class="stat">
+      <b id="sTotal">0</b>
+      <span>DESTINATIONS</span>
+    </div>
 
-            <div class="clock" id="clock"></div>
+    <div class="stat">
+      <b id="sDone">0</b>
+      <span>COMPLETED</span>
+    </div>
+
+    <div class="stat">
+      <b id="sTodo">0</b>
+      <span>NOT COMPLETED</span>
+    </div>
+
+    <div class="stat">
+      <b id="sSel">0</b>
+      <span>SELECTED FOR TRIP</span>
+    </div>
+  </section>
+
+  <div class="layout">
+
+    <section>
+
+      <div class="toolbar">
+        <input id="search" placeholder="SEARCH DESTINATION / NOTE...">
+
+        <select id="statusFilter">
+          <option value="all">ALL STATUS</option>
+          <option value="complete">COMPLETED</option>
+          <option value="incomplete">NOT COMPLETED</option>
+        </select>
+
+        <select id="regionFilter">
+          <option value="all">ALL REGIONS</option>
+        </select>
+
+        <button class="btn" id="clearSel" type="button">
+          CLEAR TRIP SELECTION
+        </button>
+      </div>
+
+      <div class="board">
+
+        <div class="boardhead">
+          <div>DONE</div>
+          <div>DESTINATION</div>
+          <div>STATUS</div>
+          <div>REGION</div>
+          <div>BOARD NOTE</div>
+          <div>YEAR</div>
         </div>
 
+        <div id="rows"></div>
+      </div>
 
-        <!-- STATS -->
+    </section>
 
-        <section class="stats">
-            <div class="stat">
-                <b id="sTotal">0</b>
-                <span>DESTINATIONS</span>
-            </div>
+    <aside class="side">
 
-            <div class="stat">
-                <b id="sDone">0</b>
-                <span>COMPLETED</span>
-            </div>
+      <section class="panel">
+        <h2>NEW TRIP MANIFEST</h2>
 
-            <div class="stat">
-                <b id="sTodo">0</b>
-                <span>NOT COMPLETED</span>
-            </div>
+        <div class="form">
 
-            <div class="stat">
-                <b id="sSel">0</b>
-                <span>SELECTED</span>
-            </div>
-        </section>
+          <div class="field full">
+            <label>TRIP NAME</label>
+            <input id="tripName" placeholder="e.g. Qatar + South Korea">
+          </div>
 
+          <div class="field">
+            <label>DEPART</label>
+            <input id="startDate" type="date">
+          </div>
 
-        <div class="layout">
+          <div class="field">
+            <label>RETURN</label>
+            <input id="endDate" type="date">
+          </div>
 
-            <!-- =================================================
-                 DESTINATION BOARD
-            ================================================== -->
+          <div class="field">
+            <label>STATUS</label>
+            <select id="tripStatus">
+              <option value="planned">PLANNED</option>
+              <option value="booked">BOOKED</option>
+              <option value="completed">COMPLETED</option>
+            </select>
+          </div>
 
-            <section>
+          <div class="field">
+            <label>AIRLINE / OPERATOR</label>
+            <input id="airline" placeholder="Qatar Airways">
+          </div>
 
-                <div class="toolbar">
-                    <input
-                        id="search"
-                        placeholder="SEARCH DESTINATION / NOTE..."
-                    >
+          <div class="field full">
+            <label>ROUTE</label>
+            <input id="route" placeholder="London → Doha → Seoul → London">
+          </div>
 
-                    <select id="statusFilter">
-                        <option value="all">ALL STATUS</option>
-                        <option value="complete">COMPLETED</option>
-                        <option value="incomplete">NOT COMPLETED</option>
-                    </select>
+          <div class="field">
+            <label>FLIGHT / BOOKING REF</label>
+            <input id="flightRef" placeholder="Optional">
+          </div>
 
-                    <select id="regionFilter">
-                        <option value="all">ALL REGIONS</option>
-                    </select>
+          <div class="field">
+            <label>HOTEL(S)</label>
+            <input id="hotels" placeholder="Hotel names">
+          </div>
 
-                    <button class="btn" id="clearSel">
-                        CLEAR SELECTION
-                    </button>
-                </div>
+          <div class="field">
+            <label>BUDGET</label>
+            <input id="budget" placeholder="£">
+          </div>
 
+          <div class="field">
+            <label>TRAVEL TYPE</label>
+            <select id="travelType">
+              <option>Holiday</option>
+              <option>City Break</option>
+              <option>Multi-city</option>
+              <option>Stopover</option>
+              <option>Road Trip</option>
+              <option>Other</option>
+            </select>
+          </div>
 
-                <div class="board">
-                    <div class="boardhead">
-                        <div>ADD</div>
-                        <div>DESTINATION</div>
-                        <div>STATUS</div>
-                        <div>REGION</div>
-                        <div>BOARD NOTE</div>
-                        <div>TRIP YEAR</div>
-                    </div>
+          <div class="field full">
+            <label>TRIP SUMMARY</label>
+            <textarea id="summary" placeholder="What is this trip about?"></textarea>
+          </div>
 
-                    <div id="rows"></div>
-                </div>
-
-            </section>
-
-
-            <!-- =================================================
-                 SIDEBAR
-            ================================================== -->
-
-            <aside class="side">
-
-                <!-- NEW TRIP -->
-
-                <section class="panel">
-                    <h2>NEW TRIP MANIFEST</h2>
-
-                    <div class="form">
-
-                        <div class="field full">
-                            <label>TRIP NAME</label>
-                            <input
-                                id="tripName"
-                                placeholder="e.g. Qatar + South Korea"
-                            >
-                        </div>
-
-                        <div class="field">
-                            <label>DEPART</label>
-                            <input id="startDate" type="date">
-                        </div>
-
-                        <div class="field">
-                            <label>RETURN</label>
-                            <input id="endDate" type="date">
-                        </div>
-
-                        <div class="field">
-                            <label>STATUS</label>
-
-                            <select id="tripStatus">
-                                <option value="planned">PLANNED</option>
-                                <option value="booked">BOOKED</option>
-                                <option value="completed">COMPLETED</option>
-                            </select>
-                        </div>
-
-                        <div class="field">
-                            <label>AIRLINE / OPERATOR</label>
-
-                            <input
-                                id="airline"
-                                placeholder="Qatar Airways"
-                            >
-                        </div>
-
-                        <div class="field full">
-                            <label>ROUTE</label>
-
-                            <input
-                                id="route"
-                                placeholder="London → Doha → Seoul → London"
-                            >
-                        </div>
-
-                        <div class="field">
-                            <label>FLIGHT / BOOKING REF</label>
-
-                            <input
-                                id="flightRef"
-                                placeholder="Optional"
-                            >
-                        </div>
-
-                        <div class="field">
-                            <label>HOTEL(S)</label>
-
-                            <input
-                                id="hotels"
-                                placeholder="Hotel names"
-                            >
-                        </div>
-
-                        <div class="field">
-                            <label>BUDGET</label>
-
-                            <input
-                                id="budget"
-                                placeholder="£"
-                            >
-                        </div>
-
-                        <div class="field">
-                            <label>TRAVEL TYPE</label>
-
-                            <select id="travelType">
-                                <option>Holiday</option>
-                                <option>City Break</option>
-                                <option>Multi-city</option>
-                                <option>Stopover</option>
-                                <option>Road Trip</option>
-                                <option>Other</option>
-                            </select>
-                        </div>
-
-                        <div class="field full">
-                            <label>TRIP SUMMARY</label>
-
-                            <textarea
-                                id="summary"
-                                placeholder="What is this trip about?"
-                            ></textarea>
-                        </div>
-
-                        <div class="field full">
-                            <label>NOTES</label>
-
-                            <textarea
-                                id="notes"
-                                placeholder="Bookings, reminders, ideas..."
-                            ></textarea>
-                        </div>
-
-                    </div>
-
-
-                    <h2 class="selected-heading">
-                        SELECTED DESTINATIONS
-                        <span id="selCount">0</span>
-                    </h2>
-
-                    <div
-                        class="selectedlist"
-                        id="selectedList"
-                    ></div>
-
-                    <div class="save-area">
-                        <button
-                            class="btn primary"
-                            id="saveTrip"
-                        >
-                            CREATE TRIP
-                        </button>
-                    </div>
-
-                    <p class="notice">
-                        Locking a trip freezes its details and destination
-                        list. Unlock it whenever you want to edit it again.
-                    </p>
-                </section>
-
-
-                <!-- SAVED TRIPS -->
-
-                <section class="panel">
-                    <h2>TRIP OPERATIONS</h2>
-                    <div id="trips"></div>
-                </section>
-
-            </aside>
+          <div class="field full">
+            <label>NOTES</label>
+            <textarea id="notes" placeholder="Bookings, reminders, ideas..."></textarea>
+          </div>
 
         </div>
-    </main>
 
+        <h2 class="selected-heading">
+          SELECTED DESTINATIONS
+          <span id="selCount">0</span>
+        </h2>
 
-    <script>
-        /* =========================================================
-           DESTINATIONS
-        ========================================================= */
+        <div class="selectedlist" id="selectedList"></div>
 
-        const DESTINATIONS = [
-            { name: "Vancouver", region: "north-america", icon: "assets/black-dot.png", note: "Coastal city with mountains and ocean", tripYear: "-", complete: false },
-            { name: "Banff", region: "north-america", icon: "assets/black-dot.png", note: "Rocky Mountain town with turquoise lakes", tripYear: "-", complete: false },
-            { name: "Toronto", region: "north-america", icon: "assets/black-dot.png", note: "Canada’s largest city with CN Tower", tripYear: "-", complete: false },
-            { name: "Ottawa", region: "north-america", icon: "assets/black-dot.png", note: "Canada’s capital with parliament buildings", tripYear: "-", complete: false },
-            { name: "Montreal", region: "north-america", icon: "assets/black-dot.png", note: "French Canadian culture and vibrant festivals", tripYear: "-", complete: false },
-            { name: "New York City", region: "north-america", icon: "assets/black-dot.png", note: "Iconic skyline and world city", tripYear: "-", complete: false },
-            { name: "Philadelphia", region: "north-america", icon: "assets/black-dot.png", note: "Historic birthplace of American independence", tripYear: "-", complete: false },
-            { name: "Boston", region: "north-america", icon: "assets/black-dot.png", note: "Historic city of revolution and academia", tripYear: "-", complete: false },
-            { name: "Washington DC", region: "north-america", icon: "assets/black-dot.png", note: "Nation’s capital with monuments and museums", tripYear: "-", complete: false },
-            { name: "Chicago", region: "north-america", icon: "assets/black-dot.png", note: "Skyscrapers, deep-dish pizza, and lakefront", tripYear: "-", complete: false },
-            { name: "Kansas City", region: "north-america", icon: "assets/black-dot.png", note: "Barbecue capital with jazz heritage", tripYear: "-", complete: false },
-            { name: "Miami", region: "north-america", icon: "assets/black-dot.png", note: "Art Deco beaches and Latin culture", tripYear: "-", complete: false },
-            { name: "Atlanta", region: "north-america", icon: "assets/black-dot.png", note: "Major southern hub with civil rights history", tripYear: "-", complete: false },
-            { name: "New Orleans", region: "north-america", icon: "assets/black-dot.png", note: "Jazz, Creole culture, and vibrant nightlife", tripYear: "-", complete: false },
-            { name: "Memphis", region: "north-america", icon: "assets/black-dot.png", note: "Blues music and barbecue tradition", tripYear: "-", complete: false },
-            { name: "Nashville", region: "north-america", icon: "assets/black-dot.png", note: "Country music and lively honky-tonks", tripYear: "-", complete: false },
-            { name: "Houston", region: "north-america", icon: "assets/black-dot.png", note: "Space city with diverse culture", tripYear: "-", complete: false },
-            { name: "Austin", region: "north-america", icon: "assets/black-dot.png", note: "Live music capital of Texas", tripYear: "-", complete: false },
-            { name: "Route 66", region: "north-america", icon: "assets/black-dot.png", note: "Historic highway across classic America", tripYear: "-", complete: false },
-            { name: "Dallas", region: "north-america", icon: "assets/black-dot.png", note: "Modern Texas city with cowboy roots", tripYear: "-", complete: false },
-            { name: "Grand Canyon", region: "north-america", icon: "assets/black-dot.png", note: "Vast canyon carved by Colorado River", tripYear: "-", complete: false },
-            { name: "Las Vegas", region: "north-america", icon: "assets/black-dot.png", note: "Neon casinos and desert entertainment", tripYear: "-", complete: false },
-            { name: "Los Angeles", region: "north-america", icon: "assets/usa-flag.png", note: "Hollywood, beaches, and sprawling metropolis", tripYear: "2017", complete: true },
-            { name: "San Francisco", region: "north-america", icon: "assets/black-dot.png", note: "Golden Gate Bridge and steep streets", tripYear: "-", complete: false },
-            { name: "Guadalajara", region: "north-america", icon: "assets/black-dot.png", note: "Mariachi birthplace and colonial charm", tripYear: "-", complete: false },
-            { name: "Mexico City", region: "north-america", icon: "assets/black-dot.png", note: "Vast capital with history and culture", tripYear: "-", complete: false },
-            { name: "Oaxaca", region: "north-america", icon: "assets/black-dot.png", note: "Colourful culture and famous cuisine", tripYear: "-", complete: false },
-            { name: "Merida", region: "north-america", icon: "assets/black-dot.png", note: "Colonial city near Mayan ruins", tripYear: "-", complete: false },
-            { name: "Havana", region: "north-america", icon: "assets/black-dot.png", note: "Vintage cars and colourful streets", tripYear: "-", complete: false },
-            { name: "Kingston", region: "north-america", icon: "assets/black-dot.png", note: "Reggae capital and Jamaican culture", tripYear: "-", complete: false },
-            { name: "Ocho Rios", region: "north-america", icon: "assets/black-dot.png", note: "Waterfalls, beaches, and lush hills", tripYear: "-", complete: false },
-            { name: "Negril", region: "north-america", icon: "assets/black-dot.png", note: "Laid-back beaches and sunset cliffs", tripYear: "-", complete: false },
-            { name: "Montego Bay", region: "north-america", icon: "assets/black-dot.png", note: "Beach resort with turquoise waters", tripYear: "-", complete: false },
-            { name: "San Jose", region: "north-america", icon: "assets/black-dot.png", note: "Costa Rica’s lively cultural capital", tripYear: "-", complete: false },
+        <div class="save-area">
+          <button class="btn primary" id="saveTrip" type="button">
+            CREATE TRIP
+          </button>
+        </div>
 
-            { name: "Bogota", region: "south-america", icon: "assets/black-dot.png", note: "High-altitude capital with colonial history", tripYear: "-", complete: false },
-            { name: "Medellin", region: "south-america", icon: "assets/black-dot.png", note: "Mountain city known for transformation", tripYear: "-", complete: false },
-            { name: "Quito", region: "south-america", icon: "assets/black-dot.png", note: "Historic Andean capital near equator", tripYear: "-", complete: false },
-            { name: "Santiago", region: "south-america", icon: "assets/black-dot.png", note: "Modern capital beneath the Andes", tripYear: "-", complete: false },
-            { name: "Lima", region: "south-america", icon: "assets/black-dot.png", note: "Coastal capital famous for cuisine", tripYear: "-", complete: false },
-            { name: "Cusco", region: "south-america", icon: "assets/black-dot.png", note: "Inca capital gateway to Machu Picchu", tripYear: "-", complete: false },
-            { name: "La Paz", region: "south-america", icon: "assets/black-dot.png", note: "Dramatic high-altitude city in Andes", tripYear: "-", complete: false },
-            { name: "Rio de Janeiro", region: "south-america", icon: "assets/black-dot.png", note: "Beaches, samba, and Christ the Redeemer", tripYear: "-", complete: false },
-            { name: "Sao Paulo", region: "south-america", icon: "assets/black-dot.png", note: "Brazil’s vast financial and cultural hub", tripYear: "-", complete: false },
-            { name: "Manaus", region: "south-america", icon: "assets/black-dot.png", note: "Amazon gateway deep in rainforest", tripYear: "-", complete: false },
-            { name: "Buenos Aires", region: "south-america", icon: "assets/black-dot.png", note: "Tango, culture, and European elegance", tripYear: "-", complete: false },
-            { name: "Patagonia", region: "south-america", icon: "assets/black-dot.png", note: "Wild landscapes of glaciers and mountains", tripYear: "-", complete: false },
+        <p class="notice">
+          Completed destinations and trips can both be locked.
+          Unlock them whenever you want to make changes.
+        </p>
+      </section>
 
-            { name: "Reykjavik", region: "europe", icon: "assets/black-dot.png", note: "Colourful capital near volcanoes and geysers", tripYear: "-", complete: false },
-            { name: "Copenhagen", region: "europe", icon: "assets/black-dot.png", note: "Colourful harbour, cycling, and Nordic design", tripYear: "-", complete: false },
-            { name: "Stockholm", region: "europe", icon: "assets/black-dot.png", note: "Island city with historic Gamla Stan", tripYear: "-", complete: false },
-            { name: "Oslo", region: "europe", icon: "assets/black-dot.png", note: "Modern Nordic capital with fjord views", tripYear: "-", complete: false },
-            { name: "Tallinn", region: "europe", icon: "assets/black-dot.png", note: "Medieval old town and Baltic charm", tripYear: "-", complete: false },
-            { name: "Helsinki", region: "europe", icon: "assets/black-dot.png", note: "Nordic design and seaside capital", tripYear: "-", complete: false },
-            { name: "Rovaniemi", region: "europe", icon: "assets/black-dot.png", note: "Arctic town and Santa Claus village", tripYear: "-", complete: false },
-            { name: "Riga", region: "europe", icon: "assets/black-dot.png", note: "Art Nouveau architecture and lively old town", tripYear: "-", complete: false },
-            { name: "Vilnius", region: "europe", icon: "assets/black-dot.png", note: "Baroque old town and historic capital", tripYear: "-", complete: false },
-            { name: "Krakow", region: "europe", icon: "assets/poland-flag.png", note: "Historic square, castle, and cultural heart", tripYear: "-", complete: true },
-            { name: "Aachen", region: "europe", icon: "assets/germany-flag.png", note: "Historic spa city and Charlemagne cathedral", tripYear: "", complete: true },
-            { name: "Berlin", region: "europe", icon: "assets/black-dot.png", note: "Historic capital of culture and nightlife", tripYear: "-", complete: false },
-            { name: "Nuremburg", region: "europe", icon: "assets/black-dot.png", note: "Medieval city with historic old town", tripYear: "-", complete: false },
-            { name: "Munich", region: "europe", icon: "assets/black-dot.png", note: "Bavarian capital with beer halls", tripYear: "-", complete: false },
-            { name: "Cologne", region: "europe", icon: "assets/black-dot.png", note: "Riverside city with towering gothic cathedral", tripYear: "-", complete: false },
-            { name: "The Black Forest", region: "europe", icon: "assets/black-dot.png", note: "Dense forests, villages, and scenic trails", tripYear: "-", complete: false },
-            { name: "Stuttgart", region: "europe", icon: "assets/black-dot.png", note: "Car museums and modern German city", tripYear: "-", complete: false },
-            { name: "Amsterdam", region: "europe", icon: "assets/black-dot.png", note: "Canals, cycling culture, and historic houses", tripYear: "-", complete: false },
-            { name: "Brussels", region: "europe", icon: "assets/black-dot.png", note: "Grand Place, waffles, chocolate, and politics", tripYear: "-", complete: false },
-            { name: "Bruges", region: "europe", icon: "assets/black-dot.png", note: "Medieval canals and fairytale architecture", tripYear: "-", complete: false },
-            { name: "Kent", region: "europe", icon: "assets/england-flag.png", note: "Garden of England with castles and coast", tripYear: "-", complete: true },
-            { name: "London", region: "europe", icon: "assets/england-flag.png", note: "Historic capital with iconic landmarks and culture", tripYear: "-", complete: true },
-            { name: "Cambridge", region: "europe", icon: "assets/england-flag.png", note: "Historic university city and river punting", tripYear: "-", complete: true },
-            { name: "York", region: "europe", icon: "assets/england-flag.png", note: "Medieval city with cathedral and walls", tripYear: "-", complete: true },
-            { name: "Birmingham", region: "europe", icon: "assets/england-flag.png", note: "Industrial heritage, canals, and vibrant city", tripYear: "-", complete: true },
-            { name: "Cornwall", region: "europe", icon: "assets/black-dot.png", note: "Rugged coastline, fishing villages, and beaches", tripYear: "-", complete: false },
-            { name: "Brighton", region: "europe", icon: "assets/england-flag.png", note: "Seaside city with pier and nightlife", tripYear: "-", complete: true },
-            { name: "Cotswolds", region: "europe", icon: "assets/black-dot.png", note: "Honey-stone villages and rolling countryside", tripYear: "-", complete: false },
-            { name: "Liverpool", region: "europe", icon: "assets/england-flag.png", note: "Beatles heritage and famous waterfront", tripYear: "-", complete: true },
-            { name: "Manchester", region: "europe", icon: "assets/england-flag.png", note: "Music, football, and industrial history", tripYear: "-", complete: true },
-            { name: "Newcastle upon Tyne", region: "europe", icon: "assets/england-flag.png", note: "Lively riverside city and iconic bridges", tripYear: "-", complete: true },
-            { name: "Norwich", region: "europe", icon: "assets/england-flag.png", note: "Medieval city with cathedral and market", tripYear: "-", complete: true },
-            { name: "Sheffield", region: "europe", icon: "assets/england-flag.png", note: "Steel city near the Peak District", tripYear: "-", complete: true },
-            { name: "Bath", region: "europe", icon: "assets/england-flag.png", note: "Roman baths and Georgian elegance", tripYear: "-", complete: true },
-            { name: "Nottingham", region: "europe", icon: "assets/england-flag.png", note: "Robin Hood legends and historic castle", tripYear: "-", complete: true },
-            { name: "Stratford upon Avon", region: "europe", icon: "assets/england-flag.png", note: "Shakespeare’s birthplace with Tudor charm", tripYear: "-", complete: true },
-            { name: "Blackpool", region: "europe", icon: "assets/england-flag.png", note: "Classic seaside resort with famous tower", tripYear: "-", complete: true },
-            { name: "Cardiff", region: "europe", icon: "assets/wales-flag.png", note: "Welsh capital with castle and bay", tripYear: "-", complete: true },
-            { name: "Glasgow", region: "europe", icon: "assets/scotland-flag.png", note: "Vibrant culture, music, and striking architecture", tripYear: "-", complete: true },
-            { name: "Edinburgh", region: "europe", icon: "assets/black-dot.png", note: "Historic capital with castle and festivals", tripYear: "-", complete: false },
-            { name: "Scottish Highlands", region: "europe", icon: "assets/black-dot.png", note: "Dramatic mountains, lochs, and wild landscapes", tripYear: "-", complete: false },
-            { name: "Mayo", region: "europe", icon: "assets/ireland-flag.png", note: "Wild Atlantic coast and rugged landscapes", tripYear: "-", complete: true },
-            { name: "Galway", region: "europe", icon: "assets/black-dot.png", note: "Lively arts city on Atlantic coast", tripYear: "-", complete: false },
-            { name: "Dublin", region: "europe", icon: "assets/ireland-flag.png", note: "Lively capital with pubs and history", tripYear: "-", complete: true },
-            { name: "Clare", region: "europe", icon: "assets/black-dot.png", note: "Cliffs of Moher and Atlantic scenery", tripYear: "-", complete: false },
-            { name: "Kerry", region: "europe", icon: "assets/black-dot.png", note: "Mountains, lakes, and Ring of Kerry", tripYear: "-", complete: false },
-            { name: "Cork", region: "europe", icon: "assets/black-dot.png", note: "Food-loving city with historic harbour charm", tripYear: "-", complete: false },
-            { name: "Normandy", region: "europe", icon: "assets/black-dot.png", note: "D-Day beaches and dramatic coastline", tripYear: "-", complete: false },
-            { name: "Loire Valley", region: "europe", icon: "assets/black-dot.png", note: "Fairytale châteaux and scenic river valley", tripYear: "-", complete: false },
-            { name: "Champagne", region: "europe", icon: "assets/black-dot.png", note: "Rolling vineyards producing famous sparkling wine", tripYear: "-", complete: false },
-            { name: "Paris", region: "europe", icon: "assets/black-dot.png", note: "Romantic capital with iconic landmarks", tripYear: "-", complete: false },
-            { name: "Lille", region: "europe", icon: "assets/france-flag.png", note: "French city with Flemish architecture", tripYear: "", complete: true },
-            { name: "Brittany", region: "europe", icon: "assets/france-flag.png", note: "Rugged coast, lighthouses, and Celtic heritage", tripYear: "", complete: true },
-            { name: "Bordeaux", region: "europe", icon: "assets/black-dot.png", note: "Elegant city famous for world-class wine", tripYear: "-", complete: false },
-            { name: "Lyon", region: "europe", icon: "assets/black-dot.png", note: "Gastronomic capital with historic old town", tripYear: "-", complete: false },
-            { name: "Provence", region: "europe", icon: "assets/black-dot.png", note: "Lavender fields, hill villages, sunny countryside", tripYear: "-", complete: false },
-            { name: "French Riviera", region: "europe", icon: "assets/black-dot.png", note: "Mediterranean glamour, beaches, and seaside towns", tripYear: "-", complete: false },
-            { name: "Zurich", region: "europe", icon: "assets/black-dot.png", note: "Financial hub with lake and old town", tripYear: "-", complete: false },
-            { name: "Geneva", region: "europe", icon: "assets/black-dot.png", note: "Lakeside city of diplomacy and mountains", tripYear: "-", complete: false },
-            { name: "Salzburg", region: "europe", icon: "assets/black-dot.png", note: "Baroque city and Mozart’s birthplace", tripYear: "-", complete: false },
-            { name: "Vienna", region: "europe", icon: "assets/black-dot.png", note: "Imperial capital of music and palaces", tripYear: "-", complete: false },
-            { name: "Budapest", region: "europe", icon: "assets/black-dot.png", note: "Danube city with thermal baths", tripYear: "-", complete: false },
-            { name: "Prague", region: "europe", icon: "assets/black-dot.png", note: "Fairytale city of bridges and castles", tripYear: "-", complete: false },
-            { name: "Bratislava", region: "europe", icon: "assets/black-dot.png", note: "Small Danube capital with hilltop castle", tripYear: "-", complete: false },
-            { name: "Ljubljana", region: "europe", icon: "assets/black-dot.png", note: "Charming Slovenian capital with a hilltop castle, riverside old town, and compact pedestrian centre", tripYear: "-", complete: false },
-            { name: "Sofia", region: "europe", icon: "assets/black-dot.png", note: "Historic Balkan capital with Orthodox churches, Roman ruins, and a backdrop of Vitosha Mountain", tripYear: "-", complete: false },
-            { name: "Zagreb", region: "europe", icon: "assets/black-dot.png", note: "Charming capital with historic upper town", tripYear: "-", complete: false },
-            { name: "Split", region: "europe", icon: "assets/black-dot.png", note: "Roman palace city on Adriatic coast", tripYear: "-", complete: false },
-            { name: "Dubrovnik", region: "europe", icon: "assets/black-dot.png", note: "Walled Adriatic city with stone streets", tripYear: "-", complete: false },
-            { name: "Bucharest", region: "europe", icon: "assets/black-dot.png", note: "Grand boulevards and striking communist architecture", tripYear: "-", complete: false },
-            { name: "Transylvania", region: "europe", icon: "assets/black-dot.png", note: "Castles, forests, and Dracula legends", tripYear: "-", complete: false },
-            { name: "Belgrade", region: "europe", icon: "assets/black-dot.png", note: "Lively Balkan capital at river confluence", tripYear: "-", complete: false },
-            { name: "Kyiv", region: "europe", icon: "assets/black-dot.png", note: "Historic capital with golden-domed churches", tripYear: "-", complete: false },
-            { name: "Rome", region: "europe", icon: "assets/black-dot.png", note: "Ancient ruins, Vatican, and timeless culture", tripYear: "-", complete: false },
-            { name: "Bologna", region: "europe", icon: "assets/black-dot.png", note: "Food capital with medieval arcades", tripYear: "-", complete: false },
-            { name: "Tuscany", region: "europe", icon: "assets/black-dot.png", note: "Rolling hills, vineyards, and historic towns", tripYear: "-", complete: false },
-            { name: "Naples", region: "europe", icon: "assets/italy-flag.png", note: "Birthplace of pizza beneath Mount Vesuvius", tripYear: "-", complete: true },
-            { name: "Milan", region: "europe", icon: "assets/black-dot.png", note: "Fashion capital with cathedral and culture", tripYear: "-", complete: false },
-            { name: "Cinque Terre", region: "europe", icon: "assets/black-dot.png", note: "Colourful villages along rugged coastline", tripYear: "-", complete: false },
-            { name: "Amalfi Coast", region: "europe", icon: "assets/italy-flag.png", note: "Dramatic cliffs, villages, and coastal roads", tripYear: "-", complete: true },
-            { name: "Venice", region: "europe", icon: "assets/black-dot.png", note: "Canals, gondolas, and historic palaces", tripYear: "-", complete: false },
-            { name: "Athens", region: "europe", icon: "assets/black-dot.png", note: "Ancient ruins and vibrant historic capital", tripYear: "-", complete: false },
-            { name: "Corfu", region: "europe", icon: "assets/greece-flag.png", note: "Green island with Venetian architecture", tripYear: "", complete: true },
-            { name: "Crete", region: "europe", icon: "assets/greece-flag.png", note: "Greece’s largest island with ancient history", tripYear: "", complete: true },
-            { name: "Mykonos", region: "europe", icon: "assets/black-dot.png", note: "Lively island with beaches and nightlife", tripYear: "-", complete: false },
-            { name: "Santorini", region: "europe", icon: "assets/black-dot.png", note: "White villages overlooking dramatic volcanic caldera", tripYear: "-", complete: false },
-            { name: "Tenerife", region: "europe", icon: "assets/spain-flag.png", note: "Volcanic island with beaches and Mount Teide", tripYear: "", complete: true },
-            { name: "Menorca", region: "europe", icon: "assets/spain-flag.png", note: "Quiet Balearic island with beaches and coves", tripYear: "", complete: true },
-            { name: "Seville", region: "europe", icon: "assets/black-dot.png", note: "Flamenco, cathedral, and Andalusian charm", tripYear: "-", complete: false },
-            { name: "Madrid", region: "europe", icon: "assets/black-dot.png", note: "Lively capital with art and plazas", tripYear: "-", complete: false },
-            { name: "Salou", region: "europe", icon: "assets/spain-flag.png", note: "Spanish beach resort near PortAventura", tripYear: "", complete: true },
-            { name: "Barcelona", region: "europe", icon: "assets/black-dot.png", note: "Gaudí architecture, beaches, and vibrant culture", tripYear: "-", complete: false },
-            { name: "Valencia", region: "europe", icon: "assets/black-dot.png", note: "Paella birthplace with futuristic architecture", tripYear: "-", complete: false },
-            { name: "Lisbon", region: "europe", icon: "assets/black-dot.png", note: "Hilly capital with trams and viewpoints", tripYear: "-", complete: false },
-            { name: "Porto", region: "europe", icon: "assets/black-dot.png", note: "Riverside city famous for port wine", tripYear: "-", complete: false },
-            { name: "Portimao", region: "europe", icon: "assets/portugal-flag.png", note: "Algarve harbour city with golden beaches", tripYear: "", complete: true },
-            { name: "Larnaca", region: "europe", icon: "assets/cyprus-flag.png", note: "Seaside city with palm-lined promenade", tripYear: "", complete: true },
-            { name: "Northern Cyprus", region: "europe", icon: "assets/cyprus-flag.png", note: "Beaches, castles, and quiet Mediterranean towns", tripYear: "", complete: true },
-            { name: "Istanbul", region: "europe", icon: "assets/black-dot.png", note: "Where Europe meets Asia and empires", tripYear: "-", complete: false },
-            { name: "Alanya", region: "europe", icon: "assets/turkey-flag.png", note: "Beach resort with castle and harbour", tripYear: "", complete: true },
-            { name: "Fethiye", region: "europe", icon: "assets/turkey-flag.png", note: "Turquoise coast, beaches, and ancient ruins", tripYear: "", complete: true },
-            { name: "Izmir", region: "europe", icon: "assets/black-dot.png", note: "Aegean coastal city with relaxed vibe", tripYear: "-", complete: false },
-            { name: "Cappadocia", region: "europe", icon: "assets/black-dot.png", note: "Fairy chimneys and hot air balloons", tripYear: "-", complete: false },
-            { name: "Saint Petersburg", region: "europe", icon: "assets/black-dot.png", note: "Imperial city of canals and palaces", tripYear: "-", complete: false },
-            { name: "Moscow", region: "europe", icon: "assets/black-dot.png", note: "Russia’s capital with Kremlin and Red Square", tripYear: "-", complete: false },
-            { name: "Kazan", region: "europe", icon: "assets/black-dot.png", note: "Tatar capital blending Russian and Islamic culture", tripYear: "-", complete: false },
+      <section class="panel">
+        <h2>TRIP OPERATIONS</h2>
+        <div id="trips"></div>
+      </section>
 
-            { name: "Marrakesh", region: "africa", icon: "assets/black-dot.png", note: "Markets, palaces, and vibrant medina", tripYear: "-", complete: false },
-            { name: "Rabat", region: "africa", icon: "assets/black-dot.png", note: "Moroccan capital with historic kasbah", tripYear: "-", complete: false },
-            { name: "Agadir", region: "africa", icon: "assets/morocco-flag.png", note: "Modern Moroccan resort with long beaches", tripYear: "", complete: true },
-            { name: "Rabat", region: "africa", icon: "assets/black-dot.png", note: "Moroccan capital with historic kasbah", tripYear: "-", complete: false },
-            { name: "Dakar", region: "africa", icon: "assets/black-dot.png", note: "Senegalese capital with Atlantic beaches, markets, music culture and Gorée Island nearby", tripYear: "-", complete: false },
-            { name: "Nairobi", region: "africa", icon: "assets/black-dot.png", note: "Modern city beside wildlife parks", tripYear: "-", complete: false },
-            { name: "Serengeti", region: "africa", icon: "assets/black-dot.png", note: "Vast plains with incredible wildlife", tripYear: "-", complete: false },
-            { name: "Zanzibar", region: "africa", icon: "assets/black-dot.png", note: "Tropical island with spice heritage", tripYear: "-", complete: false },
-            { name: "Addis Ababa", region: "africa", icon: "assets/black-dot.png", note: "Ethiopian capital and cultural hub", tripYear: "-", complete: false },
-            { name: "Johannesburg", region: "africa", icon: "assets/black-dot.png", note: "South Africa’s largest city and history", tripYear: "-", complete: false },
-            { name: "Cape Town", region: "africa", icon: "assets/black-dot.png", note: "Table Mountain and stunning coastline", tripYear: "-", complete: false },
-            { name: "Cairo", region: "africa", icon: "assets/black-dot.png", note: "Pyramids, ancient history, and bustling capital", tripYear: "-", complete: false },
-            { name: "Luxor", region: "africa", icon: "assets/black-dot.png", note: "Temples and tombs of ancient Egypt", tripYear: "-", complete: false },
+    </aside>
 
-            { name: "Doha", region: "asia", icon: "assets/black-dot.png", note: "Modern desert capital with futuristic skyline", tripYear: "-", complete: false },
-            { name: "Dubai", region: "asia", icon: "assets/black-dot.png", note: "Luxury city of skyscrapers and malls", tripYear: "-", complete: false },
-            { name: "Abu Dhabi", region: "asia", icon: "assets/black-dot.png", note: "Elegant capital with grand mosque", tripYear: "-", complete: false },
-            { name: "Amman", region: "asia", icon: "assets/black-dot.png", note: "Historic Jordanian capital with Roman ruins", tripYear: "-", complete: false },
-            { name: "Petra", region: "asia", icon: "assets/black-dot.png", note: "Ancient rose-red city carved into cliffs", tripYear: "-", complete: false },
-            { name: "Riyadh", region: "asia", icon: "assets/black-dot.png", note: "Saudi capital with modern skyline", tripYear: "-", complete: false },
-            { name: "Jeddah", region: "asia", icon: "assets/black-dot.png", note: "Red Sea port with historic old town", tripYear: "-", complete: false },
-            { name: "Beijing", region: "asia", icon: "assets/black-dot.png", note: "Imperial capital with Great Wall", tripYear: "-", complete: false },
-            { name: "Xian", region: "asia", icon: "assets/black-dot.png", note: "Home of the Terracotta Army", tripYear: "-", complete: false },
-            { name: "Hong Kong", region: "asia", icon: "assets/china-flag.png", note: "Skyscrapers, harbour views, markets and dim sum", tripYear: "2026", complete: true },
-            { name: "Chengdu", region: "asia", icon: "assets/black-dot.png", note: "Pandas, spicy cuisine, and tea houses", tripYear: "-", complete: false },
-            { name: "Shanghai", region: "asia", icon: "assets/black-dot.png", note: "Futuristic skyline and historic Bund", tripYear: "-", complete: false },
-            { name: "Ulaanbaatar", region: "asia", icon: "assets/black-dot.png", note: "Mongolian capital near vast steppe landscapes", tripYear: "-", complete: false },
-            { name: "Hanoi", region: "asia", icon: "assets/vietnam-flag.png", note: "Ancient capital with street food and temples", tripYear: "2026", complete: true },
-            { name: "Ha Long Bay", region: "asia", icon: "assets/vietnam-flag.png", note: "Limestone karsts rising from emerald waters", tripYear: "2026", complete: true },
-            { name: "Sa Pa", region: "asia", icon: "assets/vietnam-flag.png", note: "Mountain terraces and ethnic hill tribes", tripYear: "2026", complete: true },
-            { name: "Ho Chi Minh City", region: "asia", icon: "assets/black-dot.png", note: "Energetic southern city with markets, history, and street food", tripYear: "-", complete: false },
-            { name: "Vientiane", region: "asia", icon: "assets/black-dot.png", note: "Laid-back Mekong capital of Laos", tripYear: "-", complete: false },
-            { name: "Luang Prabang", region: "asia", icon: "assets/black-dot.png", note: "Temple town with waterfalls and monks", tripYear: "-", complete: false },
-            { name: "Manila", region: "asia", icon: "assets/black-dot.png", note: "Bustling capital with Spanish heritage", tripYear: "-", complete: false },
-            { name: "Boracay", region: "asia", icon: "assets/black-dot.png", note: "White sand beaches and clear waters", tripYear: "-", complete: false },
-            { name: "Palawan", region: "asia", icon: "assets/black-dot.png", note: "Tropical islands and turquoise lagoons", tripYear: "-", complete: false },
-            { name: "Phnom Penh", region: "asia", icon: "assets/black-dot.png", note: "Cambodia’s capital on the Mekong", tripYear: "-", complete: false },
-            { name: "Siem Reap", region: "asia", icon: "assets/black-dot.png", note: "Gateway to Angkor temple complex", tripYear: "-", complete: false },
-            { name: "Bangkok", region: "asia", icon: "assets/black-dot.png", note: "Bustling capital of temples and markets", tripYear: "-", complete: false },
-            { name: "Krabi", region: "asia", icon: "assets/thailand-flag.png", note: "Limestone cliffs and tropical beaches", tripYear: "", complete: true },
-            { name: "Pattaya", region: "asia", icon: "assets/thailand-flag.png", note: "Beach city known for nightlife", tripYear: "", complete: true },
-            { name: "Hua Hin", region: "asia", icon: "assets/thailand-flag.png", note: "Royal seaside resort with markets", tripYear: "", complete: true },
-            { name: "Chiang Mai", region: "asia", icon: "assets/black-dot.png", note: "Northern city of temples and mountains", tripYear: "-", complete: false },
-            { name: "Phuket", region: "asia", icon: "assets/thailand-flag.png", note: "Thailand’s largest island with beaches", tripYear: "2015", complete: true },
-            { name: "Jakarta", region: "asia", icon: "assets/black-dot.png", note: "Indonesia’s vast and bustling capital", tripYear: "-", complete: false },
-            { name: "Yogyakarta", region: "asia", icon: "assets/black-dot.png", note: "Javanese culture near Borobudur temples", tripYear: "-", complete: false },
-            { name: "Borneo", region: "asia", icon: "assets/black-dot.png", note: "Rainforests, wildlife, and orangutans", tripYear: "-", complete: false },
-            { name: "Kuala Lumpur", region: "asia", icon: "assets/black-dot.png", note: "Modern capital with Petronas Towers", tripYear: "-", complete: false },
-            { name: "Singapore", region: "asia", icon: "assets/black-dot.png", note: "Ultra-modern city with diverse culture", tripYear: "-", complete: false },
-            { name: "Taipei", region: "asia", icon: "assets/black-dot.png", note: "Modern city with night markets", tripYear: "-", complete: false },
-            { name: "Seoul", region: "asia", icon: "assets/black-dot.png", note: "Modern capital with palaces and technology", tripYear: "-", complete: false },
-            { name: "Delhi", region: "asia", icon: "assets/black-dot.png", note: "Bustling capital blending ancient and modern", tripYear: "-", complete: false },
-            { name: "Agra", region: "asia", icon: "assets/black-dot.png", note: "Home of the iconic Taj Mahal", tripYear: "-", complete: false },
-            { name: "Jaipur", region: "asia", icon: "assets/black-dot.png", note: "Pink City of palaces and forts", tripYear: "-", complete: false },
-            { name: "Jodhpur", region: "asia", icon: "assets/black-dot.png", note: "Blue city beneath Mehrangarh Fort", tripYear: "-", complete: false },
-            { name: "Mumbai", region: "asia", icon: "assets/black-dot.png", note: "India’s financial hub and Bollywood", tripYear: "-", complete: false },
-            { name: "Varanasi", region: "asia", icon: "assets/black-dot.png", note: "Sacred Ganges city of rituals", tripYear: "-", complete: false },
-            { name: "Colombo", region: "asia", icon: "assets/black-dot.png", note: "Sri Lanka’s vibrant coastal capital", tripYear: "-", complete: false },
-            { name: "Kathmandu", region: "asia", icon: "assets/black-dot.png", note: "Temple-filled valley beneath Himalayas", tripYear: "-", complete: false },
-            { name: "Tokyo", region: "asia", icon: "assets/japan-flag.png", note: "Futuristic metropolis with ancient temples", tripYear: "2026", complete: true },
-            { name: "Osaka", region: "asia", icon: "assets/japan-flag.png", note: "Food capital with lively nightlife", tripYear: "2026", complete: true },
-            { name: "Nara", region: "asia", icon: "assets/japan-flag.png", note: "Ancient temples and friendly deer", tripYear: "2026", complete: true },
-            { name: "Kyoto", region: "asia", icon: "assets/japan-flag.png", note: "Temples, shrines, and traditional Japan", tripYear: "2026", complete: true },
+  </div>
+</main>
 
-            { name: "Melbourne", region: "oceania", icon: "assets/black-dot.png", note: "Creative city of cafes and culture", tripYear: "-", complete: false },
-            { name: "Sydney", region: "oceania", icon: "assets/black-dot.png", note: "Harbour city with opera house", tripYear: "-", complete: false },
-            { name: "Auckland", region: "oceania", icon: "assets/black-dot.png", note: "Harbour city with volcanic landscapes", tripYear: "-", complete: false },
-            { name: "Queenstown", region: "oceania", icon: "assets/black-dot.png", note: "Alpine adventure town beside lake", tripYear: "-", complete: false },
-            { name: "Bora Bora", region: "oceania", icon: "assets/black-dot.png", note: "Tropical lagoon island with overwater bungalows", tripYear: "-", complete: false }
-        ];
+<script>
+const DESTINATIONS = [
+{name:"Vancouver",region:"north-america",icon:"assets/canada-flag.png",note:"Coastal city with mountains and ocean",tripYear:"-",complete:false},
+{name:"Banff",region:"north-america",icon:"assets/canada-flag.png",note:"Rocky Mountain town with turquoise lakes",tripYear:"-",complete:false},
+{name:"Toronto",region:"north-america",icon:"assets/canada-flag.png",note:"Canada’s largest city with CN Tower",tripYear:"-",complete:false},
+{name:"Ottawa",region:"north-america",icon:"assets/canada-flag.png",note:"Canada’s capital with parliament buildings",tripYear:"-",complete:false},
+{name:"Montreal",region:"north-america",icon:"assets/canada-flag.png",note:"French Canadian culture and vibrant festivals",tripYear:"-",complete:false},
 
+{name:"New York City",region:"north-america",icon:"assets/usa-flag.png",note:"Iconic skyline and world city",tripYear:"-",complete:false},
+{name:"Philadelphia",region:"north-america",icon:"assets/usa-flag.png",note:"Historic birthplace of American independence",tripYear:"-",complete:false},
+{name:"Boston",region:"north-america",icon:"assets/usa-flag.png",note:"Historic city of revolution and academia",tripYear:"-",complete:false},
+{name:"Washington DC",region:"north-america",icon:"assets/usa-flag.png",note:"Nation’s capital with monuments and museums",tripYear:"-",complete:false},
+{name:"Chicago",region:"north-america",icon:"assets/usa-flag.png",note:"Skyscrapers, deep-dish pizza, and lakefront",tripYear:"-",complete:false},
+{name:"Kansas City",region:"north-america",icon:"assets/usa-flag.png",note:"Barbecue capital with jazz heritage",tripYear:"-",complete:false},
+{name:"Miami",region:"north-america",icon:"assets/usa-flag.png",note:"Art Deco beaches and Latin culture",tripYear:"-",complete:false},
+{name:"Atlanta",region:"north-america",icon:"assets/usa-flag.png",note:"Major southern hub with civil rights history",tripYear:"-",complete:false},
+{name:"New Orleans",region:"north-america",icon:"assets/usa-flag.png",note:"Jazz, Creole culture, and vibrant nightlife",tripYear:"-",complete:false},
+{name:"Memphis",region:"north-america",icon:"assets/usa-flag.png",note:"Blues music and barbecue tradition",tripYear:"-",complete:false},
+{name:"Nashville",region:"north-america",icon:"assets/usa-flag.png",note:"Country music and lively honky-tonks",tripYear:"-",complete:false},
+{name:"Houston",region:"north-america",icon:"assets/usa-flag.png",note:"Space city with diverse culture",tripYear:"-",complete:false},
+{name:"Austin",region:"north-america",icon:"assets/usa-flag.png",note:"Live music capital of Texas",tripYear:"-",complete:false},
+{name:"Route 66",region:"north-america",icon:"assets/usa-flag.png",note:"Historic highway across classic America",tripYear:"-",complete:false},
+{name:"Dallas",region:"north-america",icon:"assets/usa-flag.png",note:"Modern Texas city with cowboy roots",tripYear:"-",complete:false},
+{name:"Grand Canyon",region:"north-america",icon:"assets/usa-flag.png",note:"Vast canyon carved by Colorado River",tripYear:"-",complete:false},
+{name:"Las Vegas",region:"north-america",icon:"assets/usa-flag.png",note:"Neon casinos and desert entertainment",tripYear:"-",complete:false},
+{name:"Los Angeles",region:"north-america",icon:"assets/usa-flag.png",note:"Hollywood, beaches, and sprawling metropolis",tripYear:"2017",complete:true},
+{name:"San Francisco",region:"north-america",icon:"assets/usa-flag.png",note:"Golden Gate Bridge and steep streets",tripYear:"-",complete:false},
 
-        /* =========================================================
-           STORAGE / STATE
-        ========================================================= */
+{name:"Guadalajara",region:"north-america",icon:"assets/mexico-flag.png",note:"Mariachi birthplace and colonial charm",tripYear:"-",complete:false},
+{name:"Mexico City",region:"north-america",icon:"assets/mexico-flag.png",note:"Vast capital with history and culture",tripYear:"-",complete:false},
+{name:"Oaxaca",region:"north-america",icon:"assets/mexico-flag.png",note:"Colourful culture and famous cuisine",tripYear:"-",complete:false},
+{name:"Merida",region:"north-america",icon:"assets/mexico-flag.png",note:"Colonial city near Mayan ruins",tripYear:"-",complete:false},
+{name:"Havana",region:"north-america",icon:"assets/cuba-flag.png",note:"Vintage cars and colourful streets",tripYear:"-",complete:false},
+{name:"Kingston",region:"north-america",icon:"assets/jamaica-flag.png",note:"Reggae capital and Jamaican culture",tripYear:"-",complete:false},
+{name:"Ocho Rios",region:"north-america",icon:"assets/jamaica-flag.png",note:"Waterfalls, beaches, and lush hills",tripYear:"-",complete:false},
+{name:"Negril",region:"north-america",icon:"assets/jamaica-flag.png",note:"Laid-back beaches and sunset cliffs",tripYear:"-",complete:false},
+{name:"Montego Bay",region:"north-america",icon:"assets/jamaica-flag.png",note:"Beach resort with turquoise waters",tripYear:"-",complete:false},
+{name:"San Jose",region:"north-america",icon:"assets/costa-rica-flag.png",note:"Costa Rica’s lively cultural capital",tripYear:"-",complete:false},
 
-        const STORE = "kieranTripDepartureBoard:v1";
-        const DESTINATION_LOCK_STORE = "kieranDestinationLocks:v1";
+{name:"Bogota",region:"south-america",icon:"assets/colombia-flag.png",note:"High-altitude capital with colonial history",tripYear:"-",complete:false},
+{name:"Medellin",region:"south-america",icon:"assets/colombia-flag.png",note:"Mountain city known for transformation",tripYear:"-",complete:false},
+{name:"Quito",region:"south-america",icon:"assets/ecuador-flag.png",note:"Historic Andean capital near equator",tripYear:"-",complete:false},
+{name:"Santiago",region:"south-america",icon:"assets/chile-flag.png",note:"Modern capital beneath the Andes",tripYear:"-",complete:false},
+{name:"Lima",region:"south-america",icon:"assets/peru-flag.png",note:"Coastal capital famous for cuisine",tripYear:"-",complete:false},
+{name:"Cusco",region:"south-america",icon:"assets/peru-flag.png",note:"Inca capital gateway to Machu Picchu",tripYear:"-",complete:false},
+{name:"La Paz",region:"south-america",icon:"assets/bolivia-flag.png",note:"Dramatic high-altitude city in Andes",tripYear:"-",complete:false},
+{name:"Rio de Janeiro",region:"south-america",icon:"assets/brazil-flag.png",note:"Beaches, samba, and Christ the Redeemer",tripYear:"-",complete:false},
+{name:"Sao Paulo",region:"south-america",icon:"assets/brazil-flag.png",note:"Brazil’s vast financial and cultural hub",tripYear:"-",complete:false},
+{name:"Manaus",region:"south-america",icon:"assets/brazil-flag.png",note:"Amazon gateway deep in rainforest",tripYear:"-",complete:false},
+{name:"Buenos Aires",region:"south-america",icon:"assets/argentina-flag.png",note:"Tango, culture, and European elegance",tripYear:"-",complete:false},
+{name:"Patagonia",region:"south-america",icon:"assets/argentina-flag.png",note:"Wild landscapes of glaciers and mountains",tripYear:"-",complete:false},
 
-        const COMPLETED_STORE = "kieranCompletedDestinations:v1";
+{name:"Reykjavik",region:"europe",icon:"assets/iceland-flag.png",note:"Colourful capital near volcanoes and geysers",tripYear:"-",complete:false},
+{name:"Copenhagen",region:"europe",icon:"assets/denmark-flag.png",note:"Colourful harbour, cycling, and Nordic design",tripYear:"-",complete:false},
+{name:"Stockholm",region:"europe",icon:"assets/sweden-flag.png",note:"Island city with historic Gamla Stan",tripYear:"-",complete:false},
+{name:"Oslo",region:"europe",icon:"assets/norway-flag.png",note:"Modern Nordic capital with fjord views",tripYear:"-",complete:false},
+{name:"Tallinn",region:"europe",icon:"assets/estonia-flag.png",note:"Medieval old town and Baltic charm",tripYear:"-",complete:false},
+{name:"Helsinki",region:"europe",icon:"assets/finland-flag.png",note:"Nordic design and seaside capital",tripYear:"-",complete:false},
+{name:"Rovaniemi",region:"europe",icon:"assets/finland-flag.png",note:"Arctic town and Santa Claus village",tripYear:"-",complete:false},
+{name:"Riga",region:"europe",icon:"assets/latvia-flag.png",note:"Art Nouveau architecture and lively old town",tripYear:"-",complete:false},
+{name:"Vilnius",region:"europe",icon:"assets/lithuania-flag.png",note:"Baroque old town and historic capital",tripYear:"-",complete:false},
+{name:"Krakow",region:"europe",icon:"assets/poland-flag.png",note:"Historic square, castle, and cultural heart",tripYear:"-",complete:true},
 
-function loadCompletedDestinations() {
-    try {
-        const saved = localStorage.getItem(COMPLETED_STORE);
+{name:"Aachen",region:"europe",icon:"assets/germany-flag.png",note:"Historic spa city and Charlemagne cathedral",tripYear:"",complete:true},
+{name:"Berlin",region:"europe",icon:"assets/germany-flag.png",note:"Historic capital of culture and nightlife",tripYear:"-",complete:false},
+{name:"Nuremburg",region:"europe",icon:"assets/germany-flag.png",note:"Medieval city with historic old town",tripYear:"-",complete:false},
+{name:"Munich",region:"europe",icon:"assets/germany-flag.png",note:"Bavarian capital with beer halls",tripYear:"-",complete:false},
+{name:"Cologne",region:"europe",icon:"assets/germany-flag.png",note:"Riverside city with towering gothic cathedral",tripYear:"-",complete:false},
+{name:"The Black Forest",region:"europe",icon:"assets/germany-flag.png",note:"Dense forests, villages, and scenic trails",tripYear:"-",complete:false},
+{name:"Stuttgart",region:"europe",icon:"assets/germany-flag.png",note:"Car museums and modern German city",tripYear:"-",complete:false},
 
-        if (saved !== null) {
-            return new Set(JSON.parse(saved));
-        }
+{name:"Amsterdam",region:"europe",icon:"assets/netherlands-flag.png",note:"Canals, cycling culture, and historic houses",tripYear:"-",complete:false},
+{name:"Brussels",region:"europe",icon:"assets/belgium-flag.png",note:"Grand Place, waffles, chocolate, and politics",tripYear:"-",complete:false},
+{name:"Bruges",region:"europe",icon:"assets/belgium-flag.png",note:"Medieval canals and fairytale architecture",tripYear:"-",complete:false},
 
-        // First load only: use your existing complete values
-        const initial = DESTINATIONS
-            .filter(destination => destination.complete)
-            .map(destination => destination.name);
+{name:"Kent",region:"europe",icon:"assets/england-flag.png",note:"Garden of England with castles and coast",tripYear:"-",complete:true},
+{name:"London",region:"europe",icon:"assets/england-flag.png",note:"Historic capital with iconic landmarks and culture",tripYear:"-",complete:true},
+{name:"Cambridge",region:"europe",icon:"assets/england-flag.png",note:"Historic university city and river punting",tripYear:"-",complete:true},
+{name:"York",region:"europe",icon:"assets/england-flag.png",note:"Medieval city with cathedral and walls",tripYear:"-",complete:true},
+{name:"Birmingham",region:"europe",icon:"assets/england-flag.png",note:"Industrial heritage, canals, and vibrant city",tripYear:"-",complete:true},
+{name:"Cornwall",region:"europe",icon:"assets/england-flag.png",note:"Rugged coastline, fishing villages, and beaches",tripYear:"-",complete:false},
+{name:"Brighton",region:"europe",icon:"assets/england-flag.png",note:"Seaside city with pier and nightlife",tripYear:"-",complete:true},
+{name:"Cotswolds",region:"europe",icon:"assets/england-flag.png",note:"Honey-stone villages and rolling countryside",tripYear:"-",complete:false},
+{name:"Liverpool",region:"europe",icon:"assets/england-flag.png",note:"Beatles heritage and famous waterfront",tripYear:"-",complete:true},
+{name:"Manchester",region:"europe",icon:"assets/england-flag.png",note:"Music, football, and industrial history",tripYear:"-",complete:true},
+{name:"Newcastle upon Tyne",region:"europe",icon:"assets/england-flag.png",note:"Lively riverside city and iconic bridges",tripYear:"-",complete:true},
+{name:"Norwich",region:"europe",icon:"assets/england-flag.png",note:"Medieval city with cathedral and market",tripYear:"-",complete:true},
+{name:"Sheffield",region:"europe",icon:"assets/england-flag.png",note:"Steel city near the Peak District",tripYear:"-",complete:true},
+{name:"Bath",region:"europe",icon:"assets/england-flag.png",note:"Roman baths and Georgian elegance",tripYear:"-",complete:true},
+{name:"Nottingham",region:"europe",icon:"assets/england-flag.png",note:"Robin Hood legends and historic castle",tripYear:"-",complete:true},
+{name:"Stratford upon Avon",region:"europe",icon:"assets/england-flag.png",note:"Shakespeare’s birthplace with Tudor charm",tripYear:"-",complete:true},
+{name:"Blackpool",region:"europe",icon:"assets/england-flag.png",note:"Classic seaside resort with famous tower",tripYear:"-",complete:true},
 
-        localStorage.setItem(
-            COMPLETED_STORE,
-            JSON.stringify(initial)
-        );
+{name:"Cardiff",region:"europe",icon:"assets/wales-flag.png",note:"Welsh capital with castle and bay",tripYear:"-",complete:true},
+{name:"Glasgow",region:"europe",icon:"assets/scotland-flag.png",note:"Vibrant culture, music, and striking architecture",tripYear:"-",complete:true},
+{name:"Edinburgh",region:"europe",icon:"assets/scotland-flag.png",note:"Historic capital with castle and festivals",tripYear:"-",complete:false},
+{name:"Scottish Highlands",region:"europe",icon:"assets/scotland-flag.png",note:"Dramatic mountains, lochs, and wild landscapes",tripYear:"-",complete:false},
 
-        return new Set(initial);
+{name:"Mayo",region:"europe",icon:"assets/ireland-flag.png",note:"Wild Atlantic coast and rugged landscapes",tripYear:"-",complete:true},
+{name:"Galway",region:"europe",icon:"assets/ireland-flag.png",note:"Lively arts city on Atlantic coast",tripYear:"-",complete:false},
+{name:"Dublin",region:"europe",icon:"assets/ireland-flag.png",note:"Lively capital with pubs and history",tripYear:"-",complete:true},
+{name:"Clare",region:"europe",icon:"assets/ireland-flag.png",note:"Cliffs of Moher and Atlantic scenery",tripYear:"-",complete:false},
+{name:"Kerry",region:"europe",icon:"assets/ireland-flag.png",note:"Mountains, lakes, and Ring of Kerry",tripYear:"-",complete:false},
+{name:"Cork",region:"europe",icon:"assets/ireland-flag.png",note:"Food-loving city with historic harbour charm",tripYear:"-",complete:false},
 
-    } catch {
-        return new Set();
+{name:"Normandy",region:"europe",icon:"assets/france-flag.png",note:"D-Day beaches and dramatic coastline",tripYear:"-",complete:false},
+{name:"Loire Valley",region:"europe",icon:"assets/france-flag.png",note:"Fairytale châteaux and scenic river valley",tripYear:"-",complete:false},
+{name:"Champagne",region:"europe",icon:"assets/france-flag.png",note:"Rolling vineyards producing famous sparkling wine",tripYear:"-",complete:false},
+{name:"Paris",region:"europe",icon:"assets/france-flag.png",note:"Romantic capital with iconic landmarks",tripYear:"-",complete:false},
+{name:"Lille",region:"europe",icon:"assets/france-flag.png",note:"French city with Flemish architecture",tripYear:"",complete:true},
+{name:"Brittany",region:"europe",icon:"assets/france-flag.png",note:"Rugged coast, lighthouses, and Celtic heritage",tripYear:"",complete:true},
+{name:"Bordeaux",region:"europe",icon:"assets/france-flag.png",note:"Elegant city famous for world-class wine",tripYear:"-",complete:false},
+{name:"Lyon",region:"europe",icon:"assets/france-flag.png",note:"Gastronomic capital with historic old town",tripYear:"-",complete:false},
+{name:"Provence",region:"europe",icon:"assets/france-flag.png",note:"Lavender fields, hill villages, sunny countryside",tripYear:"-",complete:false},
+{name:"French Riviera",region:"europe",icon:"assets/france-flag.png",note:"Mediterranean glamour, beaches, and seaside towns",tripYear:"-",complete:false},
+
+{name:"Zurich",region:"europe",icon:"assets/switzerland-flag.png",note:"Financial hub with lake and old town",tripYear:"-",complete:false},
+{name:"Geneva",region:"europe",icon:"assets/switzerland-flag.png",note:"Lakeside city of diplomacy and mountains",tripYear:"-",complete:false},
+{name:"Salzburg",region:"europe",icon:"assets/austria-flag.png",note:"Baroque city and Mozart’s birthplace",tripYear:"-",complete:false},
+{name:"Vienna",region:"europe",icon:"assets/austria-flag.png",note:"Imperial capital of music and palaces",tripYear:"-",complete:false},
+{name:"Budapest",region:"europe",icon:"assets/hungary-flag.png",note:"Danube city with thermal baths",tripYear:"-",complete:false},
+{name:"Prague",region:"europe",icon:"assets/czech-republic-flag.png",note:"Fairytale city of bridges and castles",tripYear:"-",complete:false},
+{name:"Bratislava",region:"europe",icon:"assets/slovakia-flag.png",note:"Small Danube capital with hilltop castle",tripYear:"-",complete:false},
+{name:"Ljubljana",region:"europe",icon:"assets/slovenia-flag.png",note:"Charming Slovenian capital with a hilltop castle, riverside old town, and compact pedestrian centre",tripYear:"-",complete:false},
+{name:"Sofia",region:"europe",icon:"assets/bulgaria-flag.png",note:"Historic Balkan capital with Orthodox churches, Roman ruins, and a backdrop of Vitosha Mountain",tripYear:"-",complete:false},
+{name:"Zagreb",region:"europe",icon:"assets/croatia-flag.png",note:"Charming capital with historic upper town",tripYear:"-",complete:false},
+{name:"Split",region:"europe",icon:"assets/croatia-flag.png",note:"Roman palace city on Adriatic coast",tripYear:"-",complete:false},
+{name:"Dubrovnik",region:"europe",icon:"assets/croatia-flag.png",note:"Walled Adriatic city with stone streets",tripYear:"-",complete:false},
+{name:"Bucharest",region:"europe",icon:"assets/romania-flag.png",note:"Grand boulevards and striking communist architecture",tripYear:"-",complete:false},
+{name:"Transylvania",region:"europe",icon:"assets/romania-flag.png",note:"Castles, forests, and Dracula legends",tripYear:"-",complete:false},
+{name:"Belgrade",region:"europe",icon:"assets/serbia-flag.png",note:"Lively Balkan capital at river confluence",tripYear:"-",complete:false},
+{name:"Kyiv",region:"europe",icon:"assets/ukraine-flag.png",note:"Historic capital with golden-domed churches",tripYear:"-",complete:false},
+
+{name:"Rome",region:"europe",icon:"assets/italy-flag.png",note:"Ancient ruins, Vatican, and timeless culture",tripYear:"-",complete:false},
+{name:"Bologna",region:"europe",icon:"assets/italy-flag.png",note:"Food capital with medieval arcades",tripYear:"-",complete:false},
+{name:"Tuscany",region:"europe",icon:"assets/italy-flag.png",note:"Rolling hills, vineyards, and historic towns",tripYear:"-",complete:false},
+{name:"Naples",region:"europe",icon:"assets/italy-flag.png",note:"Birthplace of pizza beneath Mount Vesuvius",tripYear:"-",complete:true},
+{name:"Milan",region:"europe",icon:"assets/italy-flag.png",note:"Fashion capital with cathedral and culture",tripYear:"-",complete:false},
+{name:"Cinque Terre",region:"europe",icon:"assets/italy-flag.png",note:"Colourful villages along rugged coastline",tripYear:"-",complete:false},
+{name:"Amalfi Coast",region:"europe",icon:"assets/italy-flag.png",note:"Dramatic cliffs, villages, and coastal roads",tripYear:"-",complete:true},
+{name:"Venice",region:"europe",icon:"assets/italy-flag.png",note:"Canals, gondolas, and historic palaces",tripYear:"-",complete:false},
+
+{name:"Athens",region:"europe",icon:"assets/greece-flag.png",note:"Ancient ruins and vibrant historic capital",tripYear:"-",complete:false},
+{name:"Corfu",region:"europe",icon:"assets/greece-flag.png",note:"Green island with Venetian architecture",tripYear:"",complete:true},
+{name:"Crete",region:"europe",icon:"assets/greece-flag.png",note:"Greece’s largest island with ancient history",tripYear:"",complete:true},
+{name:"Mykonos",region:"europe",icon:"assets/greece-flag.png",note:"Lively island with beaches and nightlife",tripYear:"-",complete:false},
+{name:"Santorini",region:"europe",icon:"assets/greece-flag.png",note:"White villages overlooking dramatic volcanic caldera",tripYear:"-",complete:false},
+
+{name:"Tenerife",region:"europe",icon:"assets/spain-flag.png",note:"Volcanic island with beaches and Mount Teide",tripYear:"",complete:true},
+{name:"Menorca",region:"europe",icon:"assets/spain-flag.png",note:"Quiet Balearic island with beaches and coves",tripYear:"",complete:true},
+{name:"Seville",region:"europe",icon:"assets/spain-flag.png",note:"Flamenco, cathedral, and Andalusian charm",tripYear:"-",complete:false},
+{name:"Madrid",region:"europe",icon:"assets/spain-flag.png",note:"Lively capital with art and plazas",tripYear:"-",complete:false},
+{name:"Salou",region:"europe",icon:"assets/spain-flag.png",note:"Spanish beach resort near PortAventura",tripYear:"",complete:true},
+{name:"Barcelona",region:"europe",icon:"assets/spain-flag.png",note:"Gaudí architecture, beaches, and vibrant culture",tripYear:"-",complete:false},
+{name:"Valencia",region:"europe",icon:"assets/spain-flag.png",note:"Paella birthplace with futuristic architecture",tripYear:"-",complete:false},
+
+{name:"Lisbon",region:"europe",icon:"assets/portugal-flag.png",note:"Hilly capital with trams and viewpoints",tripYear:"-",complete:false},
+{name:"Porto",region:"europe",icon:"assets/portugal-flag.png",note:"Riverside city famous for port wine",tripYear:"-",complete:false},
+{name:"Portimao",region:"europe",icon:"assets/portugal-flag.png",note:"Algarve harbour city with golden beaches",tripYear:"",complete:true},
+
+{name:"Larnaca",region:"europe",icon:"assets/cyprus-flag.png",note:"Seaside city with palm-lined promenade",tripYear:"",complete:true},
+{name:"Northern Cyprus",region:"europe",icon:"assets/cyprus-flag.png",note:"Beaches, castles, and quiet Mediterranean towns",tripYear:"",complete:true},
+
+{name:"Istanbul",region:"europe",icon:"assets/turkey-flag.png",note:"Where Europe meets Asia and empires",tripYear:"-",complete:false},
+{name:"Alanya",region:"europe",icon:"assets/turkey-flag.png",note:"Beach resort with castle and harbour",tripYear:"",complete:true},
+{name:"Fethiye",region:"europe",icon:"assets/turkey-flag.png",note:"Turquoise coast, beaches, and ancient ruins",tripYear:"",complete:true},
+{name:"Izmir",region:"europe",icon:"assets/turkey-flag.png",note:"Aegean coastal city with relaxed vibe",tripYear:"-",complete:false},
+{name:"Cappadocia",region:"europe",icon:"assets/turkey-flag.png",note:"Fairy chimneys and hot air balloons",tripYear:"-",complete:false},
+
+{name:"Saint Petersburg",region:"europe",icon:"assets/russia-flag.png",note:"Imperial city of canals and palaces",tripYear:"-",complete:false},
+{name:"Moscow",region:"europe",icon:"assets/russia-flag.png",note:"Russia’s capital with Kremlin and Red Square",tripYear:"-",complete:false},
+{name:"Kazan",region:"europe",icon:"assets/russia-flag.png",note:"Tatar capital blending Russian and Islamic culture",tripYear:"-",complete:false},
+
+{name:"Marrakesh",region:"africa",icon:"assets/morocco-flag.png",note:"Markets, palaces, and vibrant medina",tripYear:"-",complete:false},
+{name:"Rabat",region:"africa",icon:"assets/morocco-flag.png",note:"Moroccan capital with historic kasbah",tripYear:"-",complete:false},
+{name:"Agadir",region:"africa",icon:"assets/morocco-flag.png",note:"Modern Moroccan resort with long beaches",tripYear:"",complete:true},
+{name:"Rabat",region:"africa",icon:"assets/morocco-flag.png",note:"Moroccan capital with historic kasbah",tripYear:"-",complete:false},
+{name:"Dakar",region:"africa",icon:"assets/senegal-flag.png",note:"Senegalese capital with Atlantic beaches, markets, music culture and Gorée Island nearby",tripYear:"-",complete:false},
+{name:"Nairobi",region:"africa",icon:"assets/kenya-flag.png",note:"Modern city beside wildlife parks",tripYear:"-",complete:false},
+{name:"Serengeti",region:"africa",icon:"assets/tanzania-flag.png",note:"Vast plains with incredible wildlife",tripYear:"-",complete:false},
+{name:"Zanzibar",region:"africa",icon:"assets/tanzania-flag.png",note:"Tropical island with spice heritage",tripYear:"-",complete:false},
+{name:"Addis Ababa",region:"africa",icon:"assets/ethiopia-flag.png",note:"Ethiopian capital and cultural hub",tripYear:"-",complete:false},
+{name:"Johannesburg",region:"africa",icon:"assets/south-africa-flag.png",note:"South Africa’s largest city and history",tripYear:"-",complete:false},
+{name:"Cape Town",region:"africa",icon:"assets/south-africa-flag.png",note:"Table Mountain and stunning coastline",tripYear:"-",complete:false},
+{name:"Cairo",region:"africa",icon:"assets/egypt-flag.png",note:"Pyramids, ancient history, and bustling capital",tripYear:"-",complete:false},
+{name:"Luxor",region:"africa",icon:"assets/egypt-flag.png",note:"Temples and tombs of ancient Egypt",tripYear:"-",complete:false},
+
+{name:"Doha",region:"asia",icon:"assets/qatar-flag.png",note:"Modern desert capital with futuristic skyline",tripYear:"-",complete:false},
+{name:"Dubai",region:"asia",icon:"assets/uae-flag.png",note:"Luxury city of skyscrapers and malls",tripYear:"-",complete:false},
+{name:"Abu Dhabi",region:"asia",icon:"assets/uae-flag.png",note:"Elegant capital with grand mosque",tripYear:"-",complete:false},
+{name:"Amman",region:"asia",icon:"assets/jordan-flag.png",note:"Historic Jordanian capital with Roman ruins",tripYear:"-",complete:false},
+{name:"Petra",region:"asia",icon:"assets/jordan-flag.png",note:"Ancient rose-red city carved into cliffs",tripYear:"-",complete:false},
+{name:"Riyadh",region:"asia",icon:"assets/saudi-arabia-flag.png",note:"Saudi capital with modern skyline",tripYear:"-",complete:false},
+{name:"Jeddah",region:"asia",icon:"assets/saudi-arabia-flag.png",note:"Red Sea port with historic old town",tripYear:"-",complete:false},
+
+{name:"Beijing",region:"asia",icon:"assets/china-flag.png",note:"Imperial capital with Great Wall",tripYear:"-",complete:false},
+{name:"Xian",region:"asia",icon:"assets/china-flag.png",note:"Home of the Terracotta Army",tripYear:"-",complete:false},
+{name:"Hong Kong",region:"asia",icon:"assets/china-flag.png",note:"Skyscrapers, harbour views, markets and dim sum",tripYear:"2026",complete:true},
+{name:"Chengdu",region:"asia",icon:"assets/china-flag.png",note:"Pandas, spicy cuisine, and tea houses",tripYear:"-",complete:false},
+{name:"Shanghai",region:"asia",icon:"assets/china-flag.png",note:"Futuristic skyline and historic Bund",tripYear:"-",complete:false},
+{name:"Ulaanbaatar",region:"asia",icon:"assets/mongolia-flag.png",note:"Mongolian capital near vast steppe landscapes",tripYear:"-",complete:false},
+
+{name:"Hanoi",region:"asia",icon:"assets/vietnam-flag.png",note:"Ancient capital with street food and temples",tripYear:"2026",complete:true},
+{name:"Ha Long Bay",region:"asia",icon:"assets/vietnam-flag.png",note:"Limestone karsts rising from emerald waters",tripYear:"2026",complete:true},
+{name:"Sa Pa",region:"asia",icon:"assets/vietnam-flag.png",note:"Mountain terraces and ethnic hill tribes",tripYear:"2026",complete:true},
+{name:"Ho Chi Minh City",region:"asia",icon:"assets/vietnam-flag.png",note:"Energetic southern city with markets, history, and street food",tripYear:"-",complete:false},
+
+{name:"Vientiane",region:"asia",icon:"assets/laos-flag.png",note:"Laid-back Mekong capital of Laos",tripYear:"-",complete:false},
+{name:"Luang Prabang",region:"asia",icon:"assets/laos-flag.png",note:"Temple town with waterfalls and monks",tripYear:"-",complete:false},
+
+{name:"Manila",region:"asia",icon:"assets/philippines-flag.png",note:"Bustling capital with Spanish heritage",tripYear:"-",complete:false},
+{name:"Boracay",region:"asia",icon:"assets/philippines-flag.png",note:"White sand beaches and clear waters",tripYear:"-",complete:false},
+{name:"Palawan",region:"asia",icon:"assets/philippines-flag.png",note:"Tropical islands and turquoise lagoons",tripYear:"-",complete:false},
+
+{name:"Phnom Penh",region:"asia",icon:"assets/cambodia-flag.png",note:"Cambodia’s capital on the Mekong",tripYear:"-",complete:false},
+{name:"Siem Reap",region:"asia",icon:"assets/cambodia-flag.png",note:"Gateway to Angkor temple complex",tripYear:"-",complete:false},
+
+{name:"Bangkok",region:"asia",icon:"assets/thailand-flag.png",note:"Bustling capital of temples and markets",tripYear:"-",complete:false},
+{name:"Krabi",region:"asia",icon:"assets/thailand-flag.png",note:"Limestone cliffs and tropical beaches",tripYear:"",complete:true},
+{name:"Pattaya",region:"asia",icon:"assets/thailand-flag.png",note:"Beach city known for nightlife",tripYear:"",complete:true},
+{name:"Hua Hin",region:"asia",icon:"assets/thailand-flag.png",note:"Royal seaside resort with markets",tripYear:"",complete:true},
+{name:"Chiang Mai",region:"asia",icon:"assets/thailand-flag.png",note:"Northern city of temples and mountains",tripYear:"-",complete:false},
+{name:"Phuket",region:"asia",icon:"assets/thailand-flag.png",note:"Thailand’s largest island with beaches",tripYear:"2015",complete:true},
+
+{name:"Jakarta",region:"asia",icon:"assets/indonesia-flag.png",note:"Indonesia’s vast and bustling capital",tripYear:"-",complete:false},
+{name:"Yogyakarta",region:"asia",icon:"assets/indonesia-flag.png",note:"Javanese culture near Borobudur temples",tripYear:"-",complete:false},
+{name:"Borneo",region:"asia",icon:"assets/indonesia-flag.png",note:"Rainforests, wildlife, and orangutans",tripYear:"-",complete:false},
+{name:"Kuala Lumpur",region:"asia",icon:"assets/malaysia-flag.png",note:"Modern capital with Petronas Towers",tripYear:"-",complete:false},
+{name:"Singapore",region:"asia",icon:"assets/singapore-flag.png",note:"Ultra-modern city with diverse culture",tripYear:"-",complete:false},
+{name:"Taipei",region:"asia",icon:"assets/taiwan-flag.png",note:"Modern city with night markets",tripYear:"-",complete:false},
+{name:"Seoul",region:"asia",icon:"assets/south-korea-flag.png",note:"Modern capital with palaces and technology",tripYear:"-",complete:false},
+
+{name:"Delhi",region:"asia",icon:"assets/india-flag.png",note:"Bustling capital blending ancient and modern",tripYear:"-",complete:false},
+{name:"Agra",region:"asia",icon:"assets/india-flag.png",note:"Home of the iconic Taj Mahal",tripYear:"-",complete:false},
+{name:"Jaipur",region:"asia",icon:"assets/india-flag.png",note:"Pink City of palaces and forts",tripYear:"-",complete:false},
+{name:"Jodhpur",region:"asia",icon:"assets/india-flag.png",note:"Blue city beneath Mehrangarh Fort",tripYear:"-",complete:false},
+{name:"Mumbai",region:"asia",icon:"assets/india-flag.png",note:"India’s financial hub and Bollywood",tripYear:"-",complete:false},
+{name:"Varanasi",region:"asia",icon:"assets/india-flag.png",note:"Sacred Ganges city of rituals",tripYear:"-",complete:false},
+
+{name:"Colombo",region:"asia",icon:"assets/sri-lanka-flag.png",note:"Sri Lanka’s vibrant coastal capital",tripYear:"-",complete:false},
+{name:"Kathmandu",region:"asia",icon:"assets/nepal-flag.png",note:"Temple-filled valley beneath Himalayas",tripYear:"-",complete:false},
+
+{name:"Tokyo",region:"asia",icon:"assets/japan-flag.png",note:"Futuristic metropolis with ancient temples",tripYear:"2026",complete:true},
+{name:"Osaka",region:"asia",icon:"assets/japan-flag.png",note:"Food capital with lively nightlife",tripYear:"2026",complete:true},
+{name:"Nara",region:"asia",icon:"assets/japan-flag.png",note:"Ancient temples and friendly deer",tripYear:"2026",complete:true},
+{name:"Kyoto",region:"asia",icon:"assets/japan-flag.png",note:"Temples, shrines, and traditional Japan",tripYear:"2026",complete:true},
+
+{name:"Melbourne",region:"oceania",icon:"assets/australia-flag.png",note:"Creative city of cafes and culture",tripYear:"-",complete:false},
+{name:"Sydney",region:"oceania",icon:"assets/australia-flag.png",note:"Harbour city with opera house",tripYear:"-",complete:false},
+{name:"Auckland",region:"oceania",icon:"assets/new-zealand-flag.png",note:"Harbour city with volcanic landscapes",tripYear:"-",complete:false},
+{name:"Queenstown",region:"oceania",icon:"assets/new-zealand-flag.png",note:"Alpine adventure town beside lake",tripYear:"-",complete:false},
+{name:"Bora Bora",region:"oceania",icon:"assets/french-polynesia-flag.png",note:"Tropical lagoon island with overwater bungalows",tripYear:"-",complete:false}
+];
+
+const STORE="kieranTripDepartureBoard:v1";
+const DESTINATION_LOCK_STORE="kieranDestinationLocks:v1";
+const COMPLETED_STORE="kieranCompletedDestinations:v1";
+
+const $=id=>document.getElementById(id);
+
+const rows=$("rows");
+const search=$("search");
+const statusFilter=$("statusFilter");
+const regionFilter=$("regionFilter");
+const clearSel=$("clearSel");
+const sTotal=$("sTotal");
+const sDone=$("sDone");
+const sTodo=$("sTodo");
+const sSel=$("sSel");
+const selCount=$("selCount");
+const selectedList=$("selectedList");
+const saveTrip=$("saveTrip");
+
+function readJSON(key,fallback){
+  try{
+    const raw=localStorage.getItem(key);
+    return raw===null?fallback:JSON.parse(raw);
+  }catch{
+    return fallback;
+  }
+}
+
+function esc(value){
+  return String(value??"").replace(/[&<>"']/g,c=>({
+    "&":"&amp;",
+    "<":"&lt;",
+    ">":"&gt;",
+    '"':"&quot;",
+    "'":"&#039;"
+  })[c]);
+}
+
+function val(id){
+  return $(id).value.trim();
+}
+
+function setv(id,value){
+  $(id).value=value||"";
+}
+
+function loadTrips(){
+  const data=readJSON(STORE,[]);
+  return Array.isArray(data)?data:[];
+}
+
+function loadCompletedDestinations(){
+  const saved=readJSON(COMPLETED_STORE,null);
+
+  if(Array.isArray(saved)){
+    return new Set(saved);
+  }
+
+  const initial=DESTINATIONS
+    .filter(destination=>destination.complete)
+    .map(destination=>destination.name);
+
+  localStorage.setItem(
+    COMPLETED_STORE,
+    JSON.stringify(initial)
+  );
+
+  return new Set(initial);
+}
+
+function loadDestinationLocks(){
+  const data=readJSON(DESTINATION_LOCK_STORE,[]);
+  return new Set(Array.isArray(data)?data:[]);
+}
+
+let selected=new Set();
+let trips=loadTrips();
+let completedDestinations=loadCompletedDestinations();
+let lockedDestinations=loadDestinationLocks();
+let editingId=null;
+
+function syncFirebase(){
+  if(typeof window.syncTripsToFirebase==="function"){
+    window.syncTripsToFirebase();
+  }
+}
+
+function persistTrips(){
+  localStorage.setItem(STORE,JSON.stringify(trips));
+  syncFirebase();
+}
+
+function persistCompletedDestinations(){
+  localStorage.setItem(
+    COMPLETED_STORE,
+    JSON.stringify([...completedDestinations])
+  );
+  syncFirebase();
+}
+
+function persistDestinationLocks(){
+  localStorage.setItem(
+    DESTINATION_LOCK_STORE,
+    JSON.stringify([...lockedDestinations])
+  );
+  syncFirebase();
+}
+
+function isDestinationComplete(name){
+  return completedDestinations.has(name);
+}
+
+function isDestinationLocked(name){
+  return lockedDestinations.has(name);
+}
+
+function toggleDestinationLock(name){
+  if(!isDestinationComplete(name)){
+    return;
+  }
+
+  if(lockedDestinations.has(name)){
+    lockedDestinations.delete(name);
+  }else{
+    lockedDestinations.add(name);
+  }
+
+  persistDestinationLocks();
+  renderAll();
+}
+
+function tick(){
+  $("clock").textContent=new Date().toLocaleTimeString(
+    "en-GB",
+    {
+      hour:"2-digit",
+      minute:"2-digit",
+      second:"2-digit"
     }
+  );
 }
 
-function persistCompletedDestinations() {
-    localStorage.setItem(
-        COMPLETED_STORE,
-        JSON.stringify(
-            [...completedDestinations]
-        )
-    );
+tick();
+setInterval(tick,1000);
 
-    if (window.syncTripsToFirebase) {
-        window.syncTripsToFirebase();
-    }
-}
+const regions=[
+  ...new Set(
+    DESTINATIONS
+      .map(destination=>destination.region)
+      .filter(Boolean)
+  )
+].sort();
 
-let completedDestinations = loadCompletedDestinations();
+regionFilter.innerHTML+=regions
+  .map(region=>`
+    <option value="${esc(region)}">
+      ${esc(region.toUpperCase())}
+    </option>
+  `)
+  .join("");
 
-function isDestinationComplete(name) {
-    return completedDestinations.has(name);
-}
+function renderBoard(){
+  const query=search.value.trim().toLowerCase();
+  const status=statusFilter.value;
+  const region=regionFilter.value;
 
-        let selected = new Set();
-        let trips = loadTrips();
-        let editingId = null;
-        let lockedDestinations = loadDestinationLocks();
+  const filtered=DESTINATIONS.filter(destination=>{
+    const complete=isDestinationComplete(destination.name);
 
+    const matchesSearch=
+      !query||
+      (
+        destination.name+" "+destination.note
+      ).toLowerCase().includes(query);
 
-        function loadTrips() {
-            try {
-                return JSON.parse(
-                    localStorage.getItem(STORE) || "[]"
-                );
-            } catch {
-                return [];
+    const matchesStatus=
+      status==="all"||
+      (status==="complete"&&complete)||
+      (status==="incomplete"&&!complete);
+
+    const matchesRegion=
+      region==="all"||
+      destination.region===region;
+
+    return matchesSearch&&matchesStatus&&matchesRegion;
+  });
+
+  rows.innerHTML=filtered.map(destination=>{
+    const complete=isDestinationComplete(destination.name);
+    const locked=complete&&isDestinationLocked(destination.name);
+    const chosen=selected.has(destination.name);
+
+    return `
+      <div class="row ${complete?"complete-row":""} ${chosen?"trip-selected":""}">
+
+        <div>
+          <input
+            class="check"
+            type="checkbox"
+            data-complete-name="${esc(destination.name)}"
+            ${complete?"checked":""}
+            ${locked?"disabled":""}
+            title="Mark destination completed"
+          >
+        </div>
+
+        <div>
+
+          <div class="dest-line">
+            <img
+              class="dest-icon"
+              src="${esc(destination.icon)}"
+              alt=""
+              onerror="this.style.display='none'"
+            >
+
+            <div class="dest">
+              ${locked?"🔒 ":""}
+              ${esc(destination.name)}
+            </div>
+          </div>
+
+          <div class="sub">
+            ${
+              locked
+                ?"Completed destination locked"
+                :complete
+                  ?"Visited / complete"
+                  :"Planning candidate"
             }
+          </div>
+
+          <button
+            type="button"
+            class="trip-select ${chosen?"active":""}"
+            data-trip-select="${esc(destination.name)}"
+          >
+            ${chosen?"✓ ADDED TO TRIP":"+ ADD TO TRIP"}
+          </button>
+
+        </div>
+
+        <div>
+
+          <span class="status ${complete?"done":"todo"}">
+            ${complete?"COMPLETE":"INCOMPLETE"}
+          </span>
+
+          ${
+            complete
+              ?`
+                <br>
+
+                <button
+                  type="button"
+                  class="dest-lock ${locked?"locked":""}"
+                  data-lock-destination="${esc(destination.name)}"
+                >
+                  ${locked?"🔓 UNLOCK":"🔒 LOCK"}
+                </button>
+              `
+              :""
+          }
+
+        </div>
+
+        <div class="region">
+          ${esc(destination.region||"—")}
+        </div>
+
+        <div class="note">
+          ${esc(destination.note||"—")}
+        </div>
+
+        <div class="year">
+          ${esc(destination.tripYear||"—")}
+        </div>
+
+      </div>
+    `;
+  }).join("")||`
+    <div class="empty">
+      NO DESTINATIONS MATCH
+    </div>
+  `;
+
+  document
+    .querySelectorAll("[data-complete-name]")
+    .forEach(checkbox=>{
+      checkbox.onchange=()=>{
+        if(checkbox.disabled){
+          return;
         }
 
+        const name=checkbox.dataset.completeName;
 
-  function persistTrips() {
-    localStorage.setItem(
-        STORE,
-        JSON.stringify(trips)
-    );
-
-    if (window.syncTripsToFirebase) {
-        window.syncTripsToFirebase();
-    }
-}
-
-        function loadDestinationLocks() {
-            try {
-                return new Set(
-                    JSON.parse(
-                        localStorage.getItem(
-                            DESTINATION_LOCK_STORE
-                        ) || "[]"
-                    )
-                );
-            } catch {
-                return new Set();
-            }
+        if(checkbox.checked){
+          completedDestinations.add(name);
+        }else{
+          completedDestinations.delete(name);
+          lockedDestinations.delete(name);
         }
 
-
-  function persistDestinationLocks() {
-    localStorage.setItem(
-        DESTINATION_LOCK_STORE,
-        JSON.stringify(
-            [...lockedDestinations]
-        )
-    );
-
-    if (window.syncTripsToFirebase) {
-        window.syncTripsToFirebase();
-    }
-}
-
-
-        function isDestinationLocked(name) {
-            return lockedDestinations.has(name);
-        }
-
-
-        function toggleDestinationLock(name) {
-            if (lockedDestinations.has(name)) {
-                lockedDestinations.delete(name);
-            } else {
-                lockedDestinations.add(name);
-                selected.delete(name);
-            }
-
-            persistDestinationLocks();
-            renderAll();
-        }
-
-
-        /* =========================================================
-           HELPERS
-        ========================================================= */
-
-        function esc(value) {
-            return String(value ?? "").replace(
-                /[&<>"']/g,
-                character => ({
-                    "&": "&amp;",
-                    "<": "&lt;",
-                    ">": "&gt;",
-                    '"': "&quot;",
-                    "'": "&#039;"
-                })[character]
-            );
-        }
-
-
-        function val(id) {
-            return document
-                .getElementById(id)
-                .value
-                .trim();
-        }
-
-
-        function setv(id, value) {
-            document.getElementById(id).value = value || "";
-        }
-
-
-        /* =========================================================
-           CLOCK
-        ========================================================= */
-
-        function tick() {
-            document.getElementById("clock").textContent =
-                new Date().toLocaleTimeString(
-                    "en-GB",
-                    {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        second: "2-digit"
-                    }
-                );
-        }
-
-        tick();
-        setInterval(tick, 1000);
-
-
-        /* =========================================================
-           REGION FILTER
-        ========================================================= */
-
-        const regions = [
-            ...new Set(
-                DESTINATIONS
-                    .map(destination => destination.region)
-                    .filter(Boolean)
-            )
-        ].sort();
-
-        regionFilter.innerHTML += regions
-            .map(
-                region => `
-                    <option value="${esc(region)}">
-                        ${esc(region.toUpperCase())}
-                    </option>
-                `
-            )
-            .join("");
-
-
-        /* =========================================================
-           DESTINATION BOARD
-        ========================================================= */
-function renderBoard() {
-    const query = search.value
-        .trim()
-        .toLowerCase();
-
-    const status = statusFilter.value;
-    const region = regionFilter.value;
-
-    const filteredDestinations = DESTINATIONS.filter(destination => {
-        const complete = isDestinationComplete(destination.name);
-
-        const matchesSearch =
-            !query ||
-            (
-                destination.name +
-                " " +
-                destination.note
-            )
-                .toLowerCase()
-                .includes(query);
-
-        const matchesStatus =
-            status === "all" ||
-            (status === "complete" && complete) ||
-            (status === "incomplete" && !complete);
-
-        const matchesRegion =
-            region === "all" ||
-            destination.region === region;
-
-        return (
-            matchesSearch &&
-            matchesStatus &&
-            matchesRegion
-        );
+        persistCompletedDestinations();
+        persistDestinationLocks();
+        renderAll();
+      };
     });
 
-    rows.innerHTML =
-        filteredDestinations
-            .map(destination => {
-                const complete =
-                    isDestinationComplete(destination.name);
+  document
+    .querySelectorAll("[data-trip-select]")
+    .forEach(button=>{
+      button.onclick=()=>{
+        const name=button.dataset.tripSelect;
 
-                const locked =
-                    complete &&
-                    isDestinationLocked(destination.name);
-
-                return `
-                    <div class="row ${complete ? "selected" : ""}">
-
-                        <input
-                            class="check"
-                            type="checkbox"
-                            data-name="${esc(destination.name)}"
-                            ${complete ? "checked" : ""}
-                            ${locked ? "disabled" : ""}
-                        >
-
-                        <div>
-                            <div class="dest">
-                                ${locked ? "🔒 " : ""}
-                                ${esc(destination.name)}
-                            </div>
-
-                            <div class="sub">
-                                ${
-                                    locked
-                                        ? "Completed destination locked"
-                                        : complete
-                                            ? "Visited / complete"
-                                            : "Planning candidate"
-                                }
-                            </div>
-                        </div>
-
-                        <div>
-                            <span class="status ${complete ? "done" : "todo"}">
-                                ${complete ? "COMPLETE" : "INCOMPLETE"}
-                            </span>
-
-                            ${
-                                complete
-                                    ? `
-                                        <br>
-
-                                        <button
-                                            type="button"
-                                            class="dest-lock ${locked ? "locked" : ""}"
-                                            data-lock-destination="${esc(destination.name)}"
-                                        >
-                                            ${locked ? "🔓 UNLOCK" : "🔒 LOCK"}
-                                        </button>
-                                    `
-                                    : ""
-                            }
-                        </div>
-
-                        <div class="region">
-                            ${esc(destination.region || "—")}
-                        </div>
-
-                        <div class="note">
-                            ${esc(destination.note || "—")}
-                        </div>
-
-                        <div class="year">
-                            ${esc(destination.tripYear || "—")}
-                        </div>
-
-                    </div>
-                `;
-            })
-            .join("") ||
-        `
-            <div class="empty">
-                NO DESTINATIONS MATCH
-            </div>
-        `;
-
-    document
-        .querySelectorAll(".check")
-        .forEach(checkbox => {
-            checkbox.onchange = () => {
-                if (checkbox.disabled) {
-                    return;
-                }
-
-                const name = checkbox.dataset.name;
-
-                if (checkbox.checked) {
-                    completedDestinations.add(name);
-                } else {
-                    completedDestinations.delete(name);
-                    lockedDestinations.delete(name);
-                }
-
-                persistCompletedDestinations();
-                persistDestinationLocks();
-
-                renderAll();
-            };
-        });
-
-    document
-        .querySelectorAll("[data-lock-destination]")
-        .forEach(button => {
-            button.onclick = event => {
-                event.stopPropagation();
-
-                toggleDestinationLock(
-                    button.dataset.lockDestination
-                );
-            };
-        });
-}
-
-
-        /* =========================================================
-           SELECTED DESTINATIONS
-        ========================================================= */
-
-        function renderSelected() {
-            sSel.textContent = selected.size;
-            selCount.textContent = selected.size;
-
-            selectedList.innerHTML =
-                [...selected]
-                    .map(
-                        name => `
-                            <span class="chip">
-                                ${esc(name)}
-                            </span>
-                        `
-                    )
-                    .join("") ||
-                `
-                    <span class="notice">
-                        Nothing selected yet.
-                    </span>
-                `;
+        if(selected.has(name)){
+          selected.delete(name);
+        }else{
+          selected.add(name);
         }
 
-
-        /* =========================================================
-           STATS
-        ========================================================= */
-
-function renderStats() {
-    const completed = DESTINATIONS.filter(
-        destination =>
-            isDestinationComplete(destination.name)
-    ).length;
-
-    const incomplete =
-        DESTINATIONS.length - completed;
-
-    sTotal.textContent = DESTINATIONS.length;
-    sDone.textContent = completed;
-    sTodo.textContent = incomplete;
-}
-
-
-        /* =========================================================
-           TRIP DATA
-        ========================================================= */
-
-        function getTripData() {
-            return {
-                id:
-                    editingId ||
-                    `trip-${Date.now()}`,
-
-                name:
-                    val("tripName"),
-
-                startDate:
-                    val("startDate"),
-
-                endDate:
-                    val("endDate"),
-
-                status:
-                    val("tripStatus"),
-
-                airline:
-                    val("airline"),
-
-                route:
-                    val("route"),
-
-                flightRef:
-                    val("flightRef"),
-
-                hotels:
-                    val("hotels"),
-
-                budget:
-                    val("budget"),
-
-                travelType:
-                    val("travelType"),
-
-                summary:
-                    val("summary"),
-
-                notes:
-                    val("notes"),
-
-                destinations:
-                    [...selected],
-
-                locked:
-                    false,
-
-                updatedAt:
-                    Date.now()
-            };
-        }
-
-
-        /* =========================================================
-           RESET FORM
-        ========================================================= */
-
-        function resetForm() {
-            editingId = null;
-
-            [
-                "tripName",
-                "startDate",
-                "endDate",
-                "airline",
-                "route",
-                "flightRef",
-                "hotels",
-                "budget",
-                "summary",
-                "notes"
-            ].forEach(
-                field => setv(field, "")
-            );
-
-            setv(
-                "tripStatus",
-                "planned"
-            );
-
-            setv(
-                "travelType",
-                "Holiday"
-            );
-
-            selected.clear();
-
-            saveTrip.textContent =
-                "CREATE TRIP";
-
-            renderAll();
-        }
-
-
-        /* =========================================================
-           EDIT TRIP
-        ========================================================= */
-
-        function editTrip(id) {
-            const trip =
-                trips.find(
-                    item => item.id === id
-                );
-
-            if (!trip || trip.locked) {
-                return;
-            }
-
-            editingId = id;
-
-            setv("tripName", trip.name);
-            setv("startDate", trip.startDate);
-            setv("endDate", trip.endDate);
-            setv("tripStatus", trip.status);
-            setv("airline", trip.airline);
-            setv("route", trip.route);
-            setv("flightRef", trip.flightRef);
-            setv("hotels", trip.hotels);
-            setv("budget", trip.budget);
-            setv("travelType", trip.travelType);
-            setv("summary", trip.summary);
-            setv("notes", trip.notes);
-
-            selected =
-                new Set(
-                    trip.destinations || []
-                );
-
-            saveTrip.textContent =
-                "SAVE CHANGES";
-
-            renderAll();
-
-            scrollTo({
-                top: 0,
-                behavior: "smooth"
-            });
-        }
-
-
-        /* =========================================================
-           LOCK TRIP
-        ========================================================= */
-
-        function lockTrip(id) {
-            const trip =
-                trips.find(
-                    item => item.id === id
-                );
-
-            if (!trip) {
-                return;
-            }
-
-            trip.locked =
-                !trip.locked;
-
-            persistTrips();
-            renderTrips();
-        }
-
-
-        /* =========================================================
-           DELETE TRIP
-        ========================================================= */
-
-        function deleteTrip(id) {
-            const trip =
-                trips.find(
-                    item => item.id === id
-                );
-
-            if (!trip || trip.locked) {
-                return;
-            }
-
-            if (
-                confirm(
-                    "Delete this trip?"
-                )
-            ) {
-                trips =
-                    trips.filter(
-                        item => item.id !== id
-                    );
-
-                persistTrips();
-                renderTrips();
-            }
-        }
-
-
-        /* =========================================================
-           RENDER SAVED TRIPS
-        ========================================================= */
-
-        function renderTrips() {
-            const tripsContainer =
-                document.getElementById(
-                    "trips"
-                );
-
-            if (!trips.length) {
-                tripsContainer.innerHTML = `
-                    <div class="notice">
-                        No trips created yet.
-                    </div>
-                `;
-
-                return;
-            }
-
-
-            tripsContainer.innerHTML =
-                [...trips]
-                    .sort(
-                        (a, b) =>
-                            (b.startDate || "")
-                                .localeCompare(
-                                    a.startDate || ""
-                                )
-                    )
-                    .map(trip => {
-                        const destinations =
-                            trip.destinations || [];
-
-                        const route =
-                            trip.route ||
-                            destinations.join(" → ");
-
-                        return `
-                            <article
-                                class="trip ${
-                                    trip.locked
-                                        ? "locked"
-                                        : ""
-                                }"
-                            >
-
-                                <div class="triptop">
-                                    <span>
-                                        ${
-                                            trip.locked
-                                                ? "🔒"
-                                                : "🟢"
-                                        }
-                                    </span>
-
-                                    <div class="triptitle">
-                                        ${
-                                            esc(
-                                                trip.name ||
-                                                "UNTITLED TRIP"
-                                            )
-                                        }
-                                    </div>
-
-                                    <span class="lock">
-                                        ${
-                                            esc(
-                                                (
-                                                    trip.status ||
-                                                    "planned"
-                                                ).toUpperCase()
-                                            )
-                                        }
-                                    </span>
-                                </div>
-
-
-                                <div class="tripbody">
-
-                                    <div class="triproute">
-                                        ${esc(route)}
-                                    </div>
-
-                                    <div>
-                                        ${
-                                            esc(
-                                                trip.startDate ||
-                                                "DATE TBC"
-                                            )
-                                        }
-                                        →
-                                        ${
-                                            esc(
-                                                trip.endDate ||
-                                                "DATE TBC"
-                                            )
-                                        }
-                                        ·
-                                        ${destinations.length}
-                                        DESTINATIONS
-                                    </div>
-
-
-                                    ${
-                                        trip.airline
-                                            ? `
-                                                <div>
-                                                    OPERATOR:
-                                                    ${esc(trip.airline)}
-                                                </div>
-                                            `
-                                            : ""
-                                    }
-
-
-                                    ${
-                                        trip.hotels
-                                            ? `
-                                                <div>
-                                                    HOTELS:
-                                                    ${esc(trip.hotels)}
-                                                </div>
-                                            `
-                                            : ""
-                                    }
-
-
-                                    ${
-                                        trip.budget
-                                            ? `
-                                                <div>
-                                                    BUDGET:
-                                                    ${esc(trip.budget)}
-                                                </div>
-                                            `
-                                            : ""
-                                    }
-
-
-                                    ${
-                                        trip.summary
-                                            ? `
-                                                <div class="trip-summary">
-                                                    ${esc(trip.summary)}
-                                                </div>
-                                            `
-                                            : ""
-                                    }
-
-
-                                    <div class="tripactions">
-
-                                        <button
-                                            class="btn tiny ${
-                                                trip.locked
-                                                    ? "green"
-                                                    : ""
-                                            }"
-                                            onclick="lockTrip('${trip.id}')"
-                                        >
-                                            ${
-                                                trip.locked
-                                                    ? "UNLOCK"
-                                                    : "LOCK TRIP"
-                                            }
-                                        </button>
-
-
-                                        ${
-                                            !trip.locked
-                                                ? `
-                                                    <button
-                                                        class="btn tiny"
-                                                        onclick="editTrip('${trip.id}')"
-                                                    >
-                                                        EDIT DETAILS
-                                                    </button>
-
-                                                    <button
-                                                        class="btn tiny danger"
-                                                        onclick="deleteTrip('${trip.id}')"
-                                                    >
-                                                        DELETE
-                                                    </button>
-                                                `
-                                                : ""
-                                        }
-
-                                    </div>
-
-                                </div>
-                            </article>
-                        `;
-                    })
-                    .join("");
-        }
-
-
-        /* =========================================================
-           RENDER EVERYTHING
-        ========================================================= */
-
-        function renderAll() {
-            renderStats();
-            renderBoard();
-            renderSelected();
-            renderTrips();
-        }
-
-
-        /* =========================================================
-           EVENTS
-        ========================================================= */
-
-        search.oninput =
-            renderBoard;
-
-        statusFilter.onchange =
-            renderBoard;
-
-        regionFilter.onchange =
-            renderBoard;
-
-
-        clearSel.onclick = () => {
-            selected.clear();
-            renderAll();
-        };
-
-
-        saveTrip.onclick = () => {
-            const tripData =
-                getTripData();
-
-
-            if (!tripData.name) {
-                alert(
-                    "Give the trip a name first."
-                );
-
-                return;
-            }
-
-
-            if (
-                !tripData.destinations.length
-            ) {
-                alert(
-                    "Select at least one destination."
-                );
-
-                return;
-            }
-
-
-            if (editingId) {
-                const oldTrip =
-                    trips.find(
-                        trip =>
-                            trip.id === editingId
-                    );
-
-                if (oldTrip?.locked) {
-                    return;
-                }
-
-
-                const index =
-                    trips.findIndex(
-                        trip =>
-                            trip.id === editingId
-                    );
-
-                tripData.locked =
-                    oldTrip?.locked || false;
-
-                trips[index] =
-                    tripData;
-
-            } else {
-                trips.push(
-                    tripData
-                );
-            }
-
-
-            persistTrips();
-            resetForm();
-        };
-
-
-        /* =========================================================
-           INITIAL RENDER
-        ========================================================= */
         renderAll();
-    </script>
-
-
-    <!-- =========================================================
-         FIREBASE / GOOGLE ACCOUNT SYNC
-    ========================================================== -->
-
-    <script type="module">
-
-        import {
-            initializeApp
-        } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-
-        import {
-            getAuth,
-            GoogleAuthProvider,
-            signInWithPopup,
-            signOut,
-            onAuthStateChanged
-        } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-
-        import {
-            getFirestore,
-            doc,
-            getDoc,
-            setDoc,
-            serverTimestamp
-        } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
-
-
-        /* =========================================================
-           FIREBASE CONFIG
-        ========================================================= */
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyCAY-izVSAjouJjL960zS8xs84jaOZQBIo",
-            authDomain: "kieranholidaymap.firebaseapp.com",
-            projectId: "kieranholidaymap",
-            storageBucket: "kieranholidaymap.firebasestorage.app",
-            messagingSenderId: "733529027142",
-            appId: "1:733529027142:web:f1af423b12491a937dd047"
-        };
-
-
-        /* =========================================================
-           FIREBASE STARTUP
-        ========================================================= */
-
-        const firebaseApp =
-            initializeApp(firebaseConfig);
-
-        const auth =
-            getAuth(firebaseApp);
-
-        const db =
-            getFirestore(firebaseApp);
-
-        const googleProvider =
-            new GoogleAuthProvider();
-
-
-        /* =========================================================
-           PAGE CONTROLS
-        ========================================================= */
-
-        const googleSignIn =
-            document.getElementById(
-                "googleSignIn"
-            );
-
-        const googleSignOut =
-            document.getElementById(
-                "googleSignOut"
-            );
-
-        const firebaseUser =
-            document.getElementById(
-                "firebaseUser"
-            );
-
-
-        /* =========================================================
-           EXISTING LOCAL STORAGE KEYS
-        ========================================================= */
-
-        const FIREBASE_TRIP_STORE =
-            "kieranTripDepartureBoard:v1";
-
-        const FIREBASE_COMPLETED_STORE =
-            "kieranCompletedDestinations:v1";
-
-        const FIREBASE_LOCK_STORE =
-            "kieranDestinationLocks:v1";
-
-
-        /* =========================================================
-           FIRESTORE LOCATION
-
-           users
-             UID
-               tripBoard
-                 data
-        ========================================================= */
-
-        function getTripBoardRef(uid) {
-            return doc(
-                db,
-                "users",
-                uid,
-                "tripBoard",
-                "data"
-            );
-        }
-
-
-        /* =========================================================
-           READ CURRENT LOCAL DATA
-        ========================================================= */
-
-        function readLocalJSON(
-            key,
-            fallback
-        ) {
-            try {
-                const value =
-                    localStorage.getItem(key);
-
-                if (value === null) {
-                    return fallback;
-                }
-
-                return JSON.parse(value);
-
-            } catch (error) {
-                console.error(
-                    "Could not read local data:",
-                    key,
-                    error
-                );
-
-                return fallback;
-            }
-        }
-
-
-        function getLocalTripBoardData() {
-            return {
-                trips:
-                    readLocalJSON(
-                        FIREBASE_TRIP_STORE,
-                        []
-                    ),
-
-                completedDestinations:
-                    readLocalJSON(
-                        FIREBASE_COMPLETED_STORE,
-                        []
-                    ),
-
-                lockedDestinations:
-                    readLocalJSON(
-                        FIREBASE_LOCK_STORE,
-                        []
-                    )
-            };
-        }
-
-
-        /* =========================================================
-           SAVE CURRENT PAGE TO FIREBASE
-        ========================================================= */
-
-        let firebaseSaveTimer = null;
-
-        let loadingFirebaseData = false;
-
-
-        async function saveTripBoardToFirebase() {
-
-            const user =
-                auth.currentUser;
-
-            if (
-                !user ||
-                loadingFirebaseData
-            ) {
-                return;
-            }
-
-
-            const localData =
-                getLocalTripBoardData();
-
-
-            try {
-
-                await setDoc(
-                    getTripBoardRef(user.uid),
-                    {
-                        trips:
-                            localData.trips,
-
-                        completedDestinations:
-                            localData.completedDestinations,
-
-                        lockedDestinations:
-                            localData.lockedDestinations,
-
-                        updatedAt:
-                            serverTimestamp()
-                    },
-                    {
-                        merge: true
-                    }
-                );
-
-
-                firebaseUser.textContent =
-                    `☁ SAVED · ${user.email}`;
-
-            } catch (error) {
-
-                console.error(
-                    "Firebase save failed:",
-                    error
-                );
-
-                firebaseUser.textContent =
-                    "⚠ FIREBASE SAVE FAILED";
-            }
-        }
-
-
-        function queueFirebaseSave() {
-
-            if (
-                !auth.currentUser ||
-                loadingFirebaseData
-            ) {
-                return;
-            }
-
-
-            firebaseUser.textContent =
-                "☁ SAVING...";
-
-
-            clearTimeout(
-                firebaseSaveTimer
-            );
-
-
-            firebaseSaveTimer =
-                setTimeout(
-                    saveTripBoardToFirebase,
-                    350
-                );
-        }
-
-
-        /* =========================================================
-           LOAD FIREBASE DATA
-        ========================================================= */
-
-        async function loadTripBoardFromFirebase(
-            user
-        ) {
-
-            firebaseUser.textContent =
-                "☁ LOADING...";
-
-
-            try {
-
-                const reference =
-                    getTripBoardRef(
-                        user.uid
-                    );
-
-                const snapshot =
-                    await getDoc(
-                        reference
-                    );
-
-
-                /*
-                    No cloud copy exists yet.
-
-                    This means this is the first
-                    time Trips has been connected
-                    to Firebase.
-
-                    Upload the existing local data
-                    rather than deleting it.
-                */
-
-                if (!snapshot.exists()) {
-
-                    await saveTripBoardToFirebase();
-
-                    firebaseUser.textContent =
-                        `☁ SYNCED · ${user.email}`;
-
-                    return;
-                }
-
-
-                const cloud =
-                    snapshot.data();
-
-
-                loadingFirebaseData =
-                    true;
-
-
-                /*
-                    Replace localStorage with
-                    the user's Firebase copy.
-                */
-
-                if (
-                    Array.isArray(
-                        cloud.trips
-                    )
-                ) {
-                    localStorage.setItem(
-                        FIREBASE_TRIP_STORE,
-                        JSON.stringify(
-                            cloud.trips
-                        )
-                    );
-                }
-
-
-                if (
-                    Array.isArray(
-                        cloud.completedDestinations
-                    )
-                ) {
-                    localStorage.setItem(
-                        FIREBASE_COMPLETED_STORE,
-                        JSON.stringify(
-                            cloud.completedDestinations
-                        )
-                    );
-                }
-
-
-                if (
-                    Array.isArray(
-                        cloud.lockedDestinations
-                    )
-                ) {
-                    localStorage.setItem(
-                        FIREBASE_LOCK_STORE,
-                        JSON.stringify(
-                            cloud.lockedDestinations
-                        )
-                    );
-                }
-
-
-                /*
-                    Reload once so your existing
-                    Trips JavaScript reads the
-                    Firebase values through the
-                    functions you already have.
-                */
-
-                sessionStorage.setItem(
-                    "kieranTripsFirebaseLoaded",
-                    user.uid
-                );
-
-
-                window.location.reload();
-
-
-            } catch (error) {
-
-                loadingFirebaseData =
-                    false;
-
-                console.error(
-                    "Firebase load failed:",
-                    error
-                );
-
-                firebaseUser.textContent =
-                    "⚠ FIREBASE LOAD FAILED";
-            }
-        }
-
-
-        /* =========================================================
-           GOOGLE SIGN IN
-        ========================================================= */
-
-        googleSignIn.addEventListener(
-            "click",
-            async () => {
-
-                try {
-
-                    await signInWithPopup(
-                        auth,
-                        googleProvider
-                    );
-
-                } catch (error) {
-
-                    console.error(
-                        "Google sign in failed:",
-                        error
-                    );
-
-                    alert(
-                        "Google sign in failed. Check the browser console for details."
-                    );
-                }
-            }
+      };
+    });
+
+  document
+    .querySelectorAll("[data-lock-destination]")
+    .forEach(button=>{
+      button.onclick=event=>{
+        event.stopPropagation();
+        toggleDestinationLock(
+          button.dataset.lockDestination
         );
+      };
+    });
+}
 
+function renderSelected(){
+  sSel.textContent=selected.size;
+  selCount.textContent=selected.size;
 
-        /* =========================================================
-           GOOGLE SIGN OUT
-        ========================================================= */
+  selectedList.innerHTML=
+    [...selected]
+      .map(name=>`
+        <span class="chip">
+          ${esc(name)}
+        </span>
+      `)
+      .join("")||
+    `
+      <span class="notice">
+        Nothing selected yet.
+      </span>
+    `;
+}
 
-        googleSignOut.addEventListener(
-            "click",
-            async () => {
+function renderStats(){
+  const completed=DESTINATIONS.filter(
+    destination=>isDestinationComplete(destination.name)
+  ).length;
 
-                try {
+  sTotal.textContent=DESTINATIONS.length;
+  sDone.textContent=completed;
+  sTodo.textContent=DESTINATIONS.length-completed;
+}
 
-                    sessionStorage.removeItem(
-                        "kieranTripsFirebaseLoaded"
-                    );
+function getTripData(){
+  return {
+    id:editingId||`trip-${Date.now()}`,
+    name:val("tripName"),
+    startDate:val("startDate"),
+    endDate:val("endDate"),
+    status:val("tripStatus"),
+    airline:val("airline"),
+    route:val("route"),
+    flightRef:val("flightRef"),
+    hotels:val("hotels"),
+    budget:val("budget"),
+    travelType:val("travelType"),
+    summary:val("summary"),
+    notes:val("notes"),
+    destinations:[...selected],
+    locked:false,
+    updatedAt:Date.now()
+  };
+}
 
-                    await signOut(auth);
+function resetForm(){
+  editingId=null;
 
-                } catch (error) {
+  [
+    "tripName",
+    "startDate",
+    "endDate",
+    "airline",
+    "route",
+    "flightRef",
+    "hotels",
+    "budget",
+    "summary",
+    "notes"
+  ].forEach(field=>setv(field,""));
 
-                    console.error(
-                        "Sign out failed:",
-                        error
-                    );
-                }
+  setv("tripStatus","planned");
+  setv("travelType","Holiday");
+
+  selected.clear();
+
+  saveTrip.textContent="CREATE TRIP";
+
+  renderAll();
+}
+
+function editTrip(id){
+  const trip=trips.find(item=>item.id===id);
+
+  if(!trip||trip.locked){
+    return;
+  }
+
+  editingId=id;
+
+  setv("tripName",trip.name);
+  setv("startDate",trip.startDate);
+  setv("endDate",trip.endDate);
+  setv("tripStatus",trip.status);
+  setv("airline",trip.airline);
+  setv("route",trip.route);
+  setv("flightRef",trip.flightRef);
+  setv("hotels",trip.hotels);
+  setv("budget",trip.budget);
+  setv("travelType",trip.travelType);
+  setv("summary",trip.summary);
+  setv("notes",trip.notes);
+
+  selected=new Set(trip.destinations||[]);
+
+  saveTrip.textContent="SAVE CHANGES";
+
+  renderAll();
+
+  window.scrollTo({
+    top:0,
+    behavior:"smooth"
+  });
+}
+
+function lockTrip(id){
+  const trip=trips.find(item=>item.id===id);
+
+  if(!trip){
+    return;
+  }
+
+  trip.locked=!trip.locked;
+  trip.updatedAt=Date.now();
+
+  persistTrips();
+  renderTrips();
+}
+
+function deleteTrip(id){
+  const trip=trips.find(item=>item.id===id);
+
+  if(!trip||trip.locked){
+    return;
+  }
+
+  if(confirm("Delete this trip?")){
+    trips=trips.filter(item=>item.id!==id);
+
+    if(editingId===id){
+      resetForm();
+    }
+
+    persistTrips();
+    renderAll();
+  }
+}
+
+function renderTrips(){
+  const container=$("trips");
+
+  if(!trips.length){
+    container.innerHTML=`
+      <div class="notice">
+        No trips created yet.
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML=[...trips]
+    .sort((a,b)=>
+      (b.startDate||"").localeCompare(a.startDate||"")
+    )
+    .map(trip=>{
+      const destinations=trip.destinations||[];
+
+      const route=
+        trip.route||
+        destinations.join(" → ");
+
+      return `
+        <article class="trip ${trip.locked?"locked":""}">
+
+          <div class="triptop">
+
+            <span>
+              ${trip.locked?"🔒":"🟢"}
+            </span>
+
+            <div class="triptitle">
+              ${esc(trip.name||"UNTITLED TRIP")}
+            </div>
+
+            <span class="lock">
+              ${esc((trip.status||"planned").toUpperCase())}
+            </span>
+
+          </div>
+
+          <div class="tripbody">
+
+            <div class="triproute">
+              ${esc(route||"ROUTE TBC")}
+            </div>
+
+            <div>
+              ${esc(trip.startDate||"DATE TBC")}
+              →
+              ${esc(trip.endDate||"DATE TBC")}
+              ·
+              ${destinations.length}
+              DESTINATIONS
+            </div>
+
+            ${
+              destinations.length
+                ?`
+                  <div>
+                    DESTINATIONS:
+                    ${esc(destinations.join(", "))}
+                  </div>
+                `
+                :""
             }
-        );
 
-
-        /* =========================================================
-           AUTH STATE
-        ========================================================= */
-
-        onAuthStateChanged(
-            auth,
-            async user => {
-
-                if (!user) {
-
-                    googleSignIn.style.display =
-                        "";
-
-                    googleSignOut.style.display =
-                        "none";
-
-                    firebaseUser.textContent =
-                        "LOCAL ONLY";
-
-                    sessionStorage.removeItem(
-                        "kieranTripsFirebaseLoaded"
-                    );
-
-                    return;
-                }
-
-
-                googleSignIn.style.display =
-                    "none";
-
-                googleSignOut.style.display =
-                    "";
-
-                firebaseUser.textContent =
-                    `☁ ${user.email}`;
-
-
-                /*
-                    Have we already loaded Firebase
-                    during this page session?
-
-                    This prevents an endless
-                    reload loop.
-                */
-
-                const loadedUid =
-                    sessionStorage.getItem(
-                        "kieranTripsFirebaseLoaded"
-                    );
-
-
-                if (
-                    loadedUid !== user.uid
-                ) {
-
-                    await loadTripBoardFromFirebase(
-                        user
-                    );
-
-                    return;
-                }
-
-
-                firebaseUser.textContent =
-                    `☁ SYNCED · ${user.email}`;
+            ${
+              trip.airline
+                ?`
+                  <div>
+                    OPERATOR:
+                    ${esc(trip.airline)}
+                  </div>
+                `
+                :""
             }
-        );
 
+            ${
+              trip.flightRef
+                ?`
+                  <div>
+                    BOOKING REF:
+                    ${esc(trip.flightRef)}
+                  </div>
+                `
+                :""
+            }
 
-        /* =========================================================
-           WATCH YOUR EXISTING LOCALSTORAGE SAVES
+            ${
+              trip.hotels
+                ?`
+                  <div>
+                    HOTELS:
+                    ${esc(trip.hotels)}
+                  </div>
+                `
+                :""
+            }
 
-           Your current page already calls
-           localStorage.setItem() whenever trips,
-           completed destinations or locks change.
+            ${
+              trip.budget
+                ?`
+                  <div>
+                    BUDGET:
+                    ${esc(trip.budget)}
+                  </div>
+                `
+                :""
+            }
 
-           This intercepts those existing saves
-           and sends the new data to Firebase too.
-        ========================================================= */
+            ${
+              trip.travelType
+                ?`
+                  <div>
+                    TYPE:
+                    ${esc(trip.travelType)}
+                  </div>
+                `
+                :""
+            }
 
-        const originalSetItem =
-            Storage.prototype.setItem;
+            ${
+              trip.summary
+                ?`
+                  <div class="trip-summary">
+                    ${esc(trip.summary)}
+                  </div>
+                `
+                :""
+            }
 
+            ${
+              trip.notes
+                ?`
+                  <div class="trip-summary">
+                    NOTES:
+                    ${esc(trip.notes)}
+                  </div>
+                `
+                :""
+            }
 
-        Storage.prototype.setItem =
-            function(
-                key,
-                value
-            ) {
+            <div class="tripactions">
 
-                originalSetItem.call(
-                    this,
-                    key,
-                    value
-                );
+              <button
+                class="btn tiny ${trip.locked?"green":""}"
+                type="button"
+                onclick="lockTrip('${trip.id}')"
+              >
+                ${trip.locked?"UNLOCK":"LOCK TRIP"}
+              </button>
 
+              ${
+                !trip.locked
+                  ?`
+                    <button
+                      class="btn tiny"
+                      type="button"
+                      onclick="editTrip('${trip.id}')"
+                    >
+                      EDIT DETAILS
+                    </button>
 
-                if (
-                    this !== localStorage
-                ) {
-                    return;
-                }
+                    <button
+                      class="btn tiny danger"
+                      type="button"
+                      onclick="deleteTrip('${trip.id}')"
+                    >
+                      DELETE
+                    </button>
+                  `
+                  :""
+              }
 
+            </div>
 
-                if (
-                    key === FIREBASE_TRIP_STORE ||
-                    key === FIREBASE_COMPLETED_STORE ||
-                    key === FIREBASE_LOCK_STORE
-                ) {
-                    queueFirebaseSave();
-                }
-            };
+          </div>
 
+        </article>
+      `;
+    })
+    .join("");
+}
 
-        /* =========================================================
-           MANUAL SYNC EVENT
+function renderAll(){
+  renderStats();
+  renderBoard();
+  renderSelected();
+  renderTrips();
+}
 
-           Gives the normal script another way
-           to request a Firebase save if needed.
-        ========================================================= */
+search.addEventListener("input",renderBoard);
+statusFilter.addEventListener("change",renderBoard);
+regionFilter.addEventListener("change",renderBoard);
 
-        window.syncTripsToFirebase =
-            queueFirebaseSave;
+clearSel.addEventListener("click",()=>{
+  selected.clear();
+  renderAll();
+});
 
-    </script>
+saveTrip.addEventListener("click",()=>{
+  const tripData=getTripData();
+
+  if(!tripData.name){
+    alert("Give the trip a name first.");
+    return;
+  }
+
+  if(!tripData.destinations.length){
+    alert("Select at least one destination using ADD TO TRIP.");
+    return;
+  }
+
+  if(editingId){
+    const existing=trips.find(
+      trip=>trip.id===editingId
+    );
+
+    if(!existing||existing.locked){
+      return;
+    }
+
+    const index=trips.findIndex(
+      trip=>trip.id===editingId
+    );
+
+    tripData.locked=existing.locked||false;
+    trips[index]=tripData;
+  }else{
+    trips.push(tripData);
+  }
+
+  persistTrips();
+  resetForm();
+});
+
+window.editTrip=editTrip;
+window.lockTrip=lockTrip;
+window.deleteTrip=deleteTrip;
+
+renderAll();
+</script>
+
+<script type="module">
+import{
+  initializeApp
+}from"https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
+
+import{
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signOut,
+  onAuthStateChanged
+}from"https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
+
+import{
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  serverTimestamp
+}from"https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+
+const firebaseConfig={
+  apiKey:"AIzaSyCAY-izVSAjouJjL960zS8xs84jaOZQBIo",
+  authDomain:"kieranholidaymap.firebaseapp.com",
+  projectId:"kieranholidaymap",
+  storageBucket:"kieranholidaymap.firebasestorage.app",
+  messagingSenderId:"733529027142",
+  appId:"1:733529027142:web:f1af423b12491a937dd047"
+};
+
+const firebaseApp=initializeApp(firebaseConfig);
+const auth=getAuth(firebaseApp);
+const db=getFirestore(firebaseApp);
+const googleProvider=new GoogleAuthProvider();
+
+const googleSignIn=document.getElementById("googleSignIn");
+const googleSignOut=document.getElementById("googleSignOut");
+const firebaseUser=document.getElementById("firebaseUser");
+
+const FIREBASE_TRIP_STORE="kieranTripDepartureBoard:v1";
+const FIREBASE_COMPLETED_STORE="kieranCompletedDestinations:v1";
+const FIREBASE_LOCK_STORE="kieranDestinationLocks:v1";
+
+function getTripBoardRef(uid){
+  return doc(
+    db,
+    "users",
+    uid,
+    "tripBoard",
+    "data"
+  );
+}
+
+function readLocalJSON(key,fallback){
+  try{
+    const value=localStorage.getItem(key);
+
+    if(value===null){
+      return fallback;
+    }
+
+    return JSON.parse(value);
+  }catch(error){
+    console.error(
+      "Could not read local data:",
+      key,
+      error
+    );
+
+    return fallback;
+  }
+}
+
+function getLocalTripBoardData(){
+  return{
+    trips:readLocalJSON(
+      FIREBASE_TRIP_STORE,
+      []
+    ),
+
+    completedDestinations:readLocalJSON(
+      FIREBASE_COMPLETED_STORE,
+      []
+    ),
+
+    lockedDestinations:readLocalJSON(
+      FIREBASE_LOCK_STORE,
+      []
+    )
+  };
+}
+
+let firebaseSaveTimer=null;
+let loadingFirebaseData=false;
+
+async function saveTripBoardToFirebase(){
+  const user=auth.currentUser;
+
+  if(!user||loadingFirebaseData){
+    return;
+  }
+
+  const localData=getLocalTripBoardData();
+
+  try{
+    await setDoc(
+      getTripBoardRef(user.uid),
+      {
+        trips:localData.trips,
+        completedDestinations:localData.completedDestinations,
+        lockedDestinations:localData.lockedDestinations,
+        updatedAt:serverTimestamp()
+      },
+      {
+        merge:true
+      }
+    );
+
+    firebaseUser.textContent=
+      `☁ SAVED · ${user.email}`;
+
+  }catch(error){
+    console.error(
+      "Firebase save failed:",
+      error
+    );
+
+    firebaseUser.textContent=
+      "⚠ FIREBASE SAVE FAILED";
+  }
+}
+
+function queueFirebaseSave(){
+  if(!auth.currentUser||loadingFirebaseData){
+    return;
+  }
+
+  firebaseUser.textContent="☁ SAVING...";
+
+  clearTimeout(firebaseSaveTimer);
+
+  firebaseSaveTimer=setTimeout(
+    saveTripBoardToFirebase,
+    350
+  );
+}
+
+async function loadTripBoardFromFirebase(user){
+  firebaseUser.textContent="☁ LOADING...";
+
+  try{
+    const reference=getTripBoardRef(user.uid);
+    const snapshot=await getDoc(reference);
+
+    if(!snapshot.exists()){
+      await saveTripBoardToFirebase();
+
+      sessionStorage.setItem(
+        "kieranTripsFirebaseLoaded",
+        user.uid
+      );
+
+      firebaseUser.textContent=
+        `☁ SYNCED · ${user.email}`;
+
+      return;
+    }
+
+    const cloud=snapshot.data();
+
+    loadingFirebaseData=true;
+
+    if(Array.isArray(cloud.trips)){
+      localStorage.setItem(
+        FIREBASE_TRIP_STORE,
+        JSON.stringify(cloud.trips)
+      );
+    }
+
+    if(Array.isArray(cloud.completedDestinations)){
+      localStorage.setItem(
+        FIREBASE_COMPLETED_STORE,
+        JSON.stringify(cloud.completedDestinations)
+      );
+    }
+
+    if(Array.isArray(cloud.lockedDestinations)){
+      localStorage.setItem(
+        FIREBASE_LOCK_STORE,
+        JSON.stringify(cloud.lockedDestinations)
+      );
+    }
+
+    sessionStorage.setItem(
+      "kieranTripsFirebaseLoaded",
+      user.uid
+    );
+
+    window.location.reload();
+
+  }catch(error){
+    loadingFirebaseData=false;
+
+    console.error(
+      "Firebase load failed:",
+      error
+    );
+
+    firebaseUser.textContent=
+      "⚠ FIREBASE LOAD FAILED";
+  }
+}
+
+googleSignIn.addEventListener(
+  "click",
+  async()=>{
+    try{
+      await signInWithPopup(
+        auth,
+        googleProvider
+      );
+    }catch(error){
+      console.error(
+        "Google sign in failed:",
+        error
+      );
+
+      alert(
+        "Google sign in failed. Check the browser console for details."
+      );
+    }
+  }
+);
+
+googleSignOut.addEventListener(
+  "click",
+  async()=>{
+    try{
+      sessionStorage.removeItem(
+        "kieranTripsFirebaseLoaded"
+      );
+
+      await signOut(auth);
+    }catch(error){
+      console.error(
+        "Sign out failed:",
+        error
+      );
+    }
+  }
+);
+
+onAuthStateChanged(
+  auth,
+  async user=>{
+    if(!user){
+      googleSignIn.style.display="";
+      googleSignOut.style.display="none";
+      firebaseUser.textContent="LOCAL ONLY";
+
+      sessionStorage.removeItem(
+        "kieranTripsFirebaseLoaded"
+      );
+
+      return;
+    }
+
+    googleSignIn.style.display="none";
+    googleSignOut.style.display="";
+    firebaseUser.textContent=`☁ ${user.email}`;
+
+    const loadedUid=sessionStorage.getItem(
+      "kieranTripsFirebaseLoaded"
+    );
+
+    if(loadedUid!==user.uid){
+      await loadTripBoardFromFirebase(user);
+      return;
+    }
+
+    firebaseUser.textContent=
+      `☁ SYNCED · ${user.email}`;
+  }
+);
+
+window.syncTripsToFirebase=queueFirebaseSave;
+
+window.addEventListener(
+  "kieranTripDataChanged",
+  queueFirebaseSave
+);
+</script>
+
+<script>
+(function(){
+  const watchedKeys=new Set([
+    "kieranTripDepartureBoard:v1",
+    "kieranCompletedDestinations:v1",
+    "kieranDestinationLocks:v1"
+  ]);
+
+  const originalSetItem=Storage.prototype.setItem;
+
+  Storage.prototype.setItem=function(key,value){
+    originalSetItem.call(this,key,value);
+
+    if(
+      this===localStorage &&
+      watchedKeys.has(key)
+    ){
+      window.dispatchEvent(
+        new Event("kieranTripDataChanged")
+      );
+    }
+  };
+})();
+</script>
 
 </body>
 </html>
-
